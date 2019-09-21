@@ -1,0 +1,38 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "declaration": true,
+    "sourceMap": true,
+    "importHelpers": true,
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "target": "es5",
+    "lib": [
+      "dom",
+      "es5",
+      "es2015"
+    ],
+    "outDir": "./dist/commonjs",
+    "baseUrl": ".",
+    "paths": {
+      "kvs-webrtc/*": ["./src/*"]
+    },
+    "noImplicitAny": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "removeComments": false
+  },
+  "formatCodeOptions": {
+    "indentSize": 4,
+    "tabSize": 4
+  },
+  "files": [
+    "src/index.ts"
+  ],
+  "include": [
+    "src/typings/**/*"
+  ]
+}

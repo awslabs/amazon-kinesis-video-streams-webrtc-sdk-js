@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>KVS WebRTC Test Page</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="loader.css">
+    <link rel="stylesheet" href="./app.css">
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+    <script src="./aws-sdk.beta.min.js"></script>
+    <script src="https://unpkg.com/@ungap/url-search-params"></script>
+    <link rel="icon" type="image/png" href="favicon.ico">
+</head>
+<body>
+
+<div class="container">
+    <h1>KVS WebRTC Test Page</h1>
+    <p>This is the KVS Signaling Channel WebRTC test page. Use this page to connect to a signaling channel as either the MASTER or as a VIEWER.</p>
+
+    <div class="row loader"></div>
+    <div id="main">
+        <form id="form">
+            <div class="form-group">
+                <label>Region</label>
+                <input type="text" class="form-control" id="region" value="us-west-2">
+            </div>
+            <div class="form-group">
+                <label>Access Key ID</label>
+                <input type="text" class="form-control" id="accessKeyId" placeholder="Access key id">
+            </div>
+            <div class="form-group">
+                <label>Secret Access Key</label>
+                <input type="password" class="form-control" id="secretAccessKey" placeholder="Secret access key">
+            </div>
+            <div class="form-group">
+                <label>Session Token (Optional)</label>
+                <input type="password" class="form-control" id="sessionToken" placeholder="Session token">
+            </div>
+            <div class="form-group">
+                <label>Endpoint (Optional)</label>
+                <input type="text" class="form-control" id="endpoint" placeholder="Endpoint">
+            </div>
+            <div class="form-group">
+                <label>Channel Name</label>
+                <input type="text" class="form-control" id="channelName" placeholder="Channel">
+            </div>
+            <div class="form-group">
+                <label>Client Id (optional)</label>
+                <input type="text" class="form-control" id="clientId" placeholder="Client id">
+            </div>
+            <div class="form-group">
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="sendVideo" value="video" checked>
+                    <label class="form-check-label">Send Video</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="sendAudio" value="audio">
+                    <label class="form-check-label">Send Audio</label>
+                </div>
+            </div>
+            <div>
+                <button id="master-button" type="button" class="btn btn-primary">Start Master</button>
+                <button id="viewer-button" type="button" class="btn btn-primary">Start Viewer</button>
+                <button id="create-channel-button" type="button" class="btn btn-primary">Create Channel</button>
+            </div>
+        </form>
+
+        <div id="master" style="display: none;">
+            <h2>Master</h2>
+            <div class="row">
+                <div class="col">
+                    <h5>Master Section</h5>
+                    <div class="video-container"><video class="self-view" autoplay playsinline /></div>
+                </div>
+                <div class="col">
+                    <h5>Viewer Return Channel</h5>
+                    <div class="video-container"><video class="remote-view" autoplay playsinline /></div>
+                </div>
+            </div>
+            <div>
+                <button id="stop-master-button" type="button" class="btn btn-primary">Stop Master</button>
+            </div>
+        </div>
+
+        <div id="viewer" style="display: none;">
+            <h2>Viewer</h2>
+            <div class="row">
+                <div class="col">
+                    <h5>Return Channel</h5>
+                    <div class="video-container"><video class="self-view" autoplay playsinline /></div>
+                </div>
+                <div class="col">
+                    <h5>From Master</h5>
+                    <div class="video-container"><video class="remote-view" autoplay playsinline /></div>
+                </div>
+            </div>
+            <div>
+                <button id="stop-viewer-button" type="button" class="btn btn-primary">Stop Viewer</button>
+            </div>
+        </div>
+
+        <h3 style="margin-top: 20px;">Logs</h3>
+        <div class="card bg-light mb-3">
+            <pre id="logs" class="card-body text-monospace" style="font-family: monospace; white-space: pre-wrap;"></pre>
+        </div>
+
+    </div>
+</div>
+
+<div id="test"></div>
+
+<script src="../dist/kvs-webrtc.js"></script>
+<script src="./master.js"></script>
+<script src="./viewer.js"></script>
+<script src="./createSignalingChannel.js"></script>
+<script src="./app.js"></script>
+
+</body>
+</html>

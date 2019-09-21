@@ -1,0 +1,49 @@
+{
+    "name": "@aws/kvs-webrtc",
+    "version": "0.0.1",
+    "description": "AWS Kinesis Video Streams signaling channel SDK for JavaScript.",
+    "repository": {
+        "type" : "git",
+        "url" : "https://github.com/awslabs/amazon-kinesis-video-streams-webrtc-sdk-js.git"
+    },
+    "main": "index.js",
+    "scripts": {
+        "integ-server": "ws -p 3000",
+        "test": "jest --runInBand",
+        "build-all": "npm run build-commonjs && npm run build-debug && npm run build-dist",
+        "build-commonjs": "tsc -p tsconfig.json",
+        "build-debug": "webpack --config webpack.debug.config.js",
+        "build-dist": "webpack --config webpack.dist.config.js",
+        "develop": "webpack-dev-server --config webpack.dev.config.js",
+        "lint": "eslint 'src/**/*.{js,ts}'",
+        "release": "npm run lint && npm run test && npm run build-all"
+    },
+    "author": "Mitchell Loeppky <mrl@amazon.com>",
+    "license": "Apache-2.0",
+    "devDependencies": {
+        "@types/expect-puppeteer": "^3.3.1",
+        "@types/jest-environment-puppeteer": "^4.3.1",
+        "@types/puppeteer": "^1.19.1",
+        "@typescript-eslint/eslint-plugin": "^2.2.0",
+        "@typescript-eslint/parser": "^2.2.0",
+        "eslint": "^6.3.0",
+        "eslint-config-prettier": "^6.3.0",
+        "eslint-plugin-kvs-webrtc": "file:eslint",
+        "eslint-plugin-prettier": "^3.1.0",
+        "fork-ts-checker-webpack-plugin": "^1.5.0",
+        "jest": "^24.9.0",
+        "jest-puppeteer": "^4.3.0",
+        "license-webpack-plugin": "^2.1.2",
+        "local-web-server": "^3.0.7",
+        "prettier": "^1.18.2",
+        "puppeteer": "^1.19.0",
+        "ts-jest": "^24.0.2",
+        "ts-loader": "^6.0.4",
+        "typescript": "^3.6.2",
+        "uglifyjs-webpack-plugin": "^2.2.0",
+        "webpack": "^4.39.3",
+        "webpack-cli": "^3.3.7",
+        "webpack-dev-server": "^3.8.0",
+        "webpack-merge": "^4.2.2"
+    }
+}
