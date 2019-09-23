@@ -100,7 +100,12 @@ async function startViewer(localView, remoteView, formValues, onStatsReport) {
 
         // Create and send an SDP offer
         console.log('[VIEWER] Creating SDP offer and sending to master');
-        await viewer.peerConnection.setLocalDescription(await viewer.peerConnection.createOffer());
+        await viewer.peerConnection.setLocalDescription(
+            await viewer.peerConnection.createOffer({
+                offerToReceiveAudio: true,
+                offerToReceiveVideo: true,
+            }),
+        );
         viewer.signalingClient.sendSdpOffer(viewer.peerConnection.localDescription);
     });
 

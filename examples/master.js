@@ -139,7 +139,12 @@ async function startMaster(localView, remoteView, formValues, onStatsReport) {
 
         // Create an SDP answer to send back to the client
         console.log('[MASTER] Creating SDP answer and sending to client: ' + remoteClientId);
-        await peerConnection.setLocalDescription(await peerConnection.createAnswer());
+        await peerConnection.setLocalDescription(
+            await peerConnection.createAnswer({
+                offerToReceiveAudio: true,
+                offerToReceiveVideo: true,
+            }),
+        );
         master.signalingClient.sendSdpAnswer(peerConnection.localDescription, remoteClientId);
     });
 
