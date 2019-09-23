@@ -3,7 +3,7 @@
 <head>
     <title>KVS WebRTC Test Page</title>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
     <link rel="stylesheet" href="loader.css">
     <link rel="stylesheet" href="./app.css">
@@ -15,7 +15,7 @@
 </head>
 <body>
 
-<div class="container">
+<div class="container mt-3">
     <h1>KVS WebRTC Test Page</h1>
     <p>This is the KVS Signaling Channel WebRTC test page. Use this page to connect to a signaling channel as either the MASTER or as a VIEWER.</p>
 
@@ -72,11 +72,11 @@
             <div class="row">
                 <div class="col">
                     <h5>Master Section</h5>
-                    <div class="video-container"><video class="self-view" autoplay playsinline /></div>
+                    <div class="video-container"><video class="self-view" autoplay playsinline controls muted /></div>
                 </div>
                 <div class="col">
                     <h5>Viewer Return Channel</h5>
-                    <div class="video-container"><video class="remote-view" autoplay playsinline /></div>
+                    <div class="video-container"><video class="remote-view" autoplay playsinline controls /></div>
                 </div>
             </div>
             <div>
@@ -89,11 +89,11 @@
             <div class="row">
                 <div class="col">
                     <h5>Return Channel</h5>
-                    <div class="video-container"><video class="self-view" autoplay playsinline /></div>
+                    <div class="video-container"><video class="self-view" autoplay playsinline controls muted /></div>
                 </div>
                 <div class="col">
                     <h5>From Master</h5>
-                    <div class="video-container"><video class="remote-view" autoplay playsinline /></div>
+                    <div class="video-container"><video class="remote-view" autoplay playsinline controls /></div>
                 </div>
             </div>
             <div>
