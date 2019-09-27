@@ -151,7 +151,7 @@ export class SignalingClient extends EventEmitter {
     /**
      * Sends the given SDP answer to the signaling service.
      *
-     * Typically, only the 'MASTER' role should send an SDP offer.
+     * Typically, only the 'MASTER' role should send an SDP answer.
      * @param {RTCSessionDescription} sdpAnswer - SDP answer to send.
      * @param {string} [recipientClientId] - ID of the client to send the message to. Required for 'MASTER' role. Should not be present for 'VIEWER' role.
      */
