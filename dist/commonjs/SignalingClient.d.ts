@@ -1,8 +1,6 @@
 /// <reference types="node" />
 import { EventEmitter } from 'events';
 import { Role } from 'kvs-webrtc/Role';
-import { SigV4RequestSignerDependencies } from 'kvs-webrtc/internal/SigV4RequestSigner';
-declare type WebSocketClientDependencies = SigV4RequestSignerDependencies;
 interface WebSocketClientConfig {
     credentials: AWS.Credentials;
     channelName: string;
@@ -28,16 +26,15 @@ export declare class SignalingClient extends EventEmitter {
     /**
      * Creates a new SignalingClient. The connection with the signaling service must be opened with the 'open' method.
      * @param {WebSocketClientConfig} config - Configuration options and parameters.
-     * @param {WebSocketClientDependencies} [dependencies] - Dependencies that are needed for the SignalingClient to function properly. If a required dependency
      * is not provided, it will be loaded from the global scope.
      */
-    constructor(config: WebSocketClientConfig, dependencies?: WebSocketClientDependencies);
+    constructor(config: WebSocketClientConfig);
     /**
      * Opens the connection with the signaling service. Listen to the 'open' event to be notified when the connection has been opened.
      *
      * An error is thrown if the connection is already open or being opened.
      */
-    open(): void;
+    open(): Promise<void>;
     /**
      * Closes the connection to the KVS Signaling Service. If already closed or closing, no action is taken. Listen to the 'close' event to be notified when the
      * connection has been closed.
@@ -54,7 +51,7 @@ export declare class SignalingClient extends EventEmitter {
     /**
      * Sends the given SDP answer to the signaling service.
      *
-     * Typically, only the 'MASTER' role should send an SDP offer.
+     * Typically, only the 'MASTER' role should send an SDP answer.
      * @param {RTCSessionDescription} sdpAnswer - SDP answer to send.
      * @param {string} [recipientClientId] - ID of the client to send the message to. Required for 'MASTER' role. Should not be present for 'VIEWER' role.
      */
@@ -105,10 +102,6 @@ export declare class SignalingClient extends EventEmitter {
      * Throws an error if the recipient client id is null and the current role is 'MASTER' as all messages sent as 'MASTER' should have a recipient client id.
      */
     private validateRecipientClientId;
-    /**
-     * Throw an error with a message indicating that a dependency with the given name is not found.
-     */
-    private static throwMissingDependencyError;
     /**
      * 'error' event handler. Forwards the error onto listeners.
      */

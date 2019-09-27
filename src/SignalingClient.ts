@@ -1,10 +1,8 @@
 import { EventEmitter } from 'events';
 
 import { Role } from 'kvs-webrtc/Role';
-import { QueryParams, SigV4RequestSigner, SigV4RequestSignerDependencies } from 'kvs-webrtc/internal/SigV4RequestSigner';
+import { QueryParams, SigV4RequestSigner } from 'kvs-webrtc/internal/SigV4RequestSigner';
 import { validateValueNil, validateValueNonNil } from 'kvs-webrtc/internal/utils';
-
-type WebSocketClientDependencies = SigV4RequestSignerDependencies;
 
 interface WebSocketClientConfig {
     credentials: AWS.Credentials;
@@ -46,10 +44,9 @@ export class SignalingClient extends EventEmitter {
     /**
      * Creates a new SignalingClient. The connection with the signaling service must be opened with the 'open' method.
      * @param {WebSocketClientConfig} config - Configuration options and parameters.
-     * @param {WebSocketClientDependencies} [dependencies] - Dependencies that are needed for the SignalingClient to function properly. If a required dependency
      * is not provided, it will be loaded from the global scope.
      */
-    public constructor(config: WebSocketClientConfig, dependencies?: WebSocketClientDependencies) {
+    public constructor(config: WebSocketClientConfig) {
         super();
 
         // Validate config
@@ -66,33 +63,9 @@ export class SignalingClient extends EventEmitter {
         validateValueNonNil(config.credentials.accessKeyId, 'credentials.accessKeyId');
         validateValueNonNil(config.credentials.secretAccessKey, 'credentials.secretAccessKey');
 
-        // Get dependencies from config or global scope. Thrown an error if any dependencies are not found.
-        const dependenciesWithGlobals: Partial<WebSocketClientDependencies> = {};
-        if (dependencies && dependencies.iso8601) {
-            dependenciesWithGlobals.iso8601 = dependencies.iso8601;
-        } else if (AWS && AWS.util && AWS.util.date && AWS.util.date.iso8601) {
-            dependenciesWithGlobals.iso8601 = AWS.util.date.iso8601;
-        } else {
-            SignalingClient.throwMissingDependencyError('AWS.util.date.iso8601');
-        }
-        if (dependencies && dependencies.hmac) {
-            dependenciesWithGlobals.hmac = dependencies.hmac;
-        } else if (AWS && AWS.util && AWS.util.crypto && AWS.util.crypto.hmac) {
-            dependenciesWithGlobals.hmac = AWS.util.crypto.hmac;
-        } else {
-            SignalingClient.throwMissingDependencyError('AWS.util.crypto.hmac');
-        }
-        if (dependencies && dependencies.sha256) {
-            dependenciesWithGlobals.sha256 = dependencies.sha256;
-        } else if (AWS && AWS.util && AWS.util.crypto && AWS.util.crypto.sha256) {
-            dependenciesWithGlobals.sha256 = AWS.util.crypto.sha256;
-        } else {
-            SignalingClient.throwMissingDependencyError('AWS.util.crypto.sha256');
-        }
-
         this.config = config;
 
-        this.requestSigner = new SigV4RequestSigner(dependenciesWithGlobals as SigV4RequestSignerDependencies, config.region, config.credentials);
+        this.requestSigner = new SigV4RequestSigner(config.region, config.credentials);
 
         // Bind event handlers
         this.onOpen = this.onOpen.bind(this);
@@ -106,7 +79,7 @@ export class SignalingClient extends EventEmitter {
      *
      * An error is thrown if the connection is already open or being opened.
      */
-    public open(): void {
+    public async open(): Promise<void> {
         if (this.websocket !== null) {
             throw new Error('Client is already open or opening');
         }
@@ -116,7 +89,7 @@ export class SignalingClient extends EventEmitter {
         if (this.config.role === Role.VIEWER) {
             queryParams['X-Amz-ClientId'] = this.config.clientId;
         }
-        this.websocket = new WebSocket(this.requestSigner.getSignedURL(this.config.channelEndpoint, queryParams, this.config.role));
+        this.websocket = new WebSocket(await this.requestSigner.getSignedURL(this.config.channelEndpoint, queryParams, this.config.role));
 
         this.websocket.addEventListener('open', this.onOpen);
         this.websocket.addEventListener('message', this.onMessage);
@@ -294,13 +267,6 @@ export class SignalingClient extends EventEmitter {
         } else if (this.config.role === Role.VIEWER && recipientClientId) {
             throw new Error('Unexpected recipient client id. As the VIEWER, messages must not be sent with a recipient client id.');
         }
-    }
-
-    /**
-     * Throw an error with a message indicating that a dependency with the given name is not found.
-     */
-    private static throwMissingDependencyError(name: string): void {
-        throw new Error(`Could not locate "${name}". It must be provided as a dependency or as a global variable.`);
     }
 
     /**

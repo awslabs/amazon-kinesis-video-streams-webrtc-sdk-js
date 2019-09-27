@@ -2,22 +2,16 @@ import { Role } from 'kvs-webrtc/Role';
 export declare type QueryParams = {
     [queryParam: string]: string;
 };
-export interface SigV4RequestSignerDependencies {
-    iso8601: typeof AWS.util.date.iso8601;
-    hmac: typeof AWS.util.crypto.hmac;
-    sha256: typeof AWS.util.crypto.sha256;
-}
 /**
  * Utility class for SigV4 signing requests. The AWS SDK cannot be used for this purpose because it does not have support for WebSocket endpoints.
  */
 export declare class SigV4RequestSigner {
     private static readonly DEFAULT_ALGORITHM;
     private static readonly DEFAULT_SERVICE;
-    private readonly dependencies;
     private readonly region;
     private readonly credentials;
     private readonly service;
-    constructor(dependencies: SigV4RequestSignerDependencies, region: string, credentials: AWS.Credentials, service?: string);
+    constructor(region: string, credentials: AWS.Credentials, service?: string);
     /**
      * Creates a SigV4 signed WebSocket URL for the given host/endpoint with the given query params.
      *
@@ -36,7 +30,7 @@ export declare class SigV4RequestSigner {
      * @see https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-query-string-auth.html
      * @see https://gist.github.com/prestomation/24b959e51250a8723b9a5a4f70dcae08
      */
-    getSignedURL(endpoint: string, queryParams: QueryParams, role: Role): string;
+    getSignedURL(endpoint: string, queryParams: QueryParams, role: Role): Promise<string>;
     /**
      * Utility method for generating the key to use for calculating the signature. This combines together the date string, region, service name, and secret
      * access key.
@@ -52,4 +46,18 @@ export declare class SigV4RequestSigner {
      * Utility method for converting a map of query parameters to a string with the parameter names sorted.
      */
     private static createQueryString;
+    /**
+     * Gets a datetime string for the given date to use for signing. For example: "20190927T165210Z"
+     * @param date
+     */
+    private static getDateTimeString;
+    /**
+     * Gets a date string for the given date to use for signing. For example: "20190927"
+     * @param date
+     */
+    private static getDateString;
+    private static sha256;
+    private static hmac;
+    private static toUint8Array;
+    private static toHex;
 }

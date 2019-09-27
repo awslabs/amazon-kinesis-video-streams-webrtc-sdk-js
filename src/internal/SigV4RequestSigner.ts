@@ -3,12 +3,6 @@ import { Role } from 'kvs-webrtc/Role';
 export type QueryParams = { [queryParam: string]: string };
 type Headers = { [header: string]: string };
 
-export interface SigV4RequestSignerDependencies {
-    iso8601: typeof AWS.util.date.iso8601;
-    hmac: typeof AWS.util.crypto.hmac;
-    sha256: typeof AWS.util.crypto.sha256;
-}
-
 /**
  * Utility class for SigV4 signing requests. The AWS SDK cannot be used for this purpose because it does not have support for WebSocket endpoints.
  */
@@ -16,18 +10,11 @@ export class SigV4RequestSigner {
     private static readonly DEFAULT_ALGORITHM = 'AWS4-HMAC-SHA256';
     private static readonly DEFAULT_SERVICE = 'kinesisvideo';
 
-    private readonly dependencies: SigV4RequestSignerDependencies;
     private readonly region: string;
     private readonly credentials: AWS.Credentials;
     private readonly service: string;
 
-    public constructor(
-        dependencies: SigV4RequestSignerDependencies,
-        region: string,
-        credentials: AWS.Credentials,
-        service: string = SigV4RequestSigner.DEFAULT_SERVICE,
-    ) {
-        this.dependencies = dependencies;
+    public constructor(region: string, credentials: AWS.Credentials, service: string = SigV4RequestSigner.DEFAULT_SERVICE) {
         this.region = region;
         this.credentials = credentials;
         this.service = service;
@@ -51,10 +38,11 @@ export class SigV4RequestSigner {
      * @see https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-query-string-auth.html
      * @see https://gist.github.com/prestomation/24b959e51250a8723b9a5a4f70dcae08
      */
-    public getSignedURL(endpoint: string, queryParams: QueryParams, role: Role): string {
+    public async getSignedURL(endpoint: string, queryParams: QueryParams, role: Role): Promise<string> {
         // Prepare date strings
-        const datetimeString = this.dependencies.iso8601(new Date()).replace(/[:\-]|\.\d{3}/g, '');
-        const dateString = datetimeString.substr(0, 8);
+        const date = new Date();
+        const datetimeString = SigV4RequestSigner.getDateTimeString(date);
+        const dateString = SigV4RequestSigner.getDateString(date);
 
         // Validate and parse endpoint
         const protocol = 'wss';
@@ -106,16 +94,16 @@ export class SigV4RequestSigner {
         const canonicalHeadersString = SigV4RequestSigner.createHeadersString(canonicalHeaders);
 
         // Prepare payload hash
-        const payloadHash = this.dependencies.sha256('', 'hex');
+        const payloadHash = await SigV4RequestSigner.sha256('');
 
         // Combine canonical request parts into a canonical request string and hash
         const canonicalRequest = [signingMethod, signingPath, canonicalQueryString, canonicalHeadersString, signedHeaders, payloadHash].join('\n');
-        const canonicalRequestHash = this.dependencies.sha256(canonicalRequest, 'hex');
+        const canonicalRequestHash = await SigV4RequestSigner.sha256(canonicalRequest);
 
         // Create signature
         const stringToSign = [SigV4RequestSigner.DEFAULT_ALGORITHM, datetimeString, credentialScope, canonicalRequestHash].join('\n');
-        const signingKey = this.getSignatureKey(dateString);
-        const signature = this.dependencies.hmac(signingKey, stringToSign, 'hex');
+        const signingKey = await this.getSignatureKey(dateString);
+        const signature = await SigV4RequestSigner.toHex(await SigV4RequestSigner.hmac(signingKey, stringToSign));
 
         // Add signature to query params
         const signedQueryParams = Object.assign({}, canonicalQueryParams, {
@@ -132,11 +120,11 @@ export class SigV4RequestSigner {
      *
      * @see https://docs.aws.amazon.com/general/latest/gr/sigv4-calculate-signature.html
      */
-    private getSignatureKey(dateString: string): Buffer {
-        const kDate = this.dependencies.hmac('AWS4' + this.credentials.secretAccessKey, dateString, 'buffer');
-        const kRegion = this.dependencies.hmac(kDate, this.region, 'buffer');
-        const kService = this.dependencies.hmac(kRegion, this.service, 'buffer');
-        return this.dependencies.hmac(kService, 'aws4_request', 'buffer');
+    private async getSignatureKey(dateString: string): Promise<ArrayBuffer> {
+        const kDate = await SigV4RequestSigner.hmac('AWS4' + this.credentials.secretAccessKey, dateString);
+        const kRegion = await SigV4RequestSigner.hmac(kDate, this.region);
+        const kService = await SigV4RequestSigner.hmac(kRegion, this.service);
+        return await SigV4RequestSigner.hmac(kService, 'aws4_request');
     }
 
     /**
@@ -156,5 +144,57 @@ export class SigV4RequestSigner {
             .sort()
             .map(key => `${key}=${queryParams[key]}`)
             .join('&');
+    }
+
+    /**
+     * Gets a datetime string for the given date to use for signing. For example: "20190927T165210Z"
+     * @param date
+     */
+    private static getDateTimeString(date: Date): string {
+        return date
+            .toISOString()
+            .replace(/\.\d{3}Z$/, 'Z')
+            .replace(/[:\-]/g, '');
+    }
+
+    /**
+     * Gets a date string for the given date to use for signing. For example: "20190927"
+     * @param date
+     */
+    private static getDateString(date: Date): string {
+        return this.getDateTimeString(date).substring(0, 8);
+    }
+
+    private static async sha256(message: string): Promise<string> {
+        const hashBuffer = await crypto.subtle.digest('SHA-256', this.toUint8Array(message));
+        return this.toHex(hashBuffer);
+    }
+
+    private static async hmac(key: string | ArrayBuffer, message: string | ArrayBuffer): Promise<ArrayBuffer> {
+        const keyBuffer = typeof key === 'string' ? this.toUint8Array(key).buffer : key;
+        const messageBuffer = typeof message === 'string' ? this.toUint8Array(message).buffer : message;
+        const cryptoKey = await crypto.subtle.importKey(
+            'raw',
+            keyBuffer,
+            {
+                name: 'HMAC',
+                hash: {
+                    name: 'SHA-256',
+                },
+            },
+            false,
+            ['sign'],
+        );
+        return await crypto.subtle.sign('HMAC', cryptoKey, messageBuffer);
+    }
+
+    private static toUint8Array(input: string): Uint8Array {
+        return new TextEncoder().encode(input);
+    }
+
+    private static toHex(buffer: ArrayBuffer): string {
+        return Array.from(new Uint8Array(buffer))
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('');
     }
 }

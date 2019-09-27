@@ -23,10 +23,9 @@ var SignalingClient = /** @class */ (function (_super) {
     /**
      * Creates a new SignalingClient. The connection with the signaling service must be opened with the 'open' method.
      * @param {WebSocketClientConfig} config - Configuration options and parameters.
-     * @param {WebSocketClientDependencies} [dependencies] - Dependencies that are needed for the SignalingClient to function properly. If a required dependency
      * is not provided, it will be loaded from the global scope.
      */
-    function SignalingClient(config, dependencies) {
+    function SignalingClient(config) {
         var _this = _super.call(this) || this;
         _this.websocket = null;
         _this.pendingIceCandidatesByClientId = {};
@@ -45,37 +44,8 @@ var SignalingClient = /** @class */ (function (_super) {
         utils_1.validateValueNonNil(config.credentials, 'credentials');
         utils_1.validateValueNonNil(config.credentials.accessKeyId, 'credentials.accessKeyId');
         utils_1.validateValueNonNil(config.credentials.secretAccessKey, 'credentials.secretAccessKey');
-        // Get dependencies from config or global scope. Thrown an error if any dependencies are not found.
-        var dependenciesWithGlobals = {};
-        if (dependencies && dependencies.iso8601) {
-            dependenciesWithGlobals.iso8601 = dependencies.iso8601;
-        }
-        else if (AWS && AWS.util && AWS.util.date && AWS.util.date.iso8601) {
-            dependenciesWithGlobals.iso8601 = AWS.util.date.iso8601;
-        }
-        else {
-            SignalingClient.throwMissingDependencyError('AWS.util.date.iso8601');
-        }
-        if (dependencies && dependencies.hmac) {
-            dependenciesWithGlobals.hmac = dependencies.hmac;
-        }
-        else if (AWS && AWS.util && AWS.util.crypto && AWS.util.crypto.hmac) {
-            dependenciesWithGlobals.hmac = AWS.util.crypto.hmac;
-        }
-        else {
-            SignalingClient.throwMissingDependencyError('AWS.util.crypto.hmac');
-        }
-        if (dependencies && dependencies.sha256) {
-            dependenciesWithGlobals.sha256 = dependencies.sha256;
-        }
-        else if (AWS && AWS.util && AWS.util.crypto && AWS.util.crypto.sha256) {
-            dependenciesWithGlobals.sha256 = AWS.util.crypto.sha256;
-        }
-        else {
-            SignalingClient.throwMissingDependencyError('AWS.util.crypto.sha256');
-        }
         _this.config = config;
-        _this.requestSigner = new SigV4RequestSigner_1.SigV4RequestSigner(dependenciesWithGlobals, config.region, config.credentials);
+        _this.requestSigner = new SigV4RequestSigner_1.SigV4RequestSigner(config.region, config.credentials);
         // Bind event handlers
         _this.onOpen = _this.onOpen.bind(_this);
         _this.onMessage = _this.onMessage.bind(_this);
@@ -89,20 +59,33 @@ var SignalingClient = /** @class */ (function (_super) {
      * An error is thrown if the connection is already open or being opened.
      */
     SignalingClient.prototype.open = function () {
-        if (this.websocket !== null) {
-            throw new Error('Client is already open or opening');
-        }
-        var queryParams = {
-            'X-Amz-ChannelName': this.config.channelName,
-        };
-        if (this.config.role === Role_1.Role.VIEWER) {
-            queryParams['X-Amz-ClientId'] = this.config.clientId;
-        }
-        this.websocket = new WebSocket(this.requestSigner.getSignedURL(this.config.channelEndpoint, queryParams, this.config.role));
-        this.websocket.addEventListener('open', this.onOpen);
-        this.websocket.addEventListener('message', this.onMessage);
-        this.websocket.addEventListener('error', this.onError);
-        this.websocket.addEventListener('close', this.onClose);
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            var queryParams, _a, _b;
+            return tslib_1.__generator(this, function (_c) {
+                switch (_c.label) {
+                    case 0:
+                        if (this.websocket !== null) {
+                            throw new Error('Client is already open or opening');
+                        }
+                        queryParams = {
+                            'X-Amz-ChannelName': this.config.channelName,
+                        };
+                        if (this.config.role === Role_1.Role.VIEWER) {
+                            queryParams['X-Amz-ClientId'] = this.config.clientId;
+                        }
+                        _a = this;
+                        _b = WebSocket.bind;
+                        return [4 /*yield*/, this.requestSigner.getSignedURL(this.config.channelEndpoint, queryParams, this.config.role)];
+                    case 1:
+                        _a.websocket = new (_b.apply(WebSocket, [void 0, _c.sent()]))();
+                        this.websocket.addEventListener('open', this.onOpen);
+                        this.websocket.addEventListener('message', this.onMessage);
+                        this.websocket.addEventListener('error', this.onError);
+                        this.websocket.addEventListener('close', this.onClose);
+                        return [2 /*return*/];
+                }
+            });
+        });
     };
     /**
      * Closes the connection to the KVS Signaling Service. If already closed or closing, no action is taken. Listen to the 'close' event to be notified when the
@@ -129,7 +112,7 @@ var SignalingClient = /** @class */ (function (_super) {
     /**
      * Sends the given SDP answer to the signaling service.
      *
-     * Typically, only the 'MASTER' role should send an SDP offer.
+     * Typically, only the 'MASTER' role should send an SDP answer.
      * @param {RTCSessionDescription} sdpAnswer - SDP answer to send.
      * @param {string} [recipientClientId] - ID of the client to send the message to. Required for 'MASTER' role. Should not be present for 'VIEWER' role.
      */
@@ -263,12 +246,6 @@ var SignalingClient = /** @class */ (function (_super) {
         else if (this.config.role === Role_1.Role.VIEWER && recipientClientId) {
             throw new Error('Unexpected recipient client id. As the VIEWER, messages must not be sent with a recipient client id.');
         }
-    };
-    /**
-     * Throw an error with a message indicating that a dependency with the given name is not found.
-     */
-    SignalingClient.throwMissingDependencyError = function (name) {
-        throw new Error("Could not locate \"" + name + "\". It must be provided as a dependency or as a global variable.");
     };
     /**
      * 'error' event handler. Forwards the error onto listeners.
