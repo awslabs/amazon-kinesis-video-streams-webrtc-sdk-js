@@ -74,16 +74,24 @@ async function startMaster(localView, remoteView, formValues, onStatsReport) {
             ClientId: KVSWebRTC.Role.MASTER, // TODO: Remove after Private Beta
         })
         .promise();
-    const iceServers = getIceServerConfigResponse.IceServerList.map(iceServer => ({
-        urls: iceServer.Uris,
-        username: iceServer.Username,
-        credential: iceServer.Password,
-    }));
-    iceServers.unshift({ urls: 'stun:stun.beta.kinesisvideo.us-west-2.amazonaws.com:443' });
+    const iceServers = [];
+    if (!formValues.natTraversalDisabled && !formValues.forceTURN) {
+        iceServers.push({ urls: 'stun:stun.beta.kinesisvideo.us-west-2.amazonaws.com:443' });
+    }
+    if (!formValues.natTraversalDisabled) {
+        getIceServerConfigResponse.IceServerList.forEach(iceServer =>
+            iceServers.push({
+                urls: iceServer.Uris,
+                username: iceServer.Username,
+                credential: iceServer.Password,
+            }),
+        );
+    }
     console.log('[MASTER] ICE servers: ', iceServers);
 
     const configuration = {
         iceServers,
+        iceTransportPolicy: formValues.forceTURN ? 'relay' : 'all',
     };
 
     const constraints = {
@@ -118,10 +126,21 @@ async function startMaster(localView, remoteView, formValues, onStatsReport) {
         // Send any ICE candidates to the other peer
         peerConnection.addEventListener('icecandidate', ({ candidate }) => {
             if (candidate) {
-                console.log('[MASTER] Sending ICE candidate to client: ' + remoteClientId);
-                master.signalingClient.sendIceCandidate(candidate, remoteClientId);
+                console.log('[MASTER] Generated ICE candidate for client: ' + remoteClientId);
+
+                // When trickle ICE is enabled, send the ICE candidates as they are generated.
+                if (formValues.useTrickleICE) {
+                    console.log('[MASTER] Sending ICE candidate to client: ' + remoteClientId);
+                    master.signalingClient.sendIceCandidate(candidate, remoteClientId);
+                }
             } else {
-                console.log('[MASTER] All ICE candidates have been sent to client: ' + remoteClientId);
+                console.log('[MASTER] All ICE candidates have been generated for client: ' + remoteClientId);
+
+                // When trickle ICE is disabled, send the answer now that all the ICE candidates have ben generated.
+                if (!formValues.useTrickleICE) {
+                    console.log('[MASTER] Sending SDP answer to client: ' + remoteClientId);
+                    master.signalingClient.sendSdpAnswer(peerConnection.localDescription, remoteClientId);
+                }
             }
         });
 
@@ -138,14 +157,20 @@ async function startMaster(localView, remoteView, formValues, onStatsReport) {
         await peerConnection.setRemoteDescription(offer);
 
         // Create an SDP answer to send back to the client
-        console.log('[MASTER] Creating SDP answer and sending to client: ' + remoteClientId);
+        console.log('[MASTER] Creating SDP answer for client: ' + remoteClientId);
         await peerConnection.setLocalDescription(
             await peerConnection.createAnswer({
                 offerToReceiveAudio: true,
                 offerToReceiveVideo: true,
             }),
         );
-        master.signalingClient.sendSdpAnswer(peerConnection.localDescription, remoteClientId);
+
+        // When trickle ICE is enabled, send the answer now and then send ICE candidates as they are generated. Otherwise wait on the ICE candidates.
+        if (formValues.useTrickleICE) {
+            console.log('[MASTER] Sending SDP answer to client: ' + remoteClientId);
+            master.signalingClient.sendSdpAnswer(peerConnection.localDescription, remoteClientId);
+        }
+        console.log('[MASTER] Generating ICE candidates for client: ' + remoteClientId);
     });
 
     master.signalingClient.on('iceCandidate', async (candidate, remoteClientId) => {

@@ -56,12 +56,19 @@ async function startViewer(localView, remoteView, formValues, onStatsReport) {
             ClientId: KVSWebRTC.Role.VIEWER, // TODO: Remove after Private Beta
         })
         .promise();
-    const iceServers = getIceServerConfigResponse.IceServerList.map(iceServer => ({
-        urls: iceServer.Uris,
-        username: iceServer.Username,
-        credential: iceServer.Password,
-    }));
-    iceServers.unshift({ urls: 'stun:stun.beta.kinesisvideo.us-west-2.amazonaws.com:443' });
+    const iceServers = [];
+    if (!formValues.natTraversalDisabled && !formValues.forceTURN) {
+        iceServers.push({ urls: 'stun:stun.beta.kinesisvideo.us-west-2.amazonaws.com:443' });
+    }
+    if (!formValues.natTraversalDisabled) {
+        getIceServerConfigResponse.IceServerList.forEach(iceServer =>
+            iceServers.push({
+                urls: iceServer.Uris,
+                username: iceServer.Username,
+                credential: iceServer.Password,
+            }),
+        );
+    }
     console.log('[VIEWER] ICE servers: ', iceServers);
 
     // Create Signaling Client
@@ -84,6 +91,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport) {
     };
     const configuration = {
         iceServers,
+        iceTransportPolicy: formValues.forceTURN ? 'relay' : 'all',
     };
     viewer.peerConnection = new RTCPeerConnection(configuration);
 
@@ -94,19 +102,30 @@ async function startViewer(localView, remoteView, formValues, onStatsReport) {
         console.log('[VIEWER] Connected to signaling service');
 
         // Get a stream from the webcam, add it to the peer connection, and display it in the local view
-        viewer.localStream = await navigator.mediaDevices.getUserMedia(constraints);
-        viewer.localStream.getTracks().forEach(track => viewer.peerConnection.addTrack(track, viewer.localStream));
-        localView.srcObject = viewer.localStream;
+        try {
+            viewer.localStream = await navigator.mediaDevices.getUserMedia(constraints);
+            viewer.localStream.getTracks().forEach(track => viewer.peerConnection.addTrack(track, viewer.localStream));
+            localView.srcObject = viewer.localStream;
+        } catch (e) {
+            console.error('[VIEWER] Could not find webcam');
+            return;
+        }
 
-        // Create and send an SDP offer
-        console.log('[VIEWER] Creating SDP offer and sending to master');
+        // Create an SDP offer to send to the master
+        console.log('[VIEWER] Creating SDP offer');
         await viewer.peerConnection.setLocalDescription(
             await viewer.peerConnection.createOffer({
                 offerToReceiveAudio: true,
                 offerToReceiveVideo: true,
             }),
         );
-        viewer.signalingClient.sendSdpOffer(viewer.peerConnection.localDescription);
+
+        // When trickle ICE is enabled, send the offer now and then send ICE candidates as they are generated. Otherwise wait on the ICE candidates.
+        if (formValues.useTrickleICE) {
+            console.log('[VIEWER] Sending SDP offer');
+            viewer.signalingClient.sendSdpOffer(viewer.peerConnection.localDescription);
+        }
+        console.log('[VIEWER] Generating ICE candidates');
     });
 
     viewer.signalingClient.on('sdpAnswer', async answer => {
@@ -132,10 +151,21 @@ async function startViewer(localView, remoteView, formValues, onStatsReport) {
     // Send any ICE candidates to the other peer
     viewer.peerConnection.addEventListener('icecandidate', ({ candidate }) => {
         if (candidate) {
-            console.log('[VIEWER] Sending ICE candidate');
-            viewer.signalingClient.sendIceCandidate(candidate);
+            console.log('[VIEWER] Generated ICE candidate');
+
+            // When trickle ICE is enabled, send the ICE candidates as they are generated.
+            if (formValues.useTrickleICE) {
+                console.log('[VIEWER] Sending ICE candidate');
+                viewer.signalingClient.sendIceCandidate(candidate);
+            }
         } else {
-            console.log('[VIEWER] All ICE candidates have been sent');
+            console.log('[VIEWER] All ICE candidates have been generated');
+
+            // When trickle ICE is disabled, send the offer now that all the ICE candidates have ben generated.
+            if (!formValues.useTrickleICE) {
+                console.log('[VIEWER] Sending SDP offer');
+                viewer.signalingClient.sendSdpOffer(viewer.peerConnection.localDescription);
+            }
         }
     });
 

@@ -22,10 +22,16 @@
     <div class="row loader"></div>
     <div id="main">
         <form id="form">
+            <h4>KVS Endpoint</h4>
             <div class="form-group">
                 <label>Region</label>
                 <input type="text" class="form-control" id="region" value="us-west-2">
             </div>
+            <div class="form-group">
+                <label>Endpoint <small>(optional)</small></label>
+                <input type="text" class="form-control" id="endpoint" placeholder="Endpoint">
+            </div>
+            <h4>AWS Credentials</h4>
             <div class="form-group">
                 <label>Access Key ID</label>
                 <input type="text" class="form-control" id="accessKeyId" placeholder="Access key id">
@@ -35,21 +41,20 @@
                 <input type="password" class="form-control" id="secretAccessKey" placeholder="Secret access key">
             </div>
             <div class="form-group">
-                <label>Session Token (Optional)</label>
+                <label>Session Token <small>(optional)</small></label>
                 <input type="password" class="form-control" id="sessionToken" placeholder="Session token">
             </div>
-            <div class="form-group">
-                <label>Endpoint (Optional)</label>
-                <input type="text" class="form-control" id="endpoint" placeholder="Endpoint">
-            </div>
+            <h4>Signaling Channel</h4>
             <div class="form-group">
                 <label>Channel Name</label>
                 <input type="text" class="form-control" id="channelName" placeholder="Channel">
             </div>
             <div class="form-group">
-                <label>Client Id (optional)</label>
+                <label>Client Id <small>(optional)</small></label>
                 <input type="text" class="form-control" id="clientId" placeholder="Client id">
             </div>
+            <h4>Tracks</h4>
+            <p><small>Control which media types are transmitted to the remote client.</small></p>
             <div class="form-group">
                 <div class="form-check form-check-inline">
                     <input class="form-check-input" type="checkbox" id="sendVideo" value="video" checked>
@@ -58,6 +63,28 @@
                 <div class="form-check form-check-inline">
                     <input class="form-check-input" type="checkbox" id="sendAudio" value="audio">
                     <label class="form-check-label">Send Audio</label>
+                </div>
+            </div>
+            <h4>NAT Traversal</h4>
+            <p><small>Control settings for ICE candidate generation.</small></p>
+            <div class="form-group">
+                <div class="form-check form-check">
+                    <input class="form-check-input" type="radio" name="natTraversal" id="natTraversalEnabled" value="option2" checked>
+                    <label class="form-check-label" for="natTraversalEnabled">STUN/TURN</label>
+                </div>
+                <div class="form-check form-check">
+                    <input class="form-check-input" type="radio" name="natTraversal" id="forceTURN" value="option3">
+                    <label class="form-check-label" for="forceTURN">TURN Only <small>(force cloud relay)</small></label>
+                </div>
+                <div class="form-check form-check">
+                    <input class="form-check-input" type="radio" name="natTraversal" id="natTraversalDisabled" value="option1">
+                    <label class="form-check-label" for="natTraversalDisabled">Disabled</label>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="useTrickleICE" value="useTrickleICE" checked>
+                    <label class="form-check-label">Use trickle ICE <small>(not supported by Alexa devices)</small></label>
                 </div>
             </div>
             <div>

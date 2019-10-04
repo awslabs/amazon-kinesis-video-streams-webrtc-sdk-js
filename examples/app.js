@@ -45,6 +45,9 @@ function getFormValues() {
         clientId: $('#clientId').val() || getRandomClientId(),
         sendVideo: $('#sendVideo').is(':checked'),
         sendAudio: $('#sendAudio').is(':checked'),
+        useTrickleICE: $('#useTrickleICE').is(':checked'),
+        natTraversalDisabled: $('#natTraversalDisabled').is(':checked'),
+        forceTURN: $('#forceTURN').is(':checked'),
         accessKeyId: $('#accessKeyId').val(),
         endpoint: $('#endpoint').val() || 'beta.kinesisvideo.us-west-2.amazonaws.com',
         secretAccessKey: $('#secretAccessKey').val(),
@@ -112,7 +115,7 @@ $('#create-channel-button').click(async () => {
 
 // Read/Write all of the fields to/from localStorage so that fields are not lost on refresh.
 const urlParams = new URLSearchParams(window.location.search);
-[
+const fields = [
     { field: 'channelName', type: 'text' },
     { field: 'clientId', type: 'text' },
     { field: 'region', type: 'text' },
@@ -122,14 +125,19 @@ const urlParams = new URLSearchParams(window.location.search);
     { field: 'endpoint', type: 'text' },
     { field: 'sendVideo', type: 'checkbox' },
     { field: 'sendAudio', type: 'checkbox' },
-].forEach(({ field, type }) => {
+    { field: 'useTrickleICE', type: 'checkbox' },
+    { field: 'natTraversalEnabled', type: 'radio', name: 'natTraversal' },
+    { field: 'forceTURN', type: 'radio', name: 'natTraversal' },
+    { field: 'natTraversalDisabled', type: 'radio', name: 'natTraversal' },
+];
+fields.forEach(({ field, type, name }) => {
     const id = '#' + field;
 
     // Read field from localStorage
     try {
         const localStorageValue = localStorage.getItem(field);
         if (localStorageValue) {
-            if (type === 'checkbox') {
+            if (type === 'checkbox' || type === 'radio') {
                 $(id).prop('checked', localStorageValue === 'true');
             } else {
                 $(id).val(localStorageValue);
@@ -143,7 +151,7 @@ const urlParams = new URLSearchParams(window.location.search);
     // Read field from query string
     if (urlParams.has(field)) {
         paramValue = urlParams.get(field);
-        if (type === 'checkbox') {
+        if (type === 'checkbox' || type === 'radio') {
             $(id).prop('checked', paramValue === 'true');
         } else {
             $(id).val(paramValue);
@@ -155,6 +163,12 @@ const urlParams = new URLSearchParams(window.location.search);
         try {
             if (type === 'checkbox') {
                 localStorage.setItem(field, $(id).is(':checked'));
+            } else if (type === 'radio') {
+                fields
+                    .filter(fieldItem => fieldItem.name === name)
+                    .forEach(fieldItem => {
+                        localStorage.setItem(fieldItem.field, fieldItem.field === field);
+                    });
             } else {
                 localStorage.setItem(field, $(id).val());
             }
