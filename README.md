@@ -1,6 +1,7 @@
 # Amazon Kinesis Video Streams WebRTC SDK for JavaScript
 
 ## Running WebRTC Test Page
+NodeJS version 8+ is required.
 
 1. Run `npm install` to download dependencies.
 1. Run `npm run develop` to run the webserver.
