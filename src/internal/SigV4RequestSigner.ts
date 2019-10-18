@@ -64,7 +64,7 @@ export class SigV4RequestSigner {
             path = endpoint.substring(pathStartIndex);
         }
 
-        const signingHost = '63xqwdo880.execute-api.us-west-2.amazonaws.com'; // TODO: Private Beta Only
+        const signingHost = 'gmarbhpqgi.execute-api.us-west-2.amazonaws.com'; // TODO: Private Beta Only
         const signingPath = role === Role.MASTER ? '/prod/v1/connect-as-master' : '/prod/v1/connect-as-viewer'; // TODO: Private Beta Only
         const signedHeaders = ['host'].join(';');
 

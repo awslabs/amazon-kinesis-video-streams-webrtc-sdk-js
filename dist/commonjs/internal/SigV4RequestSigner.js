@@ -56,7 +56,7 @@ var SigV4RequestSigner = /** @class */ (function () {
                             host = endpoint.substring(urlProtocol.length, pathStartIndex);
                             path = endpoint.substring(pathStartIndex);
                         }
-                        signingHost = '63xqwdo880.execute-api.us-west-2.amazonaws.com';
+                        signingHost = 'gmarbhpqgi.execute-api.us-west-2.amazonaws.com';
                         signingPath = role === Role_1.Role.MASTER ? '/prod/v1/connect-as-master' : '/prod/v1/connect-as-viewer';
                         signedHeaders = ['host'].join(';');
                         signingMethod = 'POST';
