@@ -45,6 +45,7 @@ function getFormValues() {
         clientId: $('#clientId').val() || getRandomClientId(),
         sendVideo: $('#sendVideo').is(':checked'),
         sendAudio: $('#sendAudio').is(':checked'),
+        openDataChannel: $('#openDataChannel').is(':checked'),
         useTrickleICE: $('#useTrickleICE').is(':checked'),
         natTraversalDisabled: $('#natTraversalDisabled').is(':checked'),
         forceTURN: $('#forceTURN').is(':checked'),
@@ -53,6 +54,14 @@ function getFormValues() {
         secretAccessKey: $('#secretAccessKey').val(),
         sessionToken: $('#sessionToken').val() || null,
     };
+}
+
+function toggleDataChannelElements() {
+    if (getFormValues().openDataChannel) {
+        $('.datachannel').show();
+    } else {
+        $('.datachannel').hide();
+    }
 }
 
 function onStatsReport(report) {
@@ -75,11 +84,19 @@ $('#master-button').click(async () => {
     $('#form').hide();
     $('#master').show();
 
-    const selfView = $('#master .self-view')[0];
+    const localView = $('#master .local-view')[0];
     const remoteView = $('#master .remote-view')[0];
+    const localMessage = $('#master .local-message')[0];
+    const remoteMessage = $('#master .remote-message')[0];
     const formValues = getFormValues();
 
-    startMaster(selfView, remoteView, formValues, onStatsReport);
+    $(remoteMessage).empty();
+    localMessage.value = '';
+    toggleDataChannelElements();
+
+    startMaster(localView, remoteView, formValues, onStatsReport, event => {
+        remoteMessage.append(`${event.data}\n`);
+    });
 });
 
 $('#stop-master-button').click(async () => {
@@ -93,11 +110,19 @@ $('#viewer-button').click(async () => {
     $('#form').hide();
     $('#viewer').show();
 
-    const selfView = $('#viewer .self-view')[0];
+    const localView = $('#viewer .local-view')[0];
     const remoteView = $('#viewer .remote-view')[0];
+    const localMessage = $('#viewer .local-message')[0];
+    const remoteMessage = $('#viewer .remote-message')[0];
     const formValues = getFormValues();
 
-    startViewer(selfView, remoteView, formValues, onStatsReport);
+    $(remoteMessage).empty();
+    localMessage.value = '';
+    toggleDataChannelElements();
+
+    startViewer(localView, remoteView, formValues, onStatsReport, event => {
+        remoteMessage.append(`${event.data}\n`);
+    });
 });
 
 $('#stop-viewer-button').click(async () => {
@@ -113,6 +138,16 @@ $('#create-channel-button').click(async () => {
     createSignalingChannel(formValues);
 });
 
+$('#master .send-message').click(async () => {
+    const masterLocalMessage = $('#master .local-message')[0];
+    sendMasterMessage(masterLocalMessage.value);
+});
+
+$('#viewer .send-message').click(async () => {
+    const viewerLocalMessage = $('#viewer .local-message')[0];
+    sendViewerMessage(viewerLocalMessage.value);
+});
+
 // Read/Write all of the fields to/from localStorage so that fields are not lost on refresh.
 const urlParams = new URLSearchParams(window.location.search);
 const fields = [
@@ -125,6 +160,7 @@ const fields = [
     { field: 'endpoint', type: 'text' },
     { field: 'sendVideo', type: 'checkbox' },
     { field: 'sendAudio', type: 'checkbox' },
+    { field: 'openDataChannel', type: 'checkbox' },
     { field: 'useTrickleICE', type: 'checkbox' },
     { field: 'natTraversalEnabled', type: 'radio', name: 'natTraversal' },
     { field: 'forceTURN', type: 'radio', name: 'natTraversal' },

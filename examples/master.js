@@ -4,12 +4,13 @@
 const master = {
     signalingClient: null,
     peerConnectionByClientId: {},
+    dataChannelByClientId: {},
     localStream: null,
     remoteStreams: [],
     peerConnectionStatsInterval: null,
 };
 
-async function startMaster(localView, remoteView, formValues, onStatsReport) {
+async function startMaster(localView, remoteView, formValues, onStatsReport, onRemoteDataMessage) {
     master.localView = localView;
     master.remoteView = remoteView;
 
@@ -118,6 +119,13 @@ async function startMaster(localView, remoteView, formValues, onStatsReport) {
         const peerConnection = new RTCPeerConnection(configuration);
         master.peerConnectionByClientId[remoteClientId] = peerConnection;
 
+        if (formValues.openDataChannel) {
+            master.dataChannelByClientId[remoteClientId] = peerConnection.createDataChannel('kvsDataChannel');
+            peerConnection.ondatachannel = event => {
+                event.channel.onmessage = onRemoteDataMessage;
+            };
+        }
+
         // Poll for connection stats
         if (!master.peerConnectionStatsInterval) {
             master.peerConnectionStatsInterval = setInterval(() => peerConnection.getStats().then(onStatsReport), 1000);
@@ -225,4 +233,18 @@ function stopMaster() {
     if (master.remoteView) {
         master.remoteView.srcObject = null;
     }
+
+    if (master.dataChannelByClientId) {
+        master.dataChannelByClientId = {};
+    }
+}
+
+function sendMasterMessage(message) {
+    Object.keys(master.dataChannelByClientId).forEach(clientId => {
+        try {
+            master.dataChannelByClientId[clientId].send(message);
+        } catch (e) {
+            console.error('[MASTER] Send DataChannel: ', e.toString());
+        }
+    });
 }
