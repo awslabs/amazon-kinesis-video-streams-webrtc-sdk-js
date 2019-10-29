@@ -6,6 +6,14 @@
     width: 100%;
 }
 
+#logs-header {
+    margin-top: 20px;
+}
+
+.preserve-whitespace {
+    white-space: pre-wrap;
+}
+
 video {
     width: 100%;
 }

@@ -20,7 +20,7 @@
     <p>This is the KVS Signaling Channel WebRTC test page. Use this page to connect to a signaling channel as either the MASTER or as a VIEWER.</p>
 
     <div class="row loader"></div>
-    <div id="main">
+    <div id="main" class="d-none">
         <form id="form">
             <h4>KVS Endpoint</h4>
             <div class="form-group">
@@ -98,7 +98,7 @@
             </div>
         </form>
 
-        <div id="master" style="display: none;">
+        <div id="master" class="d-none">
             <h2>Master</h2>
             <div class="row">
                 <div class="col">
@@ -118,7 +118,7 @@
                 </div>
                 <div class="col">
                     <div class="card bg-light mb-3">
-                        <pre class="remote-message card-body text-monospace" style="font-family: monospace; white-space: pre-wrap;"></pre>
+                        <pre class="remote-message card-body text-monospace preserve-whitespace"></pre>
                     </div>
                 </div>
             </div>
@@ -130,7 +130,7 @@
             </div>
         </div>
 
-        <div id="viewer" style="display: none;">
+        <div id="viewer" class="d-none">
             <h2>Viewer</h2>
             <div class="row">
                 <div class="col">
@@ -150,21 +150,21 @@
                 </div>
                 <div class="col">
                     <div class="card bg-light mb-3">
-                        <pre class="remote-message card-body text-monospace" style="font-family: monospace; white-space: pre-wrap;"></pre>
+                        <pre class="remote-message card-body text-monospace preserve-whitespace"></pre>
                     </div>
                 </div>
             </div>
             <div>
-                <span class="send-message datachannel" style="display: none">
+                <span class="send-message datachannel" class="d-none">
                   <button type="button" class="btn btn-primary">Send DataChannel Message</button>
                 </span>
                 <button id="stop-viewer-button" type="button" class="btn btn-primary">Stop Viewer</button>
             </div>
         </div>
 
-        <h3 style="margin-top: 20px;">Logs</h3>
+        <h3 id="logs-header">Logs</h3>
         <div class="card bg-light mb-3">
-            <pre id="logs" class="card-body text-monospace" style="font-family: monospace; white-space: pre-wrap;"></pre>
+            <pre id="logs" class="card-body text-monospace preserve-whitespace"></pre>
         </div>
 
     </div>

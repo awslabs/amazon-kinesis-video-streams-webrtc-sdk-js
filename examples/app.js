@@ -58,9 +58,9 @@ function getFormValues() {
 
 function toggleDataChannelElements() {
     if (getFormValues().openDataChannel) {
-        $('.datachannel').show();
+        $('.datachannel').removeClass('d-none');
     } else {
-        $('.datachannel').hide();
+        $('.datachannel').addClass('d-none');
     }
 }
 
@@ -81,8 +81,8 @@ window.addEventListener('unhandledrejection', function(event) {
 configureLogging();
 
 $('#master-button').click(async () => {
-    $('#form').hide();
-    $('#master').show();
+    $('#form').addClass('d-none');
+    $('#master').removeClass('d-none');
 
     const localView = $('#master .local-view')[0];
     const remoteView = $('#master .remote-view')[0];
@@ -102,13 +102,13 @@ $('#master-button').click(async () => {
 $('#stop-master-button').click(async () => {
     stopMaster();
 
-    $('#form').show();
-    $('#master').hide();
+    $('#form').removeClass('d-none');
+    $('#master').addClass('d-none');
 });
 
 $('#viewer-button').click(async () => {
-    $('#form').hide();
-    $('#viewer').show();
+    $('#form').addClass('d-none');
+    $('#viewer').removeClass('d-none');
 
     const localView = $('#viewer .local-view')[0];
     const remoteView = $('#viewer .remote-view')[0];
@@ -128,8 +128,8 @@ $('#viewer-button').click(async () => {
 $('#stop-viewer-button').click(async () => {
     stopViewer();
 
-    $('#form').show();
-    $('#viewer').hide();
+    $('#form').removeClass('d-none');
+    $('#viewer').addClass('d-none');
 });
 
 $('#create-channel-button').click(async () => {
@@ -215,6 +215,6 @@ fields.forEach(({ field, type, name }) => {
 });
 
 // The page is all setup. Hide the loading spinner and show the page content.
-$('.loader').hide();
-$('#main').show();
+$('.loader').addClass('d-none');
+$('#main').removeClass('d-none');
 console.log('Page loaded');
