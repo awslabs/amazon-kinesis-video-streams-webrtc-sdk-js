@@ -64,6 +64,10 @@
                     <input class="form-check-input" type="checkbox" id="sendAudio" value="audio">
                     <label class="form-check-label">Send Audio</label>
                 </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="openDataChannel" value="datachannel">
+                    <label class="form-check-label">Open DataChannel</label>
+                </div>
             </div>
             <h4>NAT Traversal</h4>
             <p><small>Control settings for ICE candidate generation.</small></p>
@@ -99,14 +103,29 @@
             <div class="row">
                 <div class="col">
                     <h5>Master Section</h5>
-                    <div class="video-container"><video class="self-view" autoplay playsinline controls muted /></div>
+                    <div class="video-container"><video class="local-view" autoplay playsinline controls muted /></div>
                 </div>
                 <div class="col">
                     <h5>Viewer Return Channel</h5>
                     <div class="video-container"><video class="remote-view" autoplay playsinline controls /></div>
                 </div>
             </div>
+            <div class="row datachannel">
+                <div class="col">
+                    <div class="form-group">
+                      <textarea type="text" class="form-control local-message" placeholder="DataChannel Message"> </textarea>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="card bg-light mb-3">
+                        <pre class="remote-message card-body text-monospace" style="font-family: monospace; white-space: pre-wrap;"></pre>
+                    </div>
+                </div>
+            </div>
             <div>
+                <span class="send-message datachannel">
+                  <button type="button" class="btn btn-primary">Send DataChannel Message</button>
+                </span>
                 <button id="stop-master-button" type="button" class="btn btn-primary">Stop Master</button>
             </div>
         </div>
@@ -116,14 +135,29 @@
             <div class="row">
                 <div class="col">
                     <h5>Return Channel</h5>
-                    <div class="video-container"><video class="self-view" autoplay playsinline controls muted /></div>
+                    <div class="video-container"><video class="local-view" autoplay playsinline controls muted /></div>
                 </div>
                 <div class="col">
                     <h5>From Master</h5>
                     <div class="video-container"><video class="remote-view" autoplay playsinline controls /></div>
                 </div>
             </div>
+            <div class="row datachannel">
+                <div class="col">
+                    <div class="form-group">
+                      <textarea type="text" class="form-control local-message" placeholder="DataChannel Message"> </textarea>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="card bg-light mb-3">
+                        <pre class="remote-message card-body text-monospace" style="font-family: monospace; white-space: pre-wrap;"></pre>
+                    </div>
+                </div>
+            </div>
             <div>
+                <span class="send-message datachannel" style="display: none">
+                  <button type="button" class="btn btn-primary">Send DataChannel Message</button>
+                </span>
                 <button id="stop-viewer-button" type="button" class="btn btn-primary">Stop Viewer</button>
             </div>
         </div>

@@ -3,7 +3,7 @@
  */
 const viewer = {};
 
-async function startViewer(localView, remoteView, formValues, onStatsReport) {
+async function startViewer(localView, remoteView, formValues, onStatsReport, onRemoteDataMessage) {
     viewer.localView = localView;
     viewer.remoteView = remoteView;
 
@@ -94,6 +94,12 @@ async function startViewer(localView, remoteView, formValues, onStatsReport) {
         iceTransportPolicy: formValues.forceTURN ? 'relay' : 'all',
     };
     viewer.peerConnection = new RTCPeerConnection(configuration);
+    if (formValues.openDataChannel) {
+        viewer.dataChannel = viewer.peerConnection.createDataChannel('kvsDataChannel');
+        viewer.peerConnection.ondatachannel = event => {
+            event.channel.onmessage = onRemoteDataMessage;
+        };
+    }
 
     // Poll for connection stats
     viewer.peerConnectionStatsInterval = setInterval(() => viewer.peerConnection.getStats().then(onStatsReport), 1000);
@@ -216,5 +222,19 @@ function stopViewer() {
 
     if (viewer.remoteView) {
         viewer.remoteView.srcObject = null;
+    }
+
+    if (viewer.dataChannel) {
+        viewer.dataChannel = null;
+    }
+}
+
+function sendViewerMessage(message) {
+    if (viewer.dataChannel) {
+        try {
+            viewer.dataChannel.send(message);
+        } catch (e) {
+            console.error('[VIEWER] Send DataChannel: ', e.toString());
+        }
     }
 }
