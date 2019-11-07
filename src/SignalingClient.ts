@@ -84,12 +84,12 @@ export class SignalingClient extends EventEmitter {
             throw new Error('Client is already open or opening');
         }
         const queryParams: QueryParams = {
-            'X-Amz-ChannelARN': encodeURIComponent(this.config.channelARN),
+            'X-Amz-ChannelARN': this.config.channelARN,
         };
         if (this.config.role === Role.VIEWER) {
             queryParams['X-Amz-ClientId'] = this.config.clientId;
         }
-        this.websocket = new WebSocket(await this.requestSigner.getSignedURL(this.config.channelEndpoint, queryParams, this.config.role));
+        this.websocket = new WebSocket(await this.requestSigner.getSignedURL(this.config.channelEndpoint, queryParams));
 
         this.websocket.addEventListener('open', this.onOpen);
         this.websocket.addEventListener('message', this.onMessage);

@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
-var Role_1 = require("kvs-webrtc/Role");
 /**
  * Utility class for SigV4 signing requests. The AWS SDK cannot be used for this purpose because it does not have support for WebSocket endpoints.
  */
@@ -15,9 +14,8 @@ var SigV4RequestSigner = /** @class */ (function () {
     /**
      * Creates a SigV4 signed WebSocket URL for the given host/endpoint with the given query params.
      *
-     * @param endpoint The WebSocket service domain name. TODO: Take in a complete endpoint (e.g. wss://host:port/path) and parse out the host
+     * @param endpoint The WebSocket service endpoint including protocol, hostname, and path (if applicable).
      * @param queryParams Query parameters to include in the URL.
-     * @param role TODO: Private Beta Only
      *
      * Implementation note: Query parameters should be in alphabetical order.
      *
@@ -25,14 +23,12 @@ var SigV4RequestSigner = /** @class */ (function () {
      * canonical (signed) request. For other services, you add this parameter at the end, after you calculate the signature. For details, see the API reference
      * documentation for that service." KVS Signaling Service requires that the session token is added to the canonical request.
      *
-     * Note for Private Beta: The method, path, and host used for signing are special overrides until a long-term authentication solution is established.
-     *
      * @see https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-query-string-auth.html
      * @see https://gist.github.com/prestomation/24b959e51250a8723b9a5a4f70dcae08
      */
-    SigV4RequestSigner.prototype.getSignedURL = function (endpoint, queryParams, role) {
+    SigV4RequestSigner.prototype.getSignedURL = function (endpoint, queryParams) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var date, datetimeString, dateString, protocol, urlProtocol, pathStartIndex, host, path, signingHost, signingPath, signedHeaders, signingMethod, credentialScope, canonicalQueryParams, canonicalQueryString, canonicalHeaders, canonicalHeadersString, payloadHash, canonicalRequest, canonicalRequestHash, stringToSign, signingKey, signature, _a, _b, signedQueryParams;
+            var date, datetimeString, dateString, protocol, urlProtocol, pathStartIndex, host, path, signedHeaders, method, credentialScope, canonicalQueryParams, canonicalQueryString, canonicalHeaders, canonicalHeadersString, payloadHash, canonicalRequest, canonicalRequestHash, stringToSign, signingKey, signature, _a, _b, signedQueryParams;
             return tslib_1.__generator(this, function (_c) {
                 switch (_c.label) {
                     case 0:
@@ -56,31 +52,30 @@ var SigV4RequestSigner = /** @class */ (function () {
                             host = endpoint.substring(urlProtocol.length, pathStartIndex);
                             path = endpoint.substring(pathStartIndex);
                         }
-                        signingHost = 'gmarbhpqgi.execute-api.us-west-2.amazonaws.com';
-                        signingPath = role === Role_1.Role.MASTER ? '/prod/v1/connect-as-master' : '/prod/v1/connect-as-viewer';
                         signedHeaders = ['host'].join(';');
-                        signingMethod = 'POST';
+                        method = 'GET';
                         credentialScope = dateString + '/' + this.region + '/' + this.service + '/' + 'aws4_request';
                         canonicalQueryParams = Object.assign({}, queryParams, {
                             'X-Amz-Algorithm': SigV4RequestSigner.DEFAULT_ALGORITHM,
-                            'X-Amz-Credential': encodeURIComponent(this.credentials.accessKeyId + '/' + credentialScope),
+                            'X-Amz-Credential': this.credentials.accessKeyId + '/' + credentialScope,
                             'X-Amz-Date': datetimeString,
+                            'X-Amz-Expires': '299',
                             'X-Amz-SignedHeaders': signedHeaders,
                         });
                         if (this.credentials.sessionToken) {
                             Object.assign(canonicalQueryParams, {
-                                'X-Amz-Security-Token': encodeURIComponent(this.credentials.sessionToken),
+                                'X-Amz-Security-Token': this.credentials.sessionToken,
                             });
                         }
                         canonicalQueryString = SigV4RequestSigner.createQueryString(canonicalQueryParams);
                         canonicalHeaders = {
-                            host: signingHost,
+                            host: host,
                         };
                         canonicalHeadersString = SigV4RequestSigner.createHeadersString(canonicalHeaders);
                         return [4 /*yield*/, SigV4RequestSigner.sha256('')];
                     case 1:
                         payloadHash = _c.sent();
-                        canonicalRequest = [signingMethod, signingPath, canonicalQueryString, canonicalHeadersString, signedHeaders, payloadHash].join('\n');
+                        canonicalRequest = [method, path, canonicalQueryString, canonicalHeadersString, signedHeaders, payloadHash].join('\n');
                         return [4 /*yield*/, SigV4RequestSigner.sha256(canonicalRequest)];
                     case 2:
                         canonicalRequestHash = _c.sent();
@@ -142,7 +137,7 @@ var SigV4RequestSigner = /** @class */ (function () {
     SigV4RequestSigner.createQueryString = function (queryParams) {
         return Object.keys(queryParams)
             .sort()
-            .map(function (key) { return key + "=" + queryParams[key]; })
+            .map(function (key) { return key + "=" + encodeURIComponent(queryParams[key]); })
             .join('&');
     };
     /**

@@ -1,5 +1,3 @@
-import { Role } from 'kvs-webrtc/Role';
-
 export type QueryParams = { [queryParam: string]: string };
 type Headers = { [header: string]: string };
 
@@ -29,9 +27,8 @@ export class SigV4RequestSigner {
     /**
      * Creates a SigV4 signed WebSocket URL for the given host/endpoint with the given query params.
      *
-     * @param endpoint The WebSocket service domain name. TODO: Take in a complete endpoint (e.g. wss://host:port/path) and parse out the host
+     * @param endpoint The WebSocket service endpoint including protocol, hostname, and path (if applicable).
      * @param queryParams Query parameters to include in the URL.
-     * @param role TODO: Private Beta Only
      *
      * Implementation note: Query parameters should be in alphabetical order.
      *
@@ -39,12 +36,10 @@ export class SigV4RequestSigner {
      * canonical (signed) request. For other services, you add this parameter at the end, after you calculate the signature. For details, see the API reference
      * documentation for that service." KVS Signaling Service requires that the session token is added to the canonical request.
      *
-     * Note for Private Beta: The method, path, and host used for signing are special overrides until a long-term authentication solution is established.
-     *
      * @see https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-query-string-auth.html
      * @see https://gist.github.com/prestomation/24b959e51250a8723b9a5a4f70dcae08
      */
-    public async getSignedURL(endpoint: string, queryParams: QueryParams, role: Role): Promise<string> {
+    public async getSignedURL(endpoint: string, queryParams: QueryParams): Promise<string> {
         // Prepare date strings
         const date = new Date();
         const datetimeString = SigV4RequestSigner.getDateTimeString(date);
@@ -70,32 +65,30 @@ export class SigV4RequestSigner {
             path = endpoint.substring(pathStartIndex);
         }
 
-        const signingHost = 'gmarbhpqgi.execute-api.us-west-2.amazonaws.com'; // TODO: Private Beta Only
-        const signingPath = role === Role.MASTER ? '/prod/v1/connect-as-master' : '/prod/v1/connect-as-viewer'; // TODO: Private Beta Only
         const signedHeaders = ['host'].join(';');
 
         // Prepare method
-        // const method = 'GET'; // Method is always GET for signed URLs
-        const signingMethod = 'POST'; // TODO: Private Beta Only; Method is always GET for signed URLs
+        const method = 'GET'; // Method is always GET for signed URLs
 
         // Prepare canonical query string
         const credentialScope = dateString + '/' + this.region + '/' + this.service + '/' + 'aws4_request';
         const canonicalQueryParams = Object.assign({}, queryParams, {
             'X-Amz-Algorithm': SigV4RequestSigner.DEFAULT_ALGORITHM,
-            'X-Amz-Credential': encodeURIComponent(this.credentials.accessKeyId + '/' + credentialScope),
+            'X-Amz-Credential': this.credentials.accessKeyId + '/' + credentialScope,
             'X-Amz-Date': datetimeString,
+            'X-Amz-Expires': '299',
             'X-Amz-SignedHeaders': signedHeaders,
         });
         if (this.credentials.sessionToken) {
             Object.assign(canonicalQueryParams, {
-                'X-Amz-Security-Token': encodeURIComponent(this.credentials.sessionToken),
+                'X-Amz-Security-Token': this.credentials.sessionToken,
             });
         }
         const canonicalQueryString = SigV4RequestSigner.createQueryString(canonicalQueryParams);
 
         // Prepare canonical headers
         const canonicalHeaders = {
-            host: signingHost,
+            host,
         };
         const canonicalHeadersString = SigV4RequestSigner.createHeadersString(canonicalHeaders);
 
@@ -103,7 +96,7 @@ export class SigV4RequestSigner {
         const payloadHash = await SigV4RequestSigner.sha256('');
 
         // Combine canonical request parts into a canonical request string and hash
-        const canonicalRequest = [signingMethod, signingPath, canonicalQueryString, canonicalHeadersString, signedHeaders, payloadHash].join('\n');
+        const canonicalRequest = [method, path, canonicalQueryString, canonicalHeadersString, signedHeaders, payloadHash].join('\n');
         const canonicalRequestHash = await SigV4RequestSigner.sha256(canonicalRequest);
 
         // Create signature
@@ -148,7 +141,7 @@ export class SigV4RequestSigner {
     private static createQueryString(queryParams: QueryParams): string {
         return Object.keys(queryParams)
             .sort()
-            .map(key => `${key}=${queryParams[key]}`)
+            .map(key => `${key}=${encodeURIComponent(queryParams[key])}`)
             .join('&');
     }
 

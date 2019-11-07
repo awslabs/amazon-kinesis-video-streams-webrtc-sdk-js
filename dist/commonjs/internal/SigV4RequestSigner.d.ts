@@ -1,4 +1,3 @@
-import { Role } from 'kvs-webrtc/Role';
 export declare type QueryParams = {
     [queryParam: string]: string;
 };
@@ -20,9 +19,8 @@ export declare class SigV4RequestSigner {
     /**
      * Creates a SigV4 signed WebSocket URL for the given host/endpoint with the given query params.
      *
-     * @param endpoint The WebSocket service domain name. TODO: Take in a complete endpoint (e.g. wss://host:port/path) and parse out the host
+     * @param endpoint The WebSocket service endpoint including protocol, hostname, and path (if applicable).
      * @param queryParams Query parameters to include in the URL.
-     * @param role TODO: Private Beta Only
      *
      * Implementation note: Query parameters should be in alphabetical order.
      *
@@ -30,12 +28,10 @@ export declare class SigV4RequestSigner {
      * canonical (signed) request. For other services, you add this parameter at the end, after you calculate the signature. For details, see the API reference
      * documentation for that service." KVS Signaling Service requires that the session token is added to the canonical request.
      *
-     * Note for Private Beta: The method, path, and host used for signing are special overrides until a long-term authentication solution is established.
-     *
      * @see https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-query-string-auth.html
      * @see https://gist.github.com/prestomation/24b959e51250a8723b9a5a4f70dcae08
      */
-    getSignedURL(endpoint: string, queryParams: QueryParams, role: Role): Promise<string>;
+    getSignedURL(endpoint: string, queryParams: QueryParams): Promise<string>;
     /**
      * Utility method for generating the key to use for calculating the signature. This combines together the date string, region, service name, and secret
      * access key.

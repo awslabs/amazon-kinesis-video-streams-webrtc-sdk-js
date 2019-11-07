@@ -68,14 +68,14 @@ var SignalingClient = /** @class */ (function (_super) {
                             throw new Error('Client is already open or opening');
                         }
                         queryParams = {
-                            'X-Amz-ChannelARN': encodeURIComponent(this.config.channelARN),
+                            'X-Amz-ChannelARN': this.config.channelARN,
                         };
                         if (this.config.role === Role_1.Role.VIEWER) {
                             queryParams['X-Amz-ClientId'] = this.config.clientId;
                         }
                         _a = this;
                         _b = WebSocket.bind;
-                        return [4 /*yield*/, this.requestSigner.getSignedURL(this.config.channelEndpoint, queryParams, this.config.role)];
+                        return [4 /*yield*/, this.requestSigner.getSignedURL(this.config.channelEndpoint, queryParams)];
                     case 1:
                         _a.websocket = new (_b.apply(WebSocket, [void 0, _c.sent()]))();
                         this.websocket.addEventListener('open', this.onOpen);
