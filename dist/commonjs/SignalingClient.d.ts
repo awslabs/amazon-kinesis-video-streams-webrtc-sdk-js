@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { EventEmitter } from 'events';
-import { Role } from 'kvs-webrtc/Role';
-import { Credentials } from 'kvs-webrtc/internal/SigV4RequestSigner';
+import { Role } from './Role';
+import { Credentials } from './internal/SigV4RequestSigner';
 interface WebSocketClientConfig {
     credentials: Credentials;
     channelARN: string;

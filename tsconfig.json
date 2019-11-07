@@ -14,9 +14,6 @@
     ],
     "outDir": "./dist/commonjs",
     "baseUrl": ".",
-    "paths": {
-      "kvs-webrtc/*": ["./src/*"]
-    },
     "noImplicitAny": true,
     "noFallthroughCasesInSwitch": true,
     "noImplicitReturns": true,

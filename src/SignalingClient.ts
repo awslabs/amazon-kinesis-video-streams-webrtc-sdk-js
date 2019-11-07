@@ -1,8 +1,8 @@
 import { EventEmitter } from 'events';
 
-import { Role } from 'kvs-webrtc/Role';
-import { Credentials, QueryParams, SigV4RequestSigner } from 'kvs-webrtc/internal/SigV4RequestSigner';
-import { validateValueNil, validateValueNonNil } from 'kvs-webrtc/internal/utils';
+import { Role } from './Role';
+import { Credentials, QueryParams, SigV4RequestSigner } from './internal/SigV4RequestSigner';
+import { validateValueNil, validateValueNonNil } from './internal/utils';
 
 interface WebSocketClientConfig {
     credentials: Credentials;

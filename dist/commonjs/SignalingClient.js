@@ -2,9 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
 var events_1 = require("events");
-var Role_1 = require("kvs-webrtc/Role");
-var SigV4RequestSigner_1 = require("kvs-webrtc/internal/SigV4RequestSigner");
-var utils_1 = require("kvs-webrtc/internal/utils");
+var Role_1 = require("./Role");
+var SigV4RequestSigner_1 = require("./internal/SigV4RequestSigner");
+var utils_1 = require("./internal/utils");
 var MessageType;
 (function (MessageType) {
     MessageType["SDP_ANSWER"] = "SDP_ANSWER";

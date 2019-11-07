@@ -18,9 +18,6 @@ module.exports = {
     },
     resolve: {
         extensions: ['.ts', '.js'],
-        alias: {
-            'kvs-webrtc': path.resolve(__dirname, 'src'),
-        },
     },
     module: {
         rules: [
