@@ -6,7 +6,7 @@ import { validateValueNil, validateValueNonNil } from 'kvs-webrtc/internal/utils
 
 interface WebSocketClientConfig {
     credentials: AWS.Credentials;
-    channelName: string;
+    channelARN: string;
     channelEndpoint: string;
     region: string;
     role: Role;
@@ -57,7 +57,7 @@ export class SignalingClient extends EventEmitter {
         } else {
             validateValueNil(config.clientId, 'clientId');
         }
-        validateValueNonNil(config.channelName, 'channelName');
+        validateValueNonNil(config.channelARN, 'channelARN');
         validateValueNonNil(config.region, 'region');
         validateValueNonNil(config.credentials, 'credentials');
         validateValueNonNil(config.credentials.accessKeyId, 'credentials.accessKeyId');
@@ -84,7 +84,7 @@ export class SignalingClient extends EventEmitter {
             throw new Error('Client is already open or opening');
         }
         const queryParams: QueryParams = {
-            'X-Amz-ChannelName': this.config.channelName,
+            'X-Amz-ChannelARN': encodeURIComponent(this.config.channelARN),
         };
         if (this.config.role === Role.VIEWER) {
             queryParams['X-Amz-ClientId'] = this.config.clientId;

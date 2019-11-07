@@ -50,7 +50,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
 
     // Create Signaling Client
     master.signalingClient = new KVSWebRTC.SignalingClient({
-        channelName: formValues.channelName,
+        channelARN,
         channelEndpoint: endpointsByProtocol.WSS,
         role: KVSWebRTC.Role.MASTER,
         region: formValues.region,
@@ -72,7 +72,6 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
     const getIceServerConfigResponse = await kinesisVideoSignalingClient
         .getIceServerConfig({
             ChannelARN: channelARN,
-            ClientId: KVSWebRTC.Role.MASTER, // TODO: Remove after Private Beta
         })
         .promise();
     const iceServers = [];

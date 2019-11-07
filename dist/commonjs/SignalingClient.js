@@ -39,7 +39,7 @@ var SignalingClient = /** @class */ (function (_super) {
         else {
             utils_1.validateValueNil(config.clientId, 'clientId');
         }
-        utils_1.validateValueNonNil(config.channelName, 'channelName');
+        utils_1.validateValueNonNil(config.channelARN, 'channelARN');
         utils_1.validateValueNonNil(config.region, 'region');
         utils_1.validateValueNonNil(config.credentials, 'credentials');
         utils_1.validateValueNonNil(config.credentials.accessKeyId, 'credentials.accessKeyId');
@@ -68,7 +68,7 @@ var SignalingClient = /** @class */ (function (_super) {
                             throw new Error('Client is already open or opening');
                         }
                         queryParams = {
-                            'X-Amz-ChannelName': this.config.channelName,
+                            'X-Amz-ChannelARN': encodeURIComponent(this.config.channelARN),
                         };
                         if (this.config.role === Role_1.Role.VIEWER) {
                             queryParams['X-Amz-ClientId'] = this.config.clientId;

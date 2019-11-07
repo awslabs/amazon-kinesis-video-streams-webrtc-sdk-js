@@ -53,7 +53,6 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
     const getIceServerConfigResponse = await kinesisVideoSignalingClient
         .getIceServerConfig({
             ChannelARN: channelARN,
-            ClientId: KVSWebRTC.Role.VIEWER, // TODO: Remove after Private Beta
         })
         .promise();
     const iceServers = [];
@@ -73,7 +72,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
 
     // Create Signaling Client
     viewer.signalingClient = new KVSWebRTC.SignalingClient({
-        channelName: formValues.channelName,
+        channelARN,
         channelEndpoint: endpointsByProtocol.WSS,
         clientId: formValues.clientId,
         role: KVSWebRTC.Role.VIEWER,

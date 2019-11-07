@@ -3,7 +3,7 @@ import { EventEmitter } from 'events';
 import { Role } from 'kvs-webrtc/Role';
 interface WebSocketClientConfig {
     credentials: AWS.Credentials;
-    channelName: string;
+    channelARN: string;
     channelEndpoint: string;
     region: string;
     role: Role;
