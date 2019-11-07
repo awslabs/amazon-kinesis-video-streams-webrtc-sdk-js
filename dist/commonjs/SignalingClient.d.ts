@@ -1,8 +1,9 @@
 /// <reference types="node" />
 import { EventEmitter } from 'events';
 import { Role } from 'kvs-webrtc/Role';
+import { Credentials } from 'kvs-webrtc/internal/SigV4RequestSigner';
 interface WebSocketClientConfig {
-    credentials: AWS.Credentials;
+    credentials: Credentials;
     channelARN: string;
     channelEndpoint: string;
     region: string;

@@ -3,6 +3,12 @@ import { Role } from 'kvs-webrtc/Role';
 export type QueryParams = { [queryParam: string]: string };
 type Headers = { [header: string]: string };
 
+export interface Credentials {
+    accessKeyId: string;
+    secretAccessKey: string;
+    sessionToken?: string;
+}
+
 /**
  * Utility class for SigV4 signing requests. The AWS SDK cannot be used for this purpose because it does not have support for WebSocket endpoints.
  */
@@ -11,10 +17,10 @@ export class SigV4RequestSigner {
     private static readonly DEFAULT_SERVICE = 'kinesisvideo';
 
     private readonly region: string;
-    private readonly credentials: AWS.Credentials;
+    private readonly credentials: Credentials;
     private readonly service: string;
 
-    public constructor(region: string, credentials: AWS.Credentials, service: string = SigV4RequestSigner.DEFAULT_SERVICE) {
+    public constructor(region: string, credentials: Credentials, service: string = SigV4RequestSigner.DEFAULT_SERVICE) {
         this.region = region;
         this.credentials = credentials;
         this.service = service;

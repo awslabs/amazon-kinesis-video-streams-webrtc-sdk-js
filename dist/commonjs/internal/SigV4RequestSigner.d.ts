@@ -2,6 +2,11 @@ import { Role } from 'kvs-webrtc/Role';
 export declare type QueryParams = {
     [queryParam: string]: string;
 };
+export interface Credentials {
+    accessKeyId: string;
+    secretAccessKey: string;
+    sessionToken?: string;
+}
 /**
  * Utility class for SigV4 signing requests. The AWS SDK cannot be used for this purpose because it does not have support for WebSocket endpoints.
  */
@@ -11,7 +16,7 @@ export declare class SigV4RequestSigner {
     private readonly region;
     private readonly credentials;
     private readonly service;
-    constructor(region: string, credentials: AWS.Credentials, service?: string);
+    constructor(region: string, credentials: Credentials, service?: string);
     /**
      * Creates a SigV4 signed WebSocket URL for the given host/endpoint with the given query params.
      *
