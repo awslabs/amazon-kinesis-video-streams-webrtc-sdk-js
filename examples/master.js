@@ -94,8 +94,9 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
         iceTransportPolicy: formValues.forceTURN ? 'relay' : 'all',
     };
 
+    const resolution = formValues.widescreen ? { width: { ideal: 1280 }, height: { ideal: 720 } } : { width: { ideal: 640 }, height: { ideal: 480 } };
     const constraints = {
-        video: formValues.sendVideo,
+        video: formValues.sendVideo ? resolution : false,
         audio: formValues.sendAudio,
     };
 
