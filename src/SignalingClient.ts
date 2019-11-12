@@ -1,14 +1,27 @@
 import { EventEmitter } from 'events';
 
 import { Role } from './Role';
-import { Credentials, QueryParams, SigV4RequestSigner } from './internal/SigV4RequestSigner';
+import { SigV4RequestSigner } from './internal/SigV4RequestSigner';
 import { validateValueNil, validateValueNonNil } from './internal/utils';
 
-interface WebSocketClientConfig {
-    credentials: Credentials;
+export type QueryParams = { [queryParam: string]: string };
+
+export interface RequestSigner {
+    getSignedURL: (signalingEndpoint: string, queryParams: QueryParams) => Promise<string>;
+}
+
+export interface Credentials {
+    accessKeyId: string;
+    secretAccessKey: string;
+    sessionToken?: string;
+}
+
+export interface WebSocketClientConfig {
     channelARN: string;
     channelEndpoint: string;
+    credentials?: Credentials;
     region: string;
+    requestSigner?: RequestSigner;
     role: Role;
     clientId?: string;
 }
@@ -36,7 +49,7 @@ export class SignalingClient extends EventEmitter {
     private static DEFAULT_CLIENT_ID = 'MASTER';
 
     private websocket: WebSocket = null;
-    private readonly requestSigner: SigV4RequestSigner;
+    private readonly requestSigner: RequestSigner;
     private readonly config: WebSocketClientConfig;
     private readonly pendingIceCandidatesByClientId: { [clientId: string]: object[] } = {};
     private readonly hasReceivedRemoteSDPByClientId: { [clientId: string]: boolean } = {};
@@ -59,13 +72,18 @@ export class SignalingClient extends EventEmitter {
         }
         validateValueNonNil(config.channelARN, 'channelARN');
         validateValueNonNil(config.region, 'region');
-        validateValueNonNil(config.credentials, 'credentials');
-        validateValueNonNil(config.credentials.accessKeyId, 'credentials.accessKeyId');
-        validateValueNonNil(config.credentials.secretAccessKey, 'credentials.secretAccessKey');
+        validateValueNonNil(config.channelEndpoint, 'channelEndpoint');
 
         this.config = config;
 
-        this.requestSigner = new SigV4RequestSigner(config.region, config.credentials);
+        if (config.requestSigner) {
+            this.requestSigner = config.requestSigner;
+        } else {
+            validateValueNonNil(config.credentials, 'credentials');
+            validateValueNonNil(config.credentials.accessKeyId, 'credentials.accessKeyId');
+            validateValueNonNil(config.credentials.secretAccessKey, 'credentials.secretAccessKey');
+            this.requestSigner = new SigV4RequestSigner(config.region, config.credentials);
+        }
 
         // Bind event handlers
         this.onOpen = this.onOpen.bind(this);

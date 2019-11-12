@@ -41,11 +41,17 @@ var SignalingClient = /** @class */ (function (_super) {
         }
         utils_1.validateValueNonNil(config.channelARN, 'channelARN');
         utils_1.validateValueNonNil(config.region, 'region');
-        utils_1.validateValueNonNil(config.credentials, 'credentials');
-        utils_1.validateValueNonNil(config.credentials.accessKeyId, 'credentials.accessKeyId');
-        utils_1.validateValueNonNil(config.credentials.secretAccessKey, 'credentials.secretAccessKey');
+        utils_1.validateValueNonNil(config.channelEndpoint, 'channelEndpoint');
         _this.config = config;
-        _this.requestSigner = new SigV4RequestSigner_1.SigV4RequestSigner(config.region, config.credentials);
+        if (config.requestSigner) {
+            _this.requestSigner = config.requestSigner;
+        }
+        else {
+            utils_1.validateValueNonNil(config.credentials, 'credentials');
+            utils_1.validateValueNonNil(config.credentials.accessKeyId, 'credentials.accessKeyId');
+            utils_1.validateValueNonNil(config.credentials.secretAccessKey, 'credentials.secretAccessKey');
+            _this.requestSigner = new SigV4RequestSigner_1.SigV4RequestSigner(config.region, config.credentials);
+        }
         // Bind event handlers
         _this.onOpen = _this.onOpen.bind(_this);
         _this.onMessage = _this.onMessage.bind(_this);

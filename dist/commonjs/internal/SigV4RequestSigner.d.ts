@@ -1,15 +1,8 @@
-export declare type QueryParams = {
-    [queryParam: string]: string;
-};
-export interface Credentials {
-    accessKeyId: string;
-    secretAccessKey: string;
-    sessionToken?: string;
-}
+import { Credentials, QueryParams, RequestSigner } from '../SignalingClient';
 /**
  * Utility class for SigV4 signing requests. The AWS SDK cannot be used for this purpose because it does not have support for WebSocket endpoints.
  */
-export declare class SigV4RequestSigner {
+export declare class SigV4RequestSigner implements RequestSigner {
     private static readonly DEFAULT_ALGORITHM;
     private static readonly DEFAULT_SERVICE;
     private readonly region;

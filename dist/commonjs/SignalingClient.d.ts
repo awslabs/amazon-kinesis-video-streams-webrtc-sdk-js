@@ -1,12 +1,23 @@
 /// <reference types="node" />
 import { EventEmitter } from 'events';
 import { Role } from './Role';
-import { Credentials } from './internal/SigV4RequestSigner';
-interface WebSocketClientConfig {
-    credentials: Credentials;
+export declare type QueryParams = {
+    [queryParam: string]: string;
+};
+export interface RequestSigner {
+    getSignedURL: (signalingEndpoint: string, queryParams: QueryParams) => Promise<string>;
+}
+export interface Credentials {
+    accessKeyId: string;
+    secretAccessKey: string;
+    sessionToken?: string;
+}
+export interface WebSocketClientConfig {
     channelARN: string;
     channelEndpoint: string;
+    credentials?: Credentials;
     region: string;
+    requestSigner?: RequestSigner;
     role: Role;
     clientId?: string;
 }
@@ -112,4 +123,3 @@ export declare class SignalingClient extends EventEmitter {
      */
     private onClose;
 }
-export {};

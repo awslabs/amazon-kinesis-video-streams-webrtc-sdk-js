@@ -1,16 +1,10 @@
-export type QueryParams = { [queryParam: string]: string };
+import { Credentials, QueryParams, RequestSigner } from '../SignalingClient';
 type Headers = { [header: string]: string };
-
-export interface Credentials {
-    accessKeyId: string;
-    secretAccessKey: string;
-    sessionToken?: string;
-}
 
 /**
  * Utility class for SigV4 signing requests. The AWS SDK cannot be used for this purpose because it does not have support for WebSocket endpoints.
  */
-export class SigV4RequestSigner {
+export class SigV4RequestSigner implements RequestSigner {
     private static readonly DEFAULT_ALGORITHM = 'AWS4-HMAC-SHA256';
     private static readonly DEFAULT_SERVICE = 'kinesisvideo';
 
