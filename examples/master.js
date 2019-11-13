@@ -35,7 +35,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
     // Get signaling channel endpoints
     const getSignalingChannelEndpointResponse = await kinesisVideoClient
         .getSignalingChannelEndpoint({
-            ChannelName: formValues.channelName,
+            ChannelARN: channelARN,
             SingleMasterChannelEndpointConfiguration: {
                 Protocols: ['WSS', 'HTTPS'],
                 Role: KVSWebRTC.Role.MASTER,
