@@ -46,7 +46,7 @@ var SigV4RequestSigner = /** @class */ (function () {
                         pathStartIndex = endpoint.indexOf('/', urlProtocol.length);
                         if (pathStartIndex < 0) {
                             host = endpoint.substring(urlProtocol.length);
-                            path = '';
+                            path = '/';
                         }
                         else {
                             host = endpoint.substring(urlProtocol.length, pathStartIndex);

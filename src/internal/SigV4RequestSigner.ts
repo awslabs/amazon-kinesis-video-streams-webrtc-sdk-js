@@ -53,7 +53,7 @@ export class SigV4RequestSigner implements RequestSigner {
         let path;
         if (pathStartIndex < 0) {
             host = endpoint.substring(urlProtocol.length);
-            path = '';
+            path = '/';
         } else {
             host = endpoint.substring(urlProtocol.length, pathStartIndex);
             path = endpoint.substring(pathStartIndex);
