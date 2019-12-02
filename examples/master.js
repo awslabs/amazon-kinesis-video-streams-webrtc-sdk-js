@@ -76,7 +76,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
         .promise();
     const iceServers = [];
     if (!formValues.natTraversalDisabled && !formValues.forceTURN) {
-        iceServers.push({ urls: 'stun:stun.beta.kinesisvideo.us-west-2.amazonaws.com:443' });
+        iceServers.push({ urls: 'stun:stun.kinesisvideo.us-west-2.amazonaws.com:443' });
     }
     if (!formValues.natTraversalDisabled) {
         getIceServerConfigResponse.IceServerList.forEach(iceServer =>

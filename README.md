@@ -14,7 +14,7 @@ The source code for the test page is in the [`examples`](examples) directory.
 ## Using the SDK
 To use the SDK in your own project, you need to import the following:
 1. The AWS JS SDK with `AWS.KinesisVideo` and `AWS.KinesisVideoSignaling` clients and `AWS.util`. 
-A build with these clients is located at [`examples/aws-sdk.beta.min.js`](examples/aws-sdk.beta.min.js)
+A build with these clients is located at [`examples/aws-sdk.min.js`](examples/aws-sdk.min.js)
 1. This KVS WebRTC SDK with the `KVSWebRTC.SignalingClient`. Builds are available in the [`dist`](dist) directory.
 
 Documentation for the KVS WebRTC SDK Signaling Client can be found [here](dist/commonjs/SignalingClient.d.ts).

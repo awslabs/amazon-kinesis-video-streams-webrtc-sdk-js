@@ -52,7 +52,7 @@ function getFormValues() {
         natTraversalDisabled: $('#natTraversalDisabled').is(':checked'),
         forceTURN: $('#forceTURN').is(':checked'),
         accessKeyId: $('#accessKeyId').val(),
-        endpoint: $('#endpoint').val() || 'beta.kinesisvideo.us-west-2.amazonaws.com',
+        endpoint: $('#endpoint').val() || 'kinesisvideo.us-west-2.amazonaws.com',
         secretAccessKey: $('#secretAccessKey').val(),
         sessionToken: $('#sessionToken').val() || null,
     };
