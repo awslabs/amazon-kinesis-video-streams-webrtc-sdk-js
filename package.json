@@ -1,7 +1,7 @@
 {
-    "name": "@aws/kvs-webrtc",
+    "name": "amazon-kinesis-video-streams-webrtc",
     "version": "0.0.1",
-    "description": "AWS Kinesis Video Streams signaling channel SDK for JavaScript.",
+    "description": "Amazon Kinesis Video Streams WebRTC SDK for JavaScript.",
     "repository": {
         "type" : "git",
         "url" : "https://github.com/awslabs/amazon-kinesis-video-streams-webrtc-sdk-js.git"
