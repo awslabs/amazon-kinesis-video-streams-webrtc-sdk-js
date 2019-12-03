@@ -7,6 +7,10 @@ node_modules/
 # Optional npm cache directory
 .npm
 
+# Build files
+dist/
+lib/
+
 # Code coverage
 coverage/
 

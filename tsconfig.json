@@ -12,7 +12,7 @@
       "es5",
       "es2015"
     ],
-    "outDir": "./dist/commonjs",
+    "outDir": "./lib",
     "baseUrl": ".",
     "noImplicitAny": true,
     "noFallthroughCasesInSwitch": true,

@@ -6,7 +6,15 @@
         "type": "git",
         "url": "https://github.com/awslabs/amazon-kinesis-video-streams-webrtc-sdk-js.git"
     },
-    "main": "index.js",
+    "main": "lib/index.js",
+    "types": "lib/index.d.ts",
+    "files": [
+        "lib/**/*",
+        "dist/**/*",
+        "examples/**/*",
+        "LICENSE.txt",
+        "NOTICE.txt"
+    ],
     "scripts": {
         "integ-server": "ws -p 3000",
         "test": "jest --runInBand",
