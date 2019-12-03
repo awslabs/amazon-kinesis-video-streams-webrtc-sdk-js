@@ -5,6 +5,7 @@
 
 [![Build Status](https://travis-ci.org/awslabs/amazon-kinesis-video-streams-webrtc-sdk-js.svg?branch=master)](https://travis-ci.org/awslabs/amazon-kinesis-video-streams-webrtc-sdk-js)
 [![Coverage Status](https://codecov.io/gh/awslabs/amazon-kinesis-video-streams-webrtc-sdk-js/branch/master/graph/badge.svg)](https://codecov.io/gh/awslabs/amazon-kinesis-video-streams-webrtc-sdk-js)
+[![Known Vulnerabilities](https://snyk.io/test/github/awslabs/amazon-kinesis-video-streams-webrtc-sdk-js/badge.svg?targetFile=package.json)](https://snyk.io/test/github/awslabs/amazon-kinesis-video-streams-webrtc-sdk-js?targetFile=package.json)
 
 ## Running WebRTC Test Page
 NodeJS version 8+ is required.
