@@ -45,7 +45,7 @@ module.exports = {
         new LicenseWebpackPlugin({
             outputFilename: 'kvs-webrtc.LICENSE',
             addBanner: true,
-            renderBanner: () => fs.readFileSync('./license/bundleLicenseBanner.txt', { encoding: 'utf-8' }),
+            renderBanner: () => fs.readFileSync('./license/bundleLicenseBanner.txt', { encoding: 'utf-8' }).replace('VERSION', version),
             renderLicenses: modules => {
                 let text = fs.readFileSync('./license/bundleLicenseHeader.txt', { encoding: 'utf-8' });
                 modules.forEach(module => {

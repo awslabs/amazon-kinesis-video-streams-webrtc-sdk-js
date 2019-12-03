@@ -1,4 +1,4 @@
-/* Amazon Kinesis Video Streams WebRTC SDK for JavaScript v0.0.1
+/* Amazon Kinesis Video Streams WebRTC SDK for JavaScript vVERSION
 Copyright 2019-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
 This product includes software developed at
