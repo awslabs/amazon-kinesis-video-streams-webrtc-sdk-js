@@ -1,3 +1,5 @@
+os:
+  - linux
 language: node_js
 node_js:
   - 8
@@ -7,16 +9,17 @@ script:
   - npm run release
 deploy:
   - provider: npm
-    email: "$NPM_EMAIL"
-    api_key: "$NPM_API_TOKEN"
-    skip_cleanup: true,
+    edge: true
+    email: $NPM_EMAIL
+    api_token: $NPM_API_TOKEN
     on:
       tags: true
   - provider: pages
-    skip_cleanup: true
-    github_token: $GITHUB_TOKEN
+    edge: true
+    keep_history: false
+    token: $GITHUB_TOKEN
     target_branch: gh-pages
     on:
-        branch: master
+      branch: master
 after_success:
   - codecov
