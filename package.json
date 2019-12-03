@@ -23,9 +23,10 @@
         "build-commonjs": "tsc -p tsconfig.json",
         "build-debug": "webpack --config webpack.debug.config.js",
         "build-dist": "webpack --config webpack.dist.config.js",
+        "copy-examples-to-dist": "cp -r examples dist",
         "develop": "webpack-dev-server --config webpack.dev.config.js",
         "lint": "eslint 'src/**/*.{js,ts}'",
-        "release": "npm run lint && npm run test && npm run build-all"
+        "release": "npm run lint && npm run test && npm run build-all && npm run copy-examples-to-dist"
     },
     "author": "Mitchell Loeppky <mrl@amazon.com>",
     "license": "Apache-2.0",

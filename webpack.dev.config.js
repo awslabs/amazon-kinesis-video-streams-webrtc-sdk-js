@@ -11,7 +11,7 @@ module.exports = merge.smart(require('./webpack.config'), {
 
     devServer: {
         contentBase: path.join(__dirname, 'examples'),
-        publicPath: '/dist',
+        publicPath: '/',
         port: 3001,
     },
 
