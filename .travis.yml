@@ -14,6 +14,7 @@ deploy:
     api_token: $NPM_API_TOKEN
     on:
       tags: true
+      node_js: 12
   - provider: pages
     edge: true
     keep_history: false
@@ -21,5 +22,6 @@ deploy:
     target_branch: gh-pages
     on:
       branch: master
+      node_js: 12
 after_success:
   - codecov
