@@ -1,16 +1,22 @@
 language: node_js
 node_js:
-    - 8
-    - 10
-    - 12
+  - 8
+  - 10
+  - 12
 script:
-    - npm run release
+  - npm run release
 deploy:
-    provider: npm
+  - provider: npm
     email: "$NPM_EMAIL"
     api_key: "$NPM_API_TOKEN"
     skip_cleanup: true,
     on:
-        tags: true
+      tags: true
+  - provider: pages
+    skip_cleanup: true
+    github_token: $GITHUB_TOKEN
+    target_branch: gh-pages
+    on:
+        branch: master
 after_success:
-    - codecov
+  - codecov
