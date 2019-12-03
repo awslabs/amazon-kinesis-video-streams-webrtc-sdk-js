@@ -50,7 +50,79 @@ From there, refer to the example usage in the [`examples`](examples) directory f
 ## Documentation
 This section outlines all of the classes, events, methods, and configuration options for the SDK.
 
-TODO: Generate with TypeDoc
+### Class: `SignalingClient`
+This class is the main class for interfacing with the KVS signaling service. It extends the `EventEmitter`.
+
+#### Constructor: `new SignalingClient(config)`
+* `config` {object}
+  * `role` {Role} "MASTER" or "VIEWER".
+  * `channelARN` {string} ARN of a channel that has exists in the AWS account.
+  * `cahnnelEndpoint` {string} KVS Signaling Service endpoint. Should be the "WSS" endpoint from calling the `GetSignalingChannel` API.
+  * `region` {string} AWS region that the channel exists in.
+  * `clientId` {string} Identifier to uniquely identify this client when connecting to the KVS Signaling Service. Required if the `role` is "VIEWER". A value should not be provided if the `role` is "MASTER".
+  * `credentials` {object}
+    * `accessKeyId` {string} AWS access key id.
+    * `secretAccessKey` {string} AWS secret access key.
+    * `sessionToken` {string} Optional. AWS session token.
+  * `requestSigner` {function (signalingEndpoint: string, queryParams: object) => Promise<string>} Optional. A custom method for overriding the default SigV4 request signing.
+
+#### Event: `'open'`
+Emitted when the connection to the signaling service is open.
+
+#### Event: `'sdpOffer'`
+* `sdpOffer` {[RTCSessionDescription](https://developer.mozilla.org/en-US/docs/Web/API/RTCSessionDescription)} The SDP offer received from the signaling service.
+* `senderClientId` {string} The client id of the source of the SDP offer. The value will be null if the SDP offer is from the master.
+
+Emitted when a new SDP offer is received over the channel. Typically only a master should receive SDP offers.
+
+#### Event: `'sdpAnswer'`
+* `sdpAnswer` {[RTCSessionDescription](https://developer.mozilla.org/en-US/docs/Web/API/RTCSessionDescription)} The SDP answer received from the signaling service.
+* `senderClientId` {string} The client id of the source of the SDP answer. The value will be null if the SDP answer is from the master.
+
+Emitted when a new SDP answer is received over the channel. Typically only a viewer should receive SDP answers.
+
+#### Event: `'iceCandidate'`
+* `iceCandidate` {[RTCIceCandidate](https://developer.mozilla.org/en-US/docs/Web/API/RTCIceCandidate)} The ICE candidate received from the signaling service.
+* `senderClientId` {string} The client id of the source of the ICE candidate. The value will be null if the ICE candidate is from the master.
+
+Emitted when a new ICE candidate is received over the channel.
+
+#### Event: `'close'`
+Emitted when the connection to the signaling service is closed. Even if there is an error, as long as the connection is closed, this event will be emitted.
+
+#### Event: `'error'`
+* `error` {Error}
+
+Emitted when there is an error in the client or there is an error received from the signaling service. The connection will be closed automatically.
+
+#### Method: `on(event, callback)`
+* `event` {string} Event name.
+* `callback` {function} Event handler.
+
+Binds an event handler.
+
+#### Method: `open()`
+Opens a connection to the signaling service. An error will be thrown if there is already another connection open or opening.
+
+#### Method: `close()`
+Closes the active connection to the signaling service. Nothing will happen if there is no open connection.
+
+#### Method: `sendSdpOffer(sdpOffer, [recipientClientId])`
+* `sdpOffer` {[RTCSessionDescription](https://developer.mozilla.org/en-US/docs/Web/API/RTCSessionDescription)} SDP offer to send to the recipient client.
+* `recipientClientId` {string} The id of the client to send the SDP offer to. If no id is provided, it will be sent to the master.
+
+#### Method: `sendSdpAnswer(sdpAnswer, [recipientClientId])`
+* `sdpAnswer` {[RTCSessionDescription](https://developer.mozilla.org/en-US/docs/Web/API/RTCSessionDescription)} SDP answer to send to the recipient client.
+* `recipientClientId` {string} The id of the client to send the SDP answer to. If no id is provided, it will be sent to the master.
+
+#### Method: `sendIceCandidate(iceCandidate, [recipientClientId])`
+* `iceCandidate` {[RTCIceCandidate](https://developer.mozilla.org/en-US/docs/Web/API/RTCIceCandidate)} ICE candidate to send to the recipient client.
+* `recipientClientId` {string} The id of the client to send the ICE candidate to. If no id is provided, it will be sent to the master.
+
+### Enum: `Role`
+An enum with the following values:
+* `MASTER`
+* `VIEWER`
 
 ## Development
 

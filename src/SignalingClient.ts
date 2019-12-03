@@ -49,6 +49,7 @@ export class SignalingClient extends EventEmitter {
     private static DEFAULT_CLIENT_ID = 'MASTER';
 
     private websocket: WebSocket = null;
+    private creatingWebSocket = false;
     private readonly requestSigner: RequestSigner;
     private readonly config: WebSocketClientConfig;
     private readonly pendingIceCandidatesByClientId: { [clientId: string]: object[] } = {};
@@ -94,20 +95,35 @@ export class SignalingClient extends EventEmitter {
 
     /**
      * Opens the connection with the signaling service. Listen to the 'open' event to be notified when the connection has been opened.
-     *
-     * An error is thrown if the connection is already open or being opened.
      */
-    public async open(): Promise<void> {
-        if (this.websocket !== null) {
+    public open(): void {
+        if (this.websocket !== null || this.creatingWebSocket) {
             throw new Error('Client is already open or opening');
         }
+        this.creatingWebSocket = true;
+
+        // The process of opening the connection is asynchronous via promises, but the interaction model is to handle asynchronous actions via events.
+        // Therefore, we just kick off the asynchronous process and then return and let it fire events.
+        this.asyncOpen()
+            .then()
+            .catch(err => this.onError(err))
+            .finally(() => {
+                this.creatingWebSocket = false;
+            });
+    }
+
+    /**
+     * Asynchronous implementation of `open`.
+     */
+    private async asyncOpen(): Promise<void> {
         const queryParams: QueryParams = {
             'X-Amz-ChannelARN': this.config.channelARN,
         };
         if (this.config.role === Role.VIEWER) {
             queryParams['X-Amz-ClientId'] = this.config.clientId;
         }
-        this.websocket = new WebSocket(await this.requestSigner.getSignedURL(this.config.channelEndpoint, queryParams));
+        const signedURL = await this.requestSigner.getSignedURL(this.config.channelEndpoint, queryParams);
+        this.websocket = new WebSocket(signedURL);
 
         this.websocket.addEventListener('open', this.onOpen);
         this.websocket.addEventListener('message', this.onMessage);
@@ -223,7 +239,6 @@ export class SignalingClient extends EventEmitter {
         } catch (e) {
             console.error(e); // TODO: Improve error handling
         }
-        this.emit('message');
     }
 
     /**
@@ -245,16 +260,14 @@ export class SignalingClient extends EventEmitter {
      * an SDP offer or answer is received.
      */
     private emitOrQueueIceCandidate(iceCandidate: object, clientId?: string): void {
-        if (!clientId) {
-            clientId = SignalingClient.DEFAULT_CLIENT_ID;
-        }
-        if (this.hasReceivedRemoteSDPByClientId[clientId]) {
+        const clientIdKey = !clientId ? SignalingClient.DEFAULT_CLIENT_ID : clientId;
+        if (this.hasReceivedRemoteSDPByClientId[clientIdKey]) {
             this.emit('iceCandidate', iceCandidate, clientId);
         } else {
-            if (!this.pendingIceCandidatesByClientId[clientId]) {
-                this.pendingIceCandidatesByClientId[clientId] = [];
+            if (!this.pendingIceCandidatesByClientId[clientIdKey]) {
+                this.pendingIceCandidatesByClientId[clientIdKey] = [];
             }
-            this.pendingIceCandidatesByClientId[clientId].push(iceCandidate);
+            this.pendingIceCandidatesByClientId[clientIdKey].push(iceCandidate);
         }
     }
 
@@ -290,8 +303,8 @@ export class SignalingClient extends EventEmitter {
     /**
      * 'error' event handler. Forwards the error onto listeners.
      */
-    private onError(): void {
-        this.emit('error');
+    private onError(error: Error | Event): void {
+        this.emit('error', error);
     }
 
     /**
