@@ -5,5 +5,12 @@ node_js:
     - 12
 script:
     - npm run release
+deploy:
+    provider: npm
+    email: "$NPM_EMAIL"
+    api_key: "$NPM_API_TOKEN"
+    skip_cleanup: true,
+    on:
+        tags: true
 after_success:
     - codecov
