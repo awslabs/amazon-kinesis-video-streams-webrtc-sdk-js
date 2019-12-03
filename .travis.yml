@@ -17,11 +17,12 @@ deploy:
       node_js: 12
   - provider: pages
     edge: true
+    local_dir: dist
     keep_history: false
     token: $GITHUB_TOKEN
     target_branch: gh-pages
     on:
-      branch: master
+      tags: true
       node_js: 12
 after_success:
   - codecov
