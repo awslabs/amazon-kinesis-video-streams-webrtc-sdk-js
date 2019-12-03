@@ -1,6 +1,8 @@
+process.env.PACKAGE_VERSION = 'test.test.test';
+
 module.exports = {
-    preset: 'jest-puppeteer',
-    roots: ['<rootDir>/integ'],
+    collectCoverage: true,
+    roots: ['<rootDir>/src'],
     testMatch: ['**/*.spec.ts'],
     transform: {
         '^.+\\.ts$': 'ts-jest',

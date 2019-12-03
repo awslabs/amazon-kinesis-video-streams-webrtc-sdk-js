@@ -16,6 +16,7 @@ var SigV4RequestSigner = /** @class */ (function () {
      *
      * @param endpoint The WebSocket service endpoint including protocol, hostname, and path (if applicable).
      * @param queryParams Query parameters to include in the URL.
+     * @param date Date to use for request signing. Defaults to NOW.
      *
      * Implementation note: Query parameters should be in alphabetical order.
      *
@@ -26,13 +27,13 @@ var SigV4RequestSigner = /** @class */ (function () {
      * @see https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-query-string-auth.html
      * @see https://gist.github.com/prestomation/24b959e51250a8723b9a5a4f70dcae08
      */
-    SigV4RequestSigner.prototype.getSignedURL = function (endpoint, queryParams) {
+    SigV4RequestSigner.prototype.getSignedURL = function (endpoint, queryParams, date) {
+        if (date === void 0) { date = new Date(); }
         return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var date, datetimeString, dateString, protocol, urlProtocol, pathStartIndex, host, path, signedHeaders, method, credentialScope, canonicalQueryParams, canonicalQueryString, canonicalHeaders, canonicalHeadersString, payloadHash, canonicalRequest, canonicalRequestHash, stringToSign, signingKey, signature, _a, _b, signedQueryParams;
+            var datetimeString, dateString, protocol, urlProtocol, pathStartIndex, host, path, signedHeaders, method, credentialScope, canonicalQueryParams, canonicalQueryString, canonicalHeaders, canonicalHeadersString, payloadHash, canonicalRequest, canonicalRequestHash, stringToSign, signingKey, signature, _a, _b, signedQueryParams;
             return tslib_1.__generator(this, function (_c) {
                 switch (_c.label) {
                     case 0:
-                        date = new Date();
                         datetimeString = SigV4RequestSigner.getDateTimeString(date);
                         dateString = SigV4RequestSigner.getDateString(date);
                         protocol = 'wss';
@@ -162,7 +163,7 @@ var SigV4RequestSigner = /** @class */ (function () {
             var hashBuffer;
             return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
-                    case 0: return [4 /*yield*/, crypto.subtle.digest('SHA-256', this.toUint8Array(message))];
+                    case 0: return [4 /*yield*/, crypto.subtle.digest({ name: 'SHA-256' }, this.toUint8Array(message))];
                     case 1:
                         hashBuffer = _a.sent();
                         return [2 /*return*/, this.toHex(hashBuffer)];
@@ -177,7 +178,7 @@ var SigV4RequestSigner = /** @class */ (function () {
                 switch (_a.label) {
                     case 0:
                         keyBuffer = typeof key === 'string' ? this.toUint8Array(key).buffer : key;
-                        messageBuffer = typeof message === 'string' ? this.toUint8Array(message).buffer : message;
+                        messageBuffer = this.toUint8Array(message).buffer;
                         return [4 /*yield*/, crypto.subtle.importKey('raw', keyBuffer, {
                                 name: 'HMAC',
                                 hash: {

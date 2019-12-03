@@ -14,6 +14,7 @@ export declare class SigV4RequestSigner implements RequestSigner {
      *
      * @param endpoint The WebSocket service endpoint including protocol, hostname, and path (if applicable).
      * @param queryParams Query parameters to include in the URL.
+     * @param date Date to use for request signing. Defaults to NOW.
      *
      * Implementation note: Query parameters should be in alphabetical order.
      *
@@ -24,7 +25,7 @@ export declare class SigV4RequestSigner implements RequestSigner {
      * @see https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-query-string-auth.html
      * @see https://gist.github.com/prestomation/24b959e51250a8723b9a5a4f70dcae08
      */
-    getSignedURL(endpoint: string, queryParams: QueryParams): Promise<string>;
+    getSignedURL(endpoint: string, queryParams: QueryParams, date?: Date): Promise<string>;
     /**
      * Utility method for generating the key to use for calculating the signature. This combines together the date string, region, service name, and secret
      * access key.

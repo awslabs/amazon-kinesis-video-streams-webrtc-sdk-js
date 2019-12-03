@@ -4,6 +4,7 @@
 [![NPM downloads](https://img.shields.io/npm/dm/amazon-kinesis-video-streams-webrtc.svg)](https://www.npmjs.com/package/amazon-kinesis-video-streams-webrtc)
 
 [![Build Status](https://travis-ci.org/awslabs/amazon-kinesis-video-streams-webrtc-sdk-js.svg?branch=master)](https://travis-ci.org/awslabs/amazon-kinesis-video-streams-webrtc-sdk-js)
+[![Coverage Status](https://codecov.io/gh/awslabs/amazon-kinesis-video-streams-webrtc-sdk-js/branch/master/graph/badge.svg)](https://codecov.io/gh/awslabs/amazon-kinesis-video-streams-webrtc-sdk-js)
 
 ## Running WebRTC Test Page
 NodeJS version 8+ is required.

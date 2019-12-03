@@ -23,6 +23,7 @@ export class SigV4RequestSigner implements RequestSigner {
      *
      * @param endpoint The WebSocket service endpoint including protocol, hostname, and path (if applicable).
      * @param queryParams Query parameters to include in the URL.
+     * @param date Date to use for request signing. Defaults to NOW.
      *
      * Implementation note: Query parameters should be in alphabetical order.
      *
@@ -33,9 +34,8 @@ export class SigV4RequestSigner implements RequestSigner {
      * @see https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-query-string-auth.html
      * @see https://gist.github.com/prestomation/24b959e51250a8723b9a5a4f70dcae08
      */
-    public async getSignedURL(endpoint: string, queryParams: QueryParams): Promise<string> {
+    public async getSignedURL(endpoint: string, queryParams: QueryParams, date: Date = new Date()): Promise<string> {
         // Prepare date strings
-        const date = new Date();
         const datetimeString = SigV4RequestSigner.getDateTimeString(date);
         const dateString = SigV4RequestSigner.getDateString(date);
 
@@ -159,13 +159,13 @@ export class SigV4RequestSigner implements RequestSigner {
     }
 
     private static async sha256(message: string): Promise<string> {
-        const hashBuffer = await crypto.subtle.digest('SHA-256', this.toUint8Array(message));
+        const hashBuffer = await crypto.subtle.digest({ name: 'SHA-256' }, this.toUint8Array(message));
         return this.toHex(hashBuffer);
     }
 
-    private static async hmac(key: string | ArrayBuffer, message: string | ArrayBuffer): Promise<ArrayBuffer> {
+    private static async hmac(key: string | ArrayBuffer, message: string): Promise<ArrayBuffer> {
         const keyBuffer = typeof key === 'string' ? this.toUint8Array(key).buffer : key;
-        const messageBuffer = typeof message === 'string' ? this.toUint8Array(message).buffer : message;
+        const messageBuffer = this.toUint8Array(message).buffer;
         const cryptoKey = await crypto.subtle.importKey(
             'raw',
             keyBuffer,

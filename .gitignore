@@ -7,6 +7,9 @@ node_modules/
 # Optional npm cache directory
 .npm
 
+# Code coverage
+coverage/
+
 # IDE
 .idea
 
