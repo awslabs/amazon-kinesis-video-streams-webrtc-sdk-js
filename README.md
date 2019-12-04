@@ -43,20 +43,200 @@ import { SignalingClient } from 'amazon-kinesis-video-streams-webrtc';
 ## Getting Started
 You can start by trying out the SDK with a webcam on the demo [WebRTC test page](https://awslabs.github.io/amazon-kinesis-video-streams-webrtc-sdk-js/examples/index.html).
 
-The first step in using the SDK in your own application is to follow the instructions above to install the SDK.
+It is also recommended to develop familiarity with the WebRTC protocols and KVS Signaling Channel APIs. See the following resources:
+* [KVS WebRTC Developer Guide](https://docs.aws.amazon.com/kinesisvideostreams-webrtc-dg/latest/devguide/what-is-kvswebrtc.html)
+* [KVS API Reference Guide](https://docs.aws.amazon.com/kinesisvideostreams/latest/dg/API_Operations.html)
 
-From there, refer to the example usage in the [`examples`](examples) directory for how to write an end-to-end WebRTC application that uses the SDK.
+The first step in using the SDK in your own application is to follow the [Installing](#installing) instructions above to install the SDK.
+
+From there, see the [Usage](#usage) section below for guidance on using the SDK to build a WebRTC application.
+Also refer to the [`examples`](examples) directory for examples on how to write an end-to-end WebRTC application that uses the SDK.
+
+## Usage
+This section demonstrates how to use this SDK along with the AWS SDK to build a web-based viewer application.
+Refer to the [`examples`](examples) directory for an example of a complete application including both a master and viewer role.
+
+#### Viewer Example With Audio/Video From Local Webcam
+These code snippets demonstrate how to build a viewer application that receives audio and video and also sends audio and video from a webcam back to the master.
+
+##### Set Up Variables
+```
+// DescribeSignalingChannel API can also be used to get the ARN from a channel name.
+const channelARN = 'arn:aws:kinesisvideo:us-west-2:123456789012:channel/test-channel/1234567890';
+
+// AWS Credentials
+const accessKeyId = 'ACCESS_KEY_ID_GOES_HERE';
+const secretAccessKey = 'SECRET_ACCESS_KEY_GOES_HERE';
+
+// <video> HTML elements to use to display the local webcam stream and remote stream from the master
+const localView = document.getElementsByTagName('video')[0];
+const remoteView = document.getElementsByTagName('video')[1];
+
+const region = 'us-west-2';
+const clientId = 'RANDOM_VALUE';
+```
+
+##### Create KVS Client
+```
+const kinesisVideoClient = new AWS.KinesisVideo({
+    region,
+    accessKeyId,
+    secretAccessKey,
+});
+```
+
+##### Get Signaling Channel Endpoints
+Each signaling channel is assigned an HTTPS and WSS endpoint to connect to for data-plane operations. These can be discovered using the `GetSignalingChannelEndpoint` API.
+```
+const getSignalingChannelEndpointResponse = await kinesisVideoClient
+    .getSignalingChannelEndpoint({
+        ChannelARN: channelARN,
+        SingleMasterChannelEndpointConfiguration: {
+            Protocols: ['WSS', 'HTTPS'],
+            Role: KVSWebRTC.Role.VIEWER,
+        },
+    })
+    .promise();
+const endpointsByProtocol = getSignalingChannelEndpointResponse.ResourceEndpointList.reduce((endpoints, endpoint) => {
+    endpoints[endpoint.Protocol] = endpoint.ResourceEndpoint;
+    return endpoints;
+}, {});
+```
+
+##### Create KVS Signaling Client
+The HTTPS endpoint from the `GetSignalingChannelEndpoint` response is used with this client. This client is just used for getting ICE servers, not for actual signaling.
+```
+const kinesisVideoSignalingClient = new AWS.KinesisVideoSignaling({
+    region,
+    accessKeyId,
+    secretAccessKey,
+    endpoint: endpointsByProtocol.HTTPS,
+});
+```
+
+##### Get ICE server configuration
+For best performance, we collect STUN and TURN ICE server configurations. The KVS STUN endpoint is always `stun:stun.kinesisvideo.${region}.amazonaws.com:443`.
+To get TURN servers, the `GetIceServerConfig` API is used.
+```
+const getIceServerConfigResponse = await kinesisVideoSignalingClient
+    .getIceServerConfig({
+        ChannelARN: channelARN,
+    })
+    .promise();
+const iceServers = [
+    { urls: `stun:stun.kinesisvideo.${region}.amazonaws.com:443` }
+];
+getIceServerConfigResponse.IceServerList.forEach(iceServer =>
+    iceServers.push({
+        urls: iceServer.Uris,
+        username: iceServer.Username,
+        credential: iceServer.Password,
+    }),
+);
+```
+
+##### Create RTCPeerConnection
+The [RTCPeerConnection](https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection) is the primary interface for WebRTC communications in the Web.
+```
+const peerConnection = new RTCPeerConnection({ iceServers });
+```
+
+##### Create WebRTC Signaling Client
+This is the actual client that is used to send messages over the signaling channel.
+```
+signalingClient = new KVSWebRTC.SignalingClient({
+    channelARN,
+    channelEndpoint: endpointsByProtocol.WSS,
+    clientId,
+    role: KVSWebRTC.Role.VIEWER,
+    region,
+    credentials: {
+        accessKeyId,
+        secretAccessKey,
+    },
+});
+```
+##### Add Signaling Client Event Listeners
+```
+// Once the signaling channel connection is open, connect to the webcam and create an offer to send to the master
+signalingClient.on('open', async () => {
+    // Get a stream from the webcam, add it to the peer connection, and display it in the local view
+    try {
+        const localStream = await navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+            audio: true,
+        });
+        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+        localView.srcObject = localStream;
+    } catch (e) {
+        // Could not find webcam
+        return;
+    }
+
+    // Create an SDP offer and send it to the master
+    const offer = await viewer.peerConnection.createOffer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: true,
+    });
+    await peerConnection.setLocalDescription(offer);
+    signalingClient.sendSdpOffer(viewer.peerConnection.localDescription);
+});
+
+// When the SDP answer is received back from the master, add it to the peer connection.
+signalingClient.on('sdpAnswer', async answer => {
+    await peerConnection.setRemoteDescription(answer);
+});
+
+// When an ICE candidate is received from the master, add it to the peer connection.
+signalingClient.on('iceCandidate', candidate => {
+    peerConnection.addIceCandidate(candidate);
+});
+
+signalingClient.on('close', () => {
+    // Handle client closures
+});
+
+signalingClient.on('error', error => {
+    // Handle client errors
+});
+
+```
+
+##### Add Peer Connection Event Listeners
+```
+// Send any ICE candidates generated by the peer connection to the other peer
+peerConnection.addEventListener('icecandidate', ({ candidate }) => {
+    if (candidate) {
+        signalingClient.sendIceCandidate(candidate);
+    } else {
+        // No more ICE candidates will be generated
+    }
+});
+
+// As remote tracks are received, add them to the remote view
+peerConnection.addEventListener('track', event => {
+    if (remoteView.srcObject) {
+        return;
+    }
+    remoteView.srcObject = event.streams[0];
+});
+```
+
+##### Open Signaling Connection
+```
+signalingClient.open();
+```
 
 ## Documentation
 This section outlines all of the classes, events, methods, and configuration options for the SDK.
 
 ### Class: `SignalingClient`
-This class is the main class for interfacing with the KVS signaling service. It extends the `EventEmitter`.
+This class is the main class for interfacing with the KVS signaling service. It extends `EventEmitter`.
 
 #### Constructor: `new SignalingClient(config)`
 * `config` {object}
   * `role` {Role} "MASTER" or "VIEWER".
-  * `channelARN` {string} ARN of a channel that has exists in the AWS account.
+  * `channelARN` {string} ARN of a channel that exists in the AWS account.
   * `cahnnelEndpoint` {string} KVS Signaling Service endpoint. Should be the "WSS" endpoint from calling the `GetSignalingChannel` API.
   * `region` {string} AWS region that the channel exists in.
   * `clientId` {string} Identifier to uniquely identify this client when connecting to the KVS Signaling Service. Required if the `role` is "VIEWER". A value should not be provided if the `role` is "MASTER".
