@@ -16,7 +16,7 @@ export interface Credentials {
     sessionToken?: string;
 }
 
-export interface WebSocketClientConfig {
+export interface SignalingClientConfig {
     channelARN: string;
     channelEndpoint: string;
     credentials?: Credentials;
@@ -51,20 +51,20 @@ export class SignalingClient extends EventEmitter {
     private websocket: WebSocket = null;
     private creatingWebSocket = false;
     private readonly requestSigner: RequestSigner;
-    private readonly config: WebSocketClientConfig;
+    private readonly config: SignalingClientConfig;
     private readonly pendingIceCandidatesByClientId: { [clientId: string]: object[] } = {};
     private readonly hasReceivedRemoteSDPByClientId: { [clientId: string]: boolean } = {};
 
     /**
      * Creates a new SignalingClient. The connection with the signaling service must be opened with the 'open' method.
-     * @param {WebSocketClientConfig} config - Configuration options and parameters.
+     * @param {SignalingClientConfig} config - Configuration options and parameters.
      * is not provided, it will be loaded from the global scope.
      */
-    public constructor(config: WebSocketClientConfig) {
+    public constructor(config: SignalingClientConfig) {
         super();
 
         // Validate config
-        validateValueNonNil(config, 'WebSocketClientConfig');
+        validateValueNonNil(config, 'SignalingClientConfig');
         validateValueNonNil(config.role, 'role');
         if (config.role === Role.VIEWER) {
             validateValueNonNil(config.clientId, 'clientId');
@@ -75,7 +75,7 @@ export class SignalingClient extends EventEmitter {
         validateValueNonNil(config.region, 'region');
         validateValueNonNil(config.channelEndpoint, 'channelEndpoint');
 
-        this.config = config;
+        this.config = { ...config }; // Copy config to new object for immutability.
 
         if (config.requestSigner) {
             this.requestSigner = config.requestSigner;
@@ -83,6 +83,7 @@ export class SignalingClient extends EventEmitter {
             validateValueNonNil(config.credentials, 'credentials');
             validateValueNonNil(config.credentials.accessKeyId, 'credentials.accessKeyId');
             validateValueNonNil(config.credentials.secretAccessKey, 'credentials.secretAccessKey');
+            this.config.credentials = { ...config.credentials }; // Copy credentials to new object for immutability.
             this.requestSigner = new SigV4RequestSigner(config.region, config.credentials);
         }
 
