@@ -22,7 +22,7 @@ To use the SDK in the browser, simply add the following script tag to your HTML 
 
 The SDK classes are made available in the global window under the `KVSWebRTC` namespace. For example, `window.KVSWebRTC.SignalingClient`.
 
-The SDK is also compatible with bundlers like Webpack. Follow the instructions in the next section to install the NodeJS module version.
+The SDK is also compatible with bundlers like Webpack. Follow the instructions in the next section to install the NodeJS module version for use with your bundler.
 
 #### In NodeJS
 The preferred way to install the SDK for NodeJS is to use the npm package manager. Simply type the following into a terminal window:
@@ -123,6 +123,14 @@ Closes the active connection to the signaling service. Nothing will happen if th
 An enum with the following values:
 * `MASTER`
 * `VIEWER`
+
+## Compatibility
+
+The SDK is supported in the following browsers / environments:
+
+| Chrome | Edge | Firefox | IE  | Safari | Android Webview | Android Chrome | iOS Safari | NodeJS |
+| ------ | ---- | ------- | --- | ------ | --------------- | -------------- | ---------- | ------ |
+| 52     | 12   | 36      | No  | 11     | 53              | 52             | 11         | 8      |
 
 ## Development
 
