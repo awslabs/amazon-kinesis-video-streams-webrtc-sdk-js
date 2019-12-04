@@ -108,9 +108,7 @@ export class SignalingClient extends EventEmitter {
         this.asyncOpen()
             .then()
             .catch(err => this.onError(err))
-            .finally(() => {
-                this.creatingWebSocket = false;
-            });
+            .then(() => (this.creatingWebSocket = false));
     }
 
     /**
