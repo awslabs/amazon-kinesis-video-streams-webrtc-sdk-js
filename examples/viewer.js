@@ -41,7 +41,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
     }, {});
     console.log('[VIEWER] Endpoints: ', endpointsByProtocol);
 
-    const kinesisVideoSignalingClient = new AWS.KinesisVideoSignaling({
+    const kinesisVideoSignalingChannelsClient = new AWS.KinesisVideoSignalingChannels({
         region: formValues.region,
         accessKeyId: formValues.accessKeyId,
         secretAccessKey: formValues.secretAccessKey,
@@ -50,7 +50,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
     });
 
     // Get ICE server configuration
-    const getIceServerConfigResponse = await kinesisVideoSignalingClient
+    const getIceServerConfigResponse = await kinesisVideoSignalingChannelsClient
         .getIceServerConfig({
             ChannelARN: channelARN,
         })

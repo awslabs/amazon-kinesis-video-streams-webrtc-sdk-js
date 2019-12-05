@@ -62,14 +62,14 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
     });
 
     // Get ICE server configuration
-    const kinesisVideoSignalingClient = new AWS.KinesisVideoSignaling({
+    const kinesisVideoSignalingChannelsClient = new AWS.KinesisVideoSignalingChannels({
         region: formValues.region,
         accessKeyId: formValues.accessKeyId,
         secretAccessKey: formValues.secretAccessKey,
         sessionToken: formValues.sessionToken,
         endpoint: endpointsByProtocol.HTTPS,
     });
-    const getIceServerConfigResponse = await kinesisVideoSignalingClient
+    const getIceServerConfigResponse = await kinesisVideoSignalingChannelsClient
         .getIceServerConfig({
             ChannelARN: channelARN,
         })

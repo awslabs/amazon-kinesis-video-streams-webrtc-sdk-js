@@ -10,7 +10,7 @@
 [![Coverage Status](https://codecov.io/gh/awslabs/amazon-kinesis-video-streams-webrtc-sdk-js/branch/master/graph/badge.svg)](https://codecov.io/gh/awslabs/amazon-kinesis-video-streams-webrtc-sdk-js)
 [![Known Vulnerabilities](https://img.shields.io/snyk/vulnerabilities/npm/amazon-kinesis-video-streams-webrtc?style=flat-square)](https://snyk.io/test/github/awslabs/amazon-kinesis-video-streams-webrtc-sdk-js?targetFile=package.json)
 
-This SDK is intended to be used along side the [AWS SDK for JS](https://github.com/aws/aws-sdk-js) to interface with the Amazon Kinesis Video Streams Signaling Service for WebRTC streaming.
+This SDK is intended to be used along side the [AWS SDK for JS](https://github.com/aws/aws-sdk-js) (version 2.585.0+) to interface with the Amazon Kinesis Video Streams Signaling Service for WebRTC streaming.
 
 ## Installing
 #### In the Browser
@@ -41,7 +41,7 @@ import { SignalingClient } from 'amazon-kinesis-video-streams-webrtc';
 ```
 
 ## Getting Started
-You can start by trying out the SDK with a webcam on the demo [WebRTC test page](https://awslabs.github.io/amazon-kinesis-video-streams-webrtc-sdk-js/examples/index.html).
+You can start by trying out the SDK with a webcam on the example [WebRTC test page](https://awslabs.github.io/amazon-kinesis-video-streams-webrtc-sdk-js/examples/index.html).
 
 It is also recommended to develop familiarity with the WebRTC protocols and KVS Signaling Channel APIs. See the following resources:
 * [KVS WebRTC Developer Guide](https://docs.aws.amazon.com/kinesisvideostreams-webrtc-dg/latest/devguide/what-is-kvswebrtc.html)
@@ -53,7 +53,7 @@ From there, see the [Usage](#usage) section below for guidance on using the SDK 
 Also refer to the [`examples`](examples) directory for examples on how to write an end-to-end WebRTC application that uses the SDK.
 
 ## Usage
-This section demonstrates how to use this SDK along with the AWS SDK to build a web-based viewer application.
+This section demonstrates how to use this SDK along with the [AWS SDK for JS](https://github.com/aws/aws-sdk-js) (version 2.585.0+) to build a web-based viewer application.
 Refer to the [`examples`](examples) directory for an example of a complete application including both a master and viewer role.
 
 #### Viewer Example With Audio/Video From Local Webcam
@@ -106,7 +106,7 @@ const endpointsByProtocol = getSignalingChannelEndpointResponse.ResourceEndpoint
 ##### Create KVS Signaling Client
 The HTTPS endpoint from the `GetSignalingChannelEndpoint` response is used with this client. This client is just used for getting ICE servers, not for actual signaling.
 ```
-const kinesisVideoSignalingClient = new AWS.KinesisVideoSignaling({
+const kinesisVideoSignalingChannelsClient = new AWS.KinesisVideoSignalingChannels({
     region,
     accessKeyId,
     secretAccessKey,
@@ -118,7 +118,7 @@ const kinesisVideoSignalingClient = new AWS.KinesisVideoSignaling({
 For best performance, we collect STUN and TURN ICE server configurations. The KVS STUN endpoint is always `stun:stun.kinesisvideo.${region}.amazonaws.com:443`.
 To get TURN servers, the `GetIceServerConfig` API is used.
 ```
-const getIceServerConfigResponse = await kinesisVideoSignalingClient
+const getIceServerConfigResponse = await kinesisVideoSignalingChannelsClient
     .getIceServerConfig({
         ChannelARN: channelARN,
     })
