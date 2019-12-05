@@ -32,6 +32,13 @@ enum MessageType {
     ICE_CANDIDATE = 'ICE_CANDIDATE',
 }
 
+enum ReadyState {
+    CONNECTING,
+    OPEN,
+    CLOSING,
+    CLOSED,
+}
+
 interface WebSocketMessage {
     messageType: MessageType;
     messagePayload: string;
@@ -49,7 +56,7 @@ export class SignalingClient extends EventEmitter {
     private static DEFAULT_CLIENT_ID = 'MASTER';
 
     private websocket: WebSocket = null;
-    private creatingWebSocket = false;
+    private readyState = ReadyState.CLOSED;
     private readonly requestSigner: RequestSigner;
     private readonly config: SignalingClientConfig;
     private readonly pendingIceCandidatesByClientId: { [clientId: string]: object[] } = {};
@@ -98,17 +105,16 @@ export class SignalingClient extends EventEmitter {
      * Opens the connection with the signaling service. Listen to the 'open' event to be notified when the connection has been opened.
      */
     public open(): void {
-        if (this.websocket !== null || this.creatingWebSocket) {
-            throw new Error('Client is already open or opening');
+        if (this.readyState !== ReadyState.CLOSED) {
+            throw new Error('Client is already open, opening, or closing');
         }
-        this.creatingWebSocket = true;
+        this.readyState = ReadyState.CONNECTING;
 
         // The process of opening the connection is asynchronous via promises, but the interaction model is to handle asynchronous actions via events.
         // Therefore, we just kick off the asynchronous process and then return and let it fire events.
         this.asyncOpen()
             .then()
-            .catch(err => this.onError(err))
-            .then(() => (this.creatingWebSocket = false));
+            .catch(err => this.onError(err));
     }
 
     /**
@@ -122,6 +128,12 @@ export class SignalingClient extends EventEmitter {
             queryParams['X-Amz-ClientId'] = this.config.clientId;
         }
         const signedURL = await this.requestSigner.getSignedURL(this.config.channelEndpoint, queryParams);
+
+        // If something caused the state to change from CONNECTING, then don't create the WebSocket instance.
+        if (this.readyState !== ReadyState.CONNECTING) {
+            return;
+        }
+
         this.websocket = new WebSocket(signedURL);
 
         this.websocket.addEventListener('open', this.onOpen);
@@ -135,11 +147,11 @@ export class SignalingClient extends EventEmitter {
      * connection has been closed.
      */
     public close(): void {
-        if (this.websocket === null) {
-            return;
-        }
-        if (this.websocket.readyState !== WebSocket.CLOSING && this.websocket.readyState !== WebSocket.CLOSED) {
+        if (this.websocket !== null) {
+            this.readyState = ReadyState.CLOSING;
             this.websocket.close();
+        } else if (this.readyState !== ReadyState.CLOSED) {
+            this.onClose();
         }
     }
 
@@ -181,7 +193,7 @@ export class SignalingClient extends EventEmitter {
      * and sends the message to the signaling service.
      */
     private sendMessage(action: MessageType, messagePayload: object, recipientClientId?: string): void {
-        if (this.websocket === null || this.websocket.readyState !== WebSocket.OPEN) {
+        if (this.readyState !== ReadyState.OPEN) {
             throw new Error('Could not send message because the connection to the signaling service is not open.');
         }
         this.validateRecipientClientId(recipientClientId);
@@ -213,6 +225,7 @@ export class SignalingClient extends EventEmitter {
      * WebSocket 'open' event handler. Forwards the event on to listeners.
      */
     private onOpen(): void {
+        this.readyState = ReadyState.OPEN;
         this.emit('open');
     }
 
@@ -220,23 +233,29 @@ export class SignalingClient extends EventEmitter {
      * WebSocket 'message' event handler. Attempts to parse the message and handle it according to the message type.
      */
     private onMessage(event: MessageEvent): void {
+        let parsedEventData: WebSocketMessage;
+        let parsedMessagePayload: object;
         try {
-            const { messageType, messagePayload, senderClientId } = JSON.parse(event.data) as WebSocketMessage;
-            switch (messageType) {
-                case MessageType.SDP_OFFER:
-                    this.emit('sdpOffer', SignalingClient.parseJSONObjectFromBase64String(messagePayload), senderClientId);
-                    this.emitPendingIceCandidates(senderClientId);
-                    return;
-                case MessageType.SDP_ANSWER:
-                    this.emit('sdpAnswer', SignalingClient.parseJSONObjectFromBase64String(messagePayload), senderClientId);
-                    this.emitPendingIceCandidates(senderClientId);
-                    return;
-                case MessageType.ICE_CANDIDATE:
-                    this.emitOrQueueIceCandidate(SignalingClient.parseJSONObjectFromBase64String(messagePayload), senderClientId);
-                    return;
-            }
+            parsedEventData = JSON.parse(event.data) as WebSocketMessage;
+            parsedMessagePayload = SignalingClient.parseJSONObjectFromBase64String(parsedEventData.messagePayload);
         } catch (e) {
-            console.error(e); // TODO: Improve error handling
+            // For forwards compatibility we ignore messages that are not able to be parsed.
+            // TODO: Consider how to make it easier for users to be aware of dropped messages.
+            return;
+        }
+        const { messageType, senderClientId } = parsedEventData;
+        switch (messageType) {
+            case MessageType.SDP_OFFER:
+                this.emit('sdpOffer', parsedMessagePayload, senderClientId);
+                this.emitPendingIceCandidates(senderClientId);
+                return;
+            case MessageType.SDP_ANSWER:
+                this.emit('sdpAnswer', parsedMessagePayload, senderClientId);
+                this.emitPendingIceCandidates(senderClientId);
+                return;
+            case MessageType.ICE_CANDIDATE:
+                this.emitOrQueueIceCandidate(parsedMessagePayload, senderClientId);
+                return;
         }
     }
 
@@ -259,7 +278,7 @@ export class SignalingClient extends EventEmitter {
      * an SDP offer or answer is received.
      */
     private emitOrQueueIceCandidate(iceCandidate: object, clientId?: string): void {
-        const clientIdKey = !clientId ? SignalingClient.DEFAULT_CLIENT_ID : clientId;
+        const clientIdKey = clientId || SignalingClient.DEFAULT_CLIENT_ID;
         if (this.hasReceivedRemoteSDPByClientId[clientIdKey]) {
             this.emit('iceCandidate', iceCandidate, clientId);
         } else {
@@ -274,15 +293,13 @@ export class SignalingClient extends EventEmitter {
      * Emits any pending ICE candidates for the given client and records that an SDP offer or answer has been received from the client.
      */
     private emitPendingIceCandidates(clientId?: string): void {
-        if (!clientId) {
-            clientId = SignalingClient.DEFAULT_CLIENT_ID;
-        }
-        this.hasReceivedRemoteSDPByClientId[clientId] = true;
-        const pendingIceCandidates = this.pendingIceCandidatesByClientId[clientId];
+        const clientIdKey = clientId || SignalingClient.DEFAULT_CLIENT_ID;
+        this.hasReceivedRemoteSDPByClientId[clientIdKey] = true;
+        const pendingIceCandidates = this.pendingIceCandidatesByClientId[clientIdKey];
         if (!pendingIceCandidates) {
             return;
         }
-        delete this.pendingIceCandidatesByClientId[clientId];
+        delete this.pendingIceCandidatesByClientId[clientIdKey];
         pendingIceCandidates.forEach(iceCandidate => {
             this.emit('iceCandidate', iceCandidate, clientId);
         });
@@ -310,6 +327,7 @@ export class SignalingClient extends EventEmitter {
      * 'close' event handler. Forwards the error onto listeners and cleans up the connection.
      */
     private onClose(): void {
+        this.readyState = ReadyState.CLOSED;
         this.cleanupWebSocket();
         this.emit('close');
     }
