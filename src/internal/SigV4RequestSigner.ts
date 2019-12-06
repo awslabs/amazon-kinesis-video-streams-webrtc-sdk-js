@@ -181,8 +181,17 @@ export class SigV4RequestSigner implements RequestSigner {
         return await crypto.subtle.sign('HMAC', cryptoKey, messageBuffer);
     }
 
+    /**
+     * Note that this implementation does not work with two-byte characters.
+     * However, no inputs into a signed signaling service request should have two-byte characters.
+     */
     private static toUint8Array(input: string): Uint8Array {
-        return new TextEncoder().encode(input);
+        const buf = new ArrayBuffer(input.length);
+        const bufView = new Uint8Array(buf);
+        for (let i = 0, strLen = input.length; i < strLen; i++) {
+            bufView[i] = input.charCodeAt(i);
+        }
+        return bufView;
     }
 
     private static toHex(buffer: ArrayBuffer): string {
