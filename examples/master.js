@@ -100,16 +100,16 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
         audio: formValues.sendAudio,
     };
 
+    // Get a stream from the webcam and display it in the local view
+    try {
+        master.localStream = await navigator.mediaDevices.getUserMedia(constraints);
+        localView.srcObject = master.localStream;
+    } catch (e) {
+        console.error('[MASTER] Could not find webcam');
+    }
+
     master.signalingClient.on('open', async () => {
         console.log('[MASTER] Connected to signaling service');
-
-        // Get a stream from the webcam and display it in the local view
-        try {
-            master.localStream = await navigator.mediaDevices.getUserMedia(constraints);
-            localView.srcObject = master.localStream;
-        } catch (e) {
-            console.error('[MASTER] Could not find webcam');
-        }
     });
 
     master.signalingClient.on('sdpOffer', async (offer, remoteClientId) => {
