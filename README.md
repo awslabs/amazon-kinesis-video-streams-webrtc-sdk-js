@@ -17,7 +17,7 @@ This SDK is intended to be used along side the [AWS SDK for JS](https://github.c
 To use the SDK in the browser, simply add the following script tag to your HTML pages:
 
 ```
-<srcipt src="https://unpkg.com/amazon-kinesis-video-streams-webrtc/dist/kvs-webrtc.min.js"></script>
+<script src="https://unpkg.com/amazon-kinesis-video-streams-webrtc/dist/kvs-webrtc.min.js"></script>
 ```
 
 The SDK classes are made available in the global window under the `KVSWebRTC` namespace. For example, `window.KVSWebRTC.SignalingClient`.
