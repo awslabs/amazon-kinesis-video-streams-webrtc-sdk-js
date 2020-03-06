@@ -237,7 +237,7 @@ This class is the main class for interfacing with the KVS signaling service. It 
 * `config` {object}
   * `role` {Role} "MASTER" or "VIEWER".
   * `channelARN` {string} ARN of a channel that exists in the AWS account.
-  * `cahnnelEndpoint` {string} KVS Signaling Service endpoint. Should be the "WSS" endpoint from calling the `GetSignalingChannel` API.
+  * `channelEndpoint` {string} KVS Signaling Service endpoint. Should be the "WSS" endpoint from calling the `GetSignalingChannel` API.
   * `region` {string} AWS region that the channel exists in.
   * `clientId` {string} Identifier to uniquely identify this client when connecting to the KVS Signaling Service. Required if the `role` is "VIEWER". A value should not be provided if the `role` is "MASTER".
   * `credentials` {object}
