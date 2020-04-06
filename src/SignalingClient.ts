@@ -10,10 +10,15 @@ export interface RequestSigner {
     getSignedURL: (signalingEndpoint: string, queryParams: QueryParams) => Promise<string>;
 }
 
+/**
+ * A partial copy of the credentials from the AWS SDK for JS: https://github.com/aws/aws-sdk-js/blob/master/lib/credentials.d.ts
+ * The interface is copied here so that a dependency on the AWS SDK for JS is not needed.
+ */
 export interface Credentials {
     accessKeyId: string;
     secretAccessKey: string;
     sessionToken?: string;
+    getPromise?(): Promise<void>;
 }
 
 export interface SignalingClientConfig {
@@ -88,9 +93,6 @@ export class SignalingClient extends EventEmitter {
             this.requestSigner = config.requestSigner;
         } else {
             validateValueNonNil(config.credentials, 'credentials');
-            validateValueNonNil(config.credentials.accessKeyId, 'credentials.accessKeyId');
-            validateValueNonNil(config.credentials.secretAccessKey, 'credentials.secretAccessKey');
-            this.config.credentials = { ...config.credentials }; // Copy credentials to new object for immutability.
             this.requestSigner = new SigV4RequestSigner(config.region, config.credentials);
         }
 
