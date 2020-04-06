@@ -76,6 +76,8 @@ const region = 'us-west-2';
 const clientId = 'RANDOM_VALUE';
 ```
 
+See [Managing Credentials](#Managing-Credentials) for more information about managing credentials in a web environment.
+
 ##### Create KVS Client
 ```
 const kinesisVideoClient = new AWS.KinesisVideo({
@@ -240,11 +242,11 @@ This class is the main class for interfacing with the KVS signaling service. It 
   * `channelEndpoint` {string} KVS Signaling Service endpoint. Should be the "WSS" endpoint from calling the `GetSignalingChannel` API.
   * `region` {string} AWS region that the channel exists in.
   * `clientId` {string} Identifier to uniquely identify this client when connecting to the KVS Signaling Service. Required if the `role` is "VIEWER". A value should not be provided if the `role` is "MASTER".
-  * `credentials` {object}
+  * `credentials` {object} Must be provided unless a `requestSigner` is provided. See [Managing Credentials](#Managing-Credentials).
     * `accessKeyId` {string} AWS access key id.
     * `secretAccessKey` {string} AWS secret access key.
     * `sessionToken` {string} Optional. AWS session token.
-  * `requestSigner` {function (signalingEndpoint: string, queryParams: object) => Promise<string>} Optional. A custom method for overriding the default SigV4 request signing.
+  * `requestSigner` {RequestSigner} Optional. A custom method for overriding the default SigV4 request signing.
 
 #### Event: `'open'`
 Emitted when the connection to the signaling service is open.
@@ -299,6 +301,37 @@ Closes the active connection to the signaling service. Nothing will happen if th
 * `iceCandidate` {[RTCIceCandidate](https://developer.mozilla.org/en-US/docs/Web/API/RTCIceCandidate)} ICE candidate to send to the recipient client.
 * `recipientClientId` {string} The id of the client to send the ICE candidate to. If no id is provided, it will be sent to the master.
 
+### Interface: `RequestSigner`
+Interface for signing HTTP and WebSocket requests.
+
+#### Method: `getSignedURL(endpoint, queryParams, [date]) => Promise<string>`
+* `endpoint` {string} The endpoint of the URL (including protocol, host, and path).
+* `queryParams` {object} The query parameters to include in the signed URL.
+* `data` {Date} The date that the signature is valid (+/- 5 minutes). Default: now.
+* `return` {Promise<string>} The signed URL.
+
+### Class: `SigV4RequestSigner`
+This class is used to SigV4 sign requests to the signaling service. It implements `RequestSigner`.
+
+This signer is unique from the signers included in the AWS SDK for JS because it supports signing WebSocket requests.
+
+This is a useful class to use in a NodeJS backend to sign requests and send them back to a client so that the client does not need
+to have AWS credentials.
+
+#### Constructor: `new SigV4RequestSigner(region, credentials, [service])`
+* `region` {string} The region used for signing.
+* `credentials` {Credentials} The credentials to used for signing.
+* `service` {string} The service name used for signing. Default: `kinesisvideo`.
+
+#### Method: `getSignedURL(endpoint, queryParams, [date]) => Promise<string>`
+Implementation of interface method.
+* Uses the SigV4 signing mechanism.
+* Supports credentials with and without a session token.
+* Only supports the `wss://` protocol.
+* Does not support specifying an expiration.
+
+If the signer's credentials support refreshing, they will be be refreshed if necessary before signing.
+
 ### Enum: `Role`
 An enum with the following values:
 * `MASTER`
@@ -311,6 +344,18 @@ The SDK is supported in the following browsers / environments:
 | Chrome | Edge | Firefox | IE  | Safari | Android Webview | Android Chrome | iOS Safari | NodeJS |
 | ------ | ---- | ------- | --- | ------ | --------------- | -------------- | ---------- | ------ |
 | 52     | 12   | 36      | No  | 11     | 53              | 52             | 11         | 8      |
+
+## Managing Credentials
+The `SignalingClient` requires a SigV4 signed URL in order to make requests to the KVS signaling service backend.
+The client can either be provided with AWS credentials (and then it will use those to sign requests) or it can be
+provided with a custom `RequestSigner` that can perform the request signing.
+
+There are several mechanisms that are recommended for managing AWS credentials in a web client, such as using Cognito or Federated Identities, that are explained
+in the [AWS SDK for JS documentation](https://docs.aws.amazon.com/sdk-for-javascript/v2/developer-guide/setting-credentials-browser.html).
+
+Alternatively, if you do not want any AWS credentials in the web client, you can provide a request signer that makes a call to your own backend
+that uses AWS credentials to create a signed request for the KVS WebRTC Signaling Service. With a NodeJS based backend, you can create signed requests using the `SigV4RequestSigner` class.
+Note that you will also have to get other data, such as the ICE server config, on the backend and send that to the client.
 
 ## Development
 

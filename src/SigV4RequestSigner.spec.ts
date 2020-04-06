@@ -1,7 +1,7 @@
 import crypto from '@trust/webcrypto';
 
-import { Credentials, QueryParams } from '../SignalingClient';
 import { SigV4RequestSigner } from './SigV4RequestSigner';
+import { Credentials, QueryParams } from './SignalingClient';
 
 describe('SigV4RequestSigner', () => {
     let region: string;

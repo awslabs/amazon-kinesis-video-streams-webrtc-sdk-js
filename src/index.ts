@@ -7,5 +7,6 @@ Amazon Web Services, Inc. (http://aws.amazon.com/).
 */
 export { Role } from './Role';
 export { SignalingClient } from './SignalingClient';
+export { SigV4RequestSigner } from './SigV4RequestSigner';
 
 export const VERSION = process.env.PACKAGE_VERSION;
