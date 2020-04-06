@@ -29,18 +29,35 @@ describe('SigV4RequestSigner', () => {
     });
 
     describe('getSignedURL', () => {
-        it('should fail fail when the endpoint is not a WSS endpoint', async () => {
+        it('should fail when the endpoint is not a WSS endpoint', async () => {
             await expect(signer.getSignedURL('https://kvs.awsamazon.com', queryParams, date)).rejects.toBeTruthy();
         });
 
-        it('should fail fail when the endpoint contains query params', async () => {
+        it('should fail when the endpoint contains query params', async () => {
             await expect(signer.getSignedURL('wss://kvs.awsamazon.com?a=b', queryParams, date)).rejects.toBeTruthy();
         });
 
-        it('should generate a valid signed URL', async () => {
-            await expect(signer.getSignedURL('wss://kvs.awsamazon.com', queryParams, date)).resolves.toBe(
-                'wss://kvs.awsamazon.com/?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIA4F7WJQR7FMMWMNXI%2F20191201%2Fus-west-2%2Fkinesisvideo%2Faws4_request&X-Amz-Date=20191201T000000Z&X-Amz-Expires=299&X-Amz-Security-Token=FakeSessionToken&X-Amz-Signature=fc268038be276315822b4f73eafd28ee3a5632a2a35fdb0a88db9a42b13d6c92&X-Amz-SignedHeaders=host&X-Amz-TestParam=test-param-value',
-            );
+        const expectedSignedURL =
+            'wss://kvs.awsamazon.com/?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIA4F7WJQR7FMMWMNXI%2F20191201%2Fus-west-2%2Fkinesisvideo%2Faws4_request&X-Amz-Date=20191201T000000Z&X-Amz-Expires=299&X-Amz-Security-Token=FakeSessionToken&X-Amz-Signature=fc268038be276315822b4f73eafd28ee3a5632a2a35fdb0a88db9a42b13d6c92&X-Amz-SignedHeaders=host&X-Amz-TestParam=test-param-value';
+        it('should generate a valid signed URL with static credentials', async () => {
+            await expect(signer.getSignedURL('wss://kvs.awsamazon.com', queryParams, date)).resolves.toBe(expectedSignedURL);
+        });
+
+        it('should generate a valid signed URL with dynamic credentials', async () => {
+            credentials = {
+                accessKeyId: null,
+                secretAccessKey: null,
+                getPromise(): Promise<void> {
+                    return new Promise<void>(resolve => {
+                        credentials.accessKeyId = 'AKIA4F7WJQR7FMMWMNXI';
+                        credentials.secretAccessKey = 'FakeSecretKey';
+                        credentials.sessionToken = 'FakeSessionToken';
+                        resolve();
+                    });
+                },
+            };
+            signer = new SigV4RequestSigner(region, credentials);
+            await expect(signer.getSignedURL('wss://kvs.awsamazon.com', queryParams, date)).resolves.toBe(expectedSignedURL);
         });
 
         it('should generate a valid signed URL without a session token', async () => {

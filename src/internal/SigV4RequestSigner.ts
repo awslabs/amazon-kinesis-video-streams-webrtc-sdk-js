@@ -1,4 +1,5 @@
 import { Credentials, QueryParams, RequestSigner } from '../SignalingClient';
+import { validateValueNonNil } from './utils';
 type Headers = { [header: string]: string };
 
 /**
@@ -35,6 +36,13 @@ export class SigV4RequestSigner implements RequestSigner {
      * @see https://gist.github.com/prestomation/24b959e51250a8723b9a5a4f70dcae08
      */
     public async getSignedURL(endpoint: string, queryParams: QueryParams, date: Date = new Date()): Promise<string> {
+        // Refresh credentials
+        if (typeof this.credentials.getPromise === 'function') {
+            await this.credentials.getPromise();
+        }
+        validateValueNonNil(this.credentials.accessKeyId, 'credentials.accessKeyId');
+        validateValueNonNil(this.credentials.secretAccessKey, 'credentials.secretAccessKey');
+
         // Prepare date strings
         const datetimeString = SigV4RequestSigner.getDateTimeString(date);
         const dateString = SigV4RequestSigner.getDateString(date);
