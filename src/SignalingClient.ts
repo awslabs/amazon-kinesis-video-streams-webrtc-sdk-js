@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 
 import { Role } from './Role';
-import { SigV4RequestSigner } from './internal/SigV4RequestSigner';
+import { SigV4RequestSigner } from './SigV4RequestSigner';
 import { validateValueNil, validateValueNonNil } from './internal/utils';
 
 export type QueryParams = { [queryParam: string]: string };
