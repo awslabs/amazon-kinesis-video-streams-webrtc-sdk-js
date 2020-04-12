@@ -27,7 +27,11 @@
     "tabSize": 4
   },
   "files": [
-    "src/index.ts"
+    "src/index.ts",
+    "src/Role.ts",
+    "src/SignalingClient.ts",
+    "src/SigV4RequestSigner.ts",
+    "src/internal/utils.ts"
   ],
   "include": [
     "src/typings/**/*"
