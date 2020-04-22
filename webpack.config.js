@@ -16,6 +16,9 @@ module.exports = {
         library: 'KVSWebRTC',
         libraryTarget: 'window',
     },
+    externals: {
+        'isomorphic-webcrypto': 'crypto',
+    },
     resolve: {
         extensions: ['.ts', '.js'],
     },
