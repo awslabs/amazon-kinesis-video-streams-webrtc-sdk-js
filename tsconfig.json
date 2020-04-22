@@ -20,7 +20,8 @@
     "noImplicitThis": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "removeComments": false
+    "removeComments": false,
+    "skipLibCheck": true
   },
   "formatCodeOptions": {
     "indentSize": 4,
@@ -31,5 +32,8 @@
   ],
   "include": [
     "src/typings/**/*"
+  ],
+  "exclude": [
+    "node_modules/isomorphic-webcrypto/index.d.ts"
   ]
 }

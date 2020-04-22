@@ -1,5 +1,8 @@
+import crypto from 'isomorphic-webcrypto';
+
 import { Credentials, QueryParams, RequestSigner } from './SignalingClient';
 import { validateValueNonNil } from './internal/utils';
+
 type Headers = { [header: string]: string };
 
 /**

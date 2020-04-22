@@ -1,5 +1,3 @@
-import crypto from '@trust/webcrypto';
-
 import { SigV4RequestSigner } from './SigV4RequestSigner';
 import { Credentials, QueryParams } from './SignalingClient';
 
@@ -9,10 +7,6 @@ describe('SigV4RequestSigner', () => {
     let signer: SigV4RequestSigner;
     let queryParams: QueryParams;
     let date: Date;
-
-    // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
-    // @ts-ignore
-    global.crypto = crypto;
 
     beforeEach(() => {
         region = 'us-west-2';
