@@ -1,5 +1,6 @@
+import { QueryParams } from './QueryParams';
 import { SigV4RequestSigner } from './SigV4RequestSigner';
-import { Credentials, QueryParams } from './SignalingClient';
+import { Credentials } from './SignalingClient';
 
 describe('SigV4RequestSigner', () => {
     let region: string;
