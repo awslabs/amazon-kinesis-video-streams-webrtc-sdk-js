@@ -84,6 +84,7 @@ const kinesisVideoClient = new AWS.KinesisVideo({
     region,
     accessKeyId,
     secretAccessKey,
+    correctClockSkew: true,
 });
 ```
 
@@ -113,6 +114,7 @@ const kinesisVideoSignalingChannelsClient = new AWS.KinesisVideoSignalingChannel
     accessKeyId,
     secretAccessKey,
     endpoint: endpointsByProtocol.HTTPS,
+    correctClockSkew: true,
 });
 ```
 
@@ -156,6 +158,7 @@ signalingClient = new KVSWebRTC.SignalingClient({
         accessKeyId,
         secretAccessKey,
     },
+    systemClockOffset: kinesisVideoClient.config.systemClockOffset,
 });
 ```
 ##### Add Signaling Client Event Listeners
@@ -247,6 +250,9 @@ This class is the main class for interfacing with the KVS signaling service. It 
     * `secretAccessKey` {string} AWS secret access key.
     * `sessionToken` {string} Optional. AWS session token.
   * `requestSigner` {RequestSigner} Optional. A custom method for overriding the default SigV4 request signing.
+  * `systemClockOffset` {number} Optional. Applies the given offset when setting the date in the SigV4 signature. 
+  See [systemClockOffset](https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/Config.html#systemClockOffset-property) and [correctClockSkew](https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/Config.html#correctClockSkew-property)
+  properties of the AWS SDK.
 
 #### Event: `'open'`
 Emitted when the connection to the signaling service is open.
