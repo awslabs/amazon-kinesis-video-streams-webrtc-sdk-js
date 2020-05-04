@@ -189,7 +189,7 @@ export class SigV4RequestSigner implements RequestSigner {
             false,
             ['sign'],
         );
-        return await crypto.subtle.sign('HMAC', cryptoKey, messageBuffer);
+        return await crypto.subtle.sign({ name: 'HMAC' }, cryptoKey, messageBuffer);
     }
 
     /**
