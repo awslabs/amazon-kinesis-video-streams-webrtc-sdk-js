@@ -1,14 +1,11 @@
 import { EventEmitter } from 'events';
 
+import { QueryParams } from './QueryParams';
+import { RequestSigner } from './RequestSigner';
 import { Role } from './Role';
 import { SigV4RequestSigner } from './SigV4RequestSigner';
+import DateProvider from './internal/DateProvider';
 import { validateValueNil, validateValueNonNil } from './internal/utils';
-
-export type QueryParams = { [queryParam: string]: string };
-
-export interface RequestSigner {
-    getSignedURL: (signalingEndpoint: string, queryParams: QueryParams) => Promise<string>;
-}
 
 /**
  * A partial copy of the credentials from the AWS SDK for JS: https://github.com/aws/aws-sdk-js/blob/master/lib/credentials.d.ts
@@ -29,6 +26,7 @@ export interface SignalingClientConfig {
     requestSigner?: RequestSigner;
     role: Role;
     clientId?: string;
+    systemClockOffset?: number;
 }
 
 enum MessageType {
@@ -66,6 +64,7 @@ export class SignalingClient extends EventEmitter {
     private readonly config: SignalingClientConfig;
     private readonly pendingIceCandidatesByClientId: { [clientId: string]: object[] } = {};
     private readonly hasReceivedRemoteSDPByClientId: { [clientId: string]: boolean } = {};
+    private readonly dateProvider: DateProvider;
 
     /**
      * Creates a new SignalingClient. The connection with the signaling service must be opened with the 'open' method.
@@ -95,6 +94,8 @@ export class SignalingClient extends EventEmitter {
             validateValueNonNil(config.credentials, 'credentials');
             this.requestSigner = new SigV4RequestSigner(config.region, config.credentials);
         }
+
+        this.dateProvider = new DateProvider(config.systemClockOffset || 0);
 
         // Bind event handlers
         this.onOpen = this.onOpen.bind(this);
@@ -129,7 +130,7 @@ export class SignalingClient extends EventEmitter {
         if (this.config.role === Role.VIEWER) {
             queryParams['X-Amz-ClientId'] = this.config.clientId;
         }
-        const signedURL = await this.requestSigner.getSignedURL(this.config.channelEndpoint, queryParams);
+        const signedURL = await this.requestSigner.getSignedURL(this.config.channelEndpoint, queryParams, this.dateProvider.getDate());
 
         // If something caused the state to change from CONNECTING, then don't create the WebSocket instance.
         if (this.readyState !== ReadyState.CONNECTING) {

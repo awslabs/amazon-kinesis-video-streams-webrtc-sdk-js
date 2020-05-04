@@ -14,6 +14,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
         secretAccessKey: formValues.secretAccessKey,
         sessionToken: formValues.sessionToken,
         endpoint: formValues.endpoint,
+        correctClockSkew: true,
     });
 
     // Get signaling channel ARN
@@ -47,6 +48,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
         secretAccessKey: formValues.secretAccessKey,
         sessionToken: formValues.sessionToken,
         endpoint: endpointsByProtocol.HTTPS,
+        correctClockSkew: true,
     });
 
     // Get ICE server configuration
@@ -82,6 +84,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
             secretAccessKey: formValues.secretAccessKey,
             sessionToken: formValues.sessionToken,
         },
+        systemClockOffset: kinesisVideoClient.config.systemClockOffset,
     });
 
     const resolution = formValues.widescreen ? { width: { ideal: 1280 }, height: { ideal: 720 } } : { width: { ideal: 640 }, height: { ideal: 480 } };

@@ -21,6 +21,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
         secretAccessKey: formValues.secretAccessKey,
         sessionToken: formValues.sessionToken,
         endpoint: formValues.endpoint,
+        correctClockSkew: true,
     });
 
     // Get signaling channel ARN
@@ -59,6 +60,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             secretAccessKey: formValues.secretAccessKey,
             sessionToken: formValues.sessionToken,
         },
+        systemClockOffset: kinesisVideoClient.config.systemClockOffset,
     });
 
     // Get ICE server configuration
@@ -68,6 +70,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
         secretAccessKey: formValues.secretAccessKey,
         sessionToken: formValues.sessionToken,
         endpoint: endpointsByProtocol.HTTPS,
+        correctClockSkew: true,
     });
     const getIceServerConfigResponse = await kinesisVideoSignalingChannelsClient
         .getIceServerConfig({
