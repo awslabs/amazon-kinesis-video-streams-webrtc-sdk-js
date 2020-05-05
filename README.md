@@ -363,6 +363,29 @@ Alternatively, if you do not want any AWS credentials in the web client, you can
 that uses AWS credentials to create a signed request for the KVS WebRTC Signaling Service. With a NodeJS based backend, you can create signed requests using the `SigV4RequestSigner` class.
 Note that you will also have to get other data, such as the ICE server config, on the backend and send that to the client.
 
+### IAM Permissions
+Regardless of the mechanism used to manage the credentials, the credentials will need to have permissions to perform KVS operations. The following is an example policy for a viewer of a particular channel:
+```
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "kvsViewerPolicy",
+      "Action": [
+        "kinesisvideo:ConnectAsViewer", // Use "kinesisvideo:ConnectAsMaster" for master policy instead.
+        "kinesisvideo:DescribeSignalingChannel",
+        "kinesisvideo:GetIceServerConfig",
+        "kinesisvideo:GetSignalingChannelEndpoint"
+      ],
+      "Effect": "Allow",
+      "Resource": "arn:aws:kinesisvideo:<region>:<account_ID>:channel/<channelName>/<creationTime>"
+    }
+  ]
+}
+```
+
+See [KVS WebRTC Access Control Documentation](https://docs.aws.amazon.com/kinesisvideostreams-webrtc-dg/latest/devguide/kvswebrtc-how-iam.html) for more information.
+
 ## Development
 
 #### Running WebRTC Test Page Locally
