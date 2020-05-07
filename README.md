@@ -345,6 +345,13 @@ The SDK is supported in the following browsers / environments:
 | ------ | ---- | ------- | --- | ------ | --------------- | -------------- | ---------- | ------ |
 | 52     | 12   | 36      | No  | 11     | 53              | 52             | 11         | 8      |
 
+To increase WebRTC API compatibility between different browsers, it's highly recommended to use [adapter.js](https://github.com/webrtcHacks/adapter).
+
+Following is a quote from [adapter.js docs](https://github.com/webrtcHacks/adapter):
+
+> adapter.js is a shim to insulate apps from spec changes and prefix differences in WebRTC.
+  The prefix differences are mostly gone these days but differences in behaviour between browsers remain.
+
 ## Managing Credentials
 The `SignalingClient` requires a SigV4 signed URL in order to make requests to the KVS signaling service backend.
 The client can either be provided with AWS credentials (and then it will use those to sign requests) or it can be
