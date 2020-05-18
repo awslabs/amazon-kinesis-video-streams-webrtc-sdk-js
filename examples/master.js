@@ -169,12 +169,9 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
 
         // Create an SDP answer to send back to the client
         console.log('[MASTER] Creating SDP answer for client: ' + remoteClientId);
-        await peerConnection.setLocalDescription(
-            await peerConnection.createAnswer({
-                offerToReceiveAudio: true,
-                offerToReceiveVideo: true,
-            }),
-        );
+        peerConnection.addTransceiver('video', {'direction': formValues.sendVideo ? 'sendrecv' : 'recvonly'});
+        peerConnection.addTransceiver('audio', {'direction': formValues.sendAudio ? 'sendrecv' : 'recvonly'});
+        await peerConnection.setLocalDescription(await peerConnection.createAnswer());
 
         // When trickle ICE is enabled, send the answer now and then send ICE candidates as they are generated. Otherwise wait on the ICE candidates.
         if (formValues.useTrickleICE) {
