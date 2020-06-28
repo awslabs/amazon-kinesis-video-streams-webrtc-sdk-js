@@ -36,7 +36,7 @@ The SDK classes can then be imported like typical NodeJS modules:
 // JavaScript
 const SignalingClient = require('amazon-kinesis-video-streams-webrtc').SignalingClient;
 
-// TypeScript
+// TypeScript / ES6 supported
 import { SignalingClient } from 'amazon-kinesis-video-streams-webrtc';
 ```
 
