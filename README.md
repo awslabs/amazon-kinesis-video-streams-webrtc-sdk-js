@@ -313,7 +313,7 @@ Interface for signing HTTP and WebSocket requests.
 #### Method: `getSignedURL(endpoint, queryParams, [date]) => Promise<string>`
 * `endpoint` {string} The endpoint of the URL (including protocol, host, and path).
 * `queryParams` {object} The query parameters to include in the signed URL.
-* `data` {Date} The date that the signature is valid (+/- 5 minutes). Default: now.
+* `date` {Date} The date that the signature is valid (+/- 5 minutes). Default: now.
 * `return` {Promise<string>} The signed URL.
 
 ### Class: `SigV4RequestSigner`
