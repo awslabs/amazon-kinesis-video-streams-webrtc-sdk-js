@@ -33,6 +33,7 @@ enum MessageType {
     SDP_ANSWER = 'SDP_ANSWER',
     SDP_OFFER = 'SDP_OFFER',
     ICE_CANDIDATE = 'ICE_CANDIDATE',
+    PING = 'PING',
 }
 
 enum ReadyState {
@@ -57,9 +58,12 @@ interface WebSocketMessage {
  */
 export class SignalingClient extends EventEmitter {
     private static DEFAULT_CLIENT_ID = 'MASTER';
+    private static readonly WS_PING_PONG_INTERVAL_MS = 10 * 1000;
+    private static readonly WS_PING_MESSAGE_PAYLOAD = {};
 
     private websocket: WebSocket = null;
     private readyState = ReadyState.CLOSED;
+    private wsPingPongIntervalId: number = null;
     private readonly requestSigner: RequestSigner;
     private readonly config: SignalingClientConfig;
     private readonly pendingIceCandidatesByClientId: { [clientId: string]: object[] } = {};
@@ -102,6 +106,7 @@ export class SignalingClient extends EventEmitter {
         this.onMessage = this.onMessage.bind(this);
         this.onError = this.onError.bind(this);
         this.onClose = this.onClose.bind(this);
+        this.sendPing = this.sendPing.bind(this);
     }
 
     /**
@@ -217,6 +222,10 @@ export class SignalingClient extends EventEmitter {
         if (this.websocket === null) {
             return;
         }
+        if (this.wsPingPongIntervalId) {
+            window.clearInterval(this.wsPingPongIntervalId);
+            this.wsPingPongIntervalId = null;
+        }
         this.websocket.removeEventListener('open', this.onOpen);
         this.websocket.removeEventListener('message', this.onMessage);
         this.websocket.removeEventListener('error', this.onError);
@@ -229,6 +238,7 @@ export class SignalingClient extends EventEmitter {
      */
     private onOpen(): void {
         this.readyState = ReadyState.OPEN;
+        this.wsPingPongIntervalId = window.setInterval(this.sendPing, SignalingClient.WS_PING_PONG_INTERVAL_MS);
         this.emit('open');
     }
 
@@ -333,5 +343,12 @@ export class SignalingClient extends EventEmitter {
         this.readyState = ReadyState.CLOSED;
         this.cleanupWebSocket();
         this.emit('close');
+    }
+
+    /**
+     * Send ping message to keep connection alive with Signaling Server
+     */
+    private sendPing(): void {
+        this.sendMessage(MessageType.PING, SignalingClient.WS_PING_MESSAGE_PAYLOAD);
     }
 }
