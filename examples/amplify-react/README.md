@@ -17,7 +17,7 @@ cd examples/amplify-react
 npm install
 ```
 
-Configure Amplify by setting your default region and providing an AWS key pair to use within your project
+Configure Amplify by setting your default region and providing an AWS key pair to use within your project. If you need specific instructions as to how to configure a user and to obtain an AWS key pair, please see the [following instructions](https://docs.amplify.aws/cli).
 
 ```bash
 amplify configure
@@ -33,6 +33,7 @@ Next, we will enable Cognito authentication in the project. Execute the followin
 
 ```bash
 amplify add auth
+amplify push
 ```
 
 ## Add KVS WebRTC Permissions the Default Cognito Auth Role
@@ -45,8 +46,8 @@ Please note that this will allow any users that access this web app to access an
 ```bash
 ACCOUNT_ID=$(aws --output text sts get-caller-identity --query 'Account')
 AWS_REGION=$(aws configure get region)
-AUTH_ROLE_NAME={{REPLACE_ME_AUTH_ROLE_NAME_FROM_TEAM_PROVIDER_INFO_JSON}}
 KVS_VIEWER_IAM_POLICY_NAME=KvsWebRTCStreamViewerPolicy
+AUTH_ROLE_NAME={{REPLACE_ME_AUTH_ROLE_NAME_FROM_TEAM_PROVIDER_INFO_JSON}}
 
 # Generate the IAM Policy document
 KVS_VIEWER_IAM_POLICY="{
@@ -99,7 +100,6 @@ After you have entered your signaling channel name in the appropriate form field
 To delete all of the resources that were created as part of this project, execute the following commands:
 
 ```bash
-
 AUTH_ROLE_NAME={{REPLACE_ME_AUTH_ROLE_NAME_FROM_TEAM_PROVIDER_INFO_JSON}}
 KVS_VIEWER_IAM_POLICY_ARN=$(aws iam list-policies \
   --only-attached \
