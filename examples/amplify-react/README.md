@@ -1,13 +1,21 @@
 
-An example project for KVS WebRTC. This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app) and was built to work with [Amplify](https://docs.amplify.aws/). The AWS services that this project depends on are Cognito for user authentication and authorization, and Amazon Kinesis Video Streams for WebRTC.
+An example project for KVS WebRTC. This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app) and was built to work with [Amplify](https://docs.amplify.aws/). AWS services that this project integrates with are Cognito for user authentication and authorization, and Amazon Kinesis Video Streams for WebRTC.
 
 ## Requirements
 
 * AWS Account
 * [Amplify CLI](https://docs.amplify.aws/cli/start/install)
 * [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html)
+* [nodejs](https://nodejs.org/en/download/)
 
 ## Bootstrap the Project
+
+Install the project dependencies:
+
+```bash
+cd examples/amplify-react
+npm install
+```
 
 Configure Amplify by setting your default region and providing an AWS key pair to use within your project
 
@@ -18,7 +26,6 @@ amplify configure
 Initialize the project resources. Follow the prompts and select the default values for each. This step will take a few minutes as it is initializing a few of the cloud resources that will be used for your project.
 
 ```bash
-cd aws-kvs-webrtc-react-amplified
 amplify init
 ```
 
