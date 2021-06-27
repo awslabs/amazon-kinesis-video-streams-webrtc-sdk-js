@@ -79,13 +79,17 @@ export class SigV4RequestSigner implements RequestSigner {
 
         // Prepare canonical query string
         const credentialScope = dateString + '/' + this.region + '/' + this.service + '/' + 'aws4_request';
-        const canonicalQueryParams = Object.assign({}, queryParams, {
-            'X-Amz-Algorithm': SigV4RequestSigner.DEFAULT_ALGORITHM,
-            'X-Amz-Credential': this.credentials.accessKeyId + '/' + credentialScope,
-            'X-Amz-Date': datetimeString,
-            'X-Amz-Expires': '299',
-            'X-Amz-SignedHeaders': signedHeaders,
-        });
+        const canonicalQueryParams = Object.assign(
+            {},
+            {
+                'X-Amz-Algorithm': SigV4RequestSigner.DEFAULT_ALGORITHM,
+                'X-Amz-Credential': this.credentials.accessKeyId + '/' + credentialScope,
+                'X-Amz-Date': datetimeString,
+                'X-Amz-Expires': '299',
+                'X-Amz-SignedHeaders': signedHeaders,
+            },
+            queryParams,
+        );
         if (this.credentials.sessionToken) {
             Object.assign(canonicalQueryParams, {
                 'X-Amz-Security-Token': this.credentials.sessionToken,
