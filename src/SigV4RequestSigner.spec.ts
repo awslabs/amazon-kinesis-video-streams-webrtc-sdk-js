@@ -79,5 +79,15 @@ describe('SigV4RequestSigner', () => {
         it('should generate a valid signed URL without a mocked date', async () => {
             await expect(signer.getSignedURL('wss://kvs.awsamazon.com', queryParams)).resolves.toBeTruthy();
         });
+
+        it('should generate a valid signed URL with query parameter override', async () => {
+            queryParams = {
+                'X-Amz-TestParam': 'test-param-value',
+                'X-Amz-Expires': '86400', // should override the default of 299 seconds
+            };
+            await expect(signer.getSignedURL('wss://kvs.awsamazon.com', queryParams, date)).resolves.toBe(
+                'wss://kvs.awsamazon.com/?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIA4F7WJQR7FMMWMNXI%2F20191201%2Fus-west-2%2Fkinesisvideo%2Faws4_request&X-Amz-Date=20191201T000000Z&X-Amz-Expires=86400&X-Amz-Security-Token=FakeSessionToken&X-Amz-Signature=b62a078631a8f1e31ad09bce25d251611a22b65eac8836f6d700cee50a04e9e1&X-Amz-SignedHeaders=host&X-Amz-TestParam=test-param-value'
+            );
+        });
     });
 });
