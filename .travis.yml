@@ -5,12 +5,11 @@ node_js:
   - 8
   - 10
   - 12
-before_script:
+script:
   -rm -rf package-lock.json npm-shrinkwrap.json node_modules
   -npm cache clean --force
   -npm cache verify
   -npm install
-script:
   - npm run release
 deploy:
   - provider: npm
