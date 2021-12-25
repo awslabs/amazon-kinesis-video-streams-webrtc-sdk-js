@@ -25,3 +25,8 @@ pre .error {
 pre .warn {
     color: goldenrod;
 }
+
+#logs {
+    height: 300px;
+    overflow: auto;
+}
