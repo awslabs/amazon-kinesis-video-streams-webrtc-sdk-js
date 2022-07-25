@@ -1,0 +1,26 @@
+name: Doxygen GitHub Pages Deploy Action WebRTC C SDK
+
+on:
+  push:
+    branches:
+      - master
+      - develop
+      - add-gha
+
+jobs:
+  generate-and-deploy-doxygen:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@master
+      - name: Run npm release
+        run: |
+          npm run release
+          ls -a
+        
+      # - name: Deploy to Github pages
+      #   uses: JamesIves/github-pages-deploy-action@v4.2.5
+      #   with:
+      #     folder: doc/html
+      #     branch: gh-pages
+      
