@@ -13,6 +13,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@master
+      - name: Install dependencies
+        run: |
+          sudo npm install -g eslint
       - name: Run npm release
         run: |
           npm run release
