@@ -17,8 +17,8 @@ jobs:
         uses: actions/setup-node@v2
         with: 
           node-version: 14
-    - name: Install dependencies
-      run: npm install
+      - name: Install dependencies
+        run: npm install
         
       # - name: Deploy to Github pages
       #   uses: JamesIves/github-pages-deploy-action@v4.2.5
