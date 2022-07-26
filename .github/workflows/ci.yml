@@ -8,7 +8,7 @@ on:
       - add-gha
 
 jobs:
-  generate-and-deploy-doxygen:
+  nodejs-build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -19,6 +19,8 @@ jobs:
           node-version: 14
       - name: Install dependencies
         run: npm install
+      - name: Run release
+        run: npm run release
         
       # - name: Deploy to Github pages
       #   uses: JamesIves/github-pages-deploy-action@v4.2.5
