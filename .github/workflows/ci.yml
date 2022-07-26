@@ -1,14 +1,15 @@
-name: Doxygen GitHub Pages Deploy Action WebRTC C SDK
+name: CI Action WebRTC C SDK
 
 on:
   push:
     branches:
       - master
-      - develop
-      - add-gha
+  pull_request:
+    branches:
+      - master
 
 jobs:
-  nodejs-build:
+  nodejs-ubuntu-build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -20,11 +21,5 @@ jobs:
       - name: Install dependencies
         run: npm install
       - name: Run release
-        run: npm run release
-        
-      # - name: Deploy to Github pages
-      #   uses: JamesIves/github-pages-deploy-action@v4.2.5
-      #   with:
-      #     folder: doc/html
-      #     branch: gh-pages
+        run: npm run release  
       
