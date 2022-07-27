@@ -1,6 +1,6 @@
 {
     "name": "amazon-kinesis-video-streams-webrtc",
-    "version": "1.0.8",
+    "version": "2.0.0",
     "description": "Amazon Kinesis Video Streams WebRTC SDK for JavaScript.",
     "repository": {
         "type": "git",
@@ -42,14 +42,14 @@
         "eslint-plugin-prettier": "^3.1.0",
         "fork-ts-checker-webpack-plugin": "^4.1.2",
         "jest": "^25.5.4",
-        "license-webpack-plugin": "^2.1.2",
+        "license-webpack-plugin": "^4.0.0",
         "prettier": "^1.18.2",
         "ts-jest": "^25.4.0",
         "ts-loader": "^6.0.4",
         "typescript": "^3.6.2",
-        "webpack": "^4.39.3",
-        "webpack-cli": "^3.3.11",
-        "webpack-dev-server": "^3.11.2",
+        "webpack": "^5.0.0",
+        "webpack-cli": "^4.7.0",
+        "webpack-dev-server": "^4.0.0",
         "webpack-merge": "^4.2.2"
     },
     "dependencies": {
