@@ -1,0 +1,31 @@
+name: Publish Action WebRTC JS SDK
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  # publish-ubuntu-build:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@master
+  #     - name: Use Node.js
+  #       uses: actions/setup-node@v2
+  #       with: 
+  #         node-version: 10
+  #     - name: Install dependencies
+  #       run: npm install
+  #     - name: Run release
+  #       run: npm run release
+  #     - name: Deploy to Github pages
+  #       uses: JamesIves/github-pages-deploy-action@v4.2.5
+  #       with:
+  #         folder: dist
+  #         branch: gh-pages-test
+  #     # - name: Deploy to npm packages
+  #     #   uses: JS-DevTools/npm-publish@v1
+  #     #   with:
+  #     #     token: ${{ secrets.NPM_TOKEN }}
+          
