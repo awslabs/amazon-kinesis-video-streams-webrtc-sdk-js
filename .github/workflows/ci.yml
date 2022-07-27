@@ -4,16 +4,18 @@ on:
   push:
     branches:
       - master
+      - develop
   pull_request:
     branches:
       - master
+      - develop
 
 jobs:
   nodejs-ubuntu-build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [ 8, 10, 12, 14 ]
+        node: [ 10, 12, 14, 16, 18 ]
     steps:
       - name: Checkout repository
         uses: actions/checkout@master
