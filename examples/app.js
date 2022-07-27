@@ -84,7 +84,7 @@ function onStop() {
         stopViewer();
         $('#viewer').addClass('d-none');
     }
-    
+
     $('#form').removeClass('d-none');
     ROLE = null;
 }
