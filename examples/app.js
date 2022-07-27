@@ -12,8 +12,6 @@ function configureLogging() {
             })
             .join(' ');
         $('#logs').append($(`<div class="${level.toLowerCase()}">`).text(`[${new Date().toISOString()}] [${level}] ${text}\n`));
-        const logsContainer = document.getElementById('logs');
-        logsContainer.scrollTo(0, logsContainer.scrollHeight);
     }
 
     console._error = console.error;
@@ -86,7 +84,7 @@ function onStop() {
         stopViewer();
         $('#viewer').addClass('d-none');
     }
-
+    
     $('#form').removeClass('d-none');
     ROLE = null;
 }
