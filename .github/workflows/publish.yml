@@ -23,9 +23,9 @@ jobs:
         uses: JamesIves/github-pages-deploy-action@v4.2.5
         with:
           folder: dist
-          branch: gh-pages-test
-      # - name: Deploy to npm packages
-      #   uses: JS-DevTools/npm-publish@v1
-      #   with:
-      #     token: ${{ secrets.NPM_TOKEN }}
+          branch: gh-pages
+      - name: Deploy to npm packages
+        uses: JS-DevTools/npm-publish@v1
+        with:
+          token: ${{ secrets.NPM_TOKEN }}
           
