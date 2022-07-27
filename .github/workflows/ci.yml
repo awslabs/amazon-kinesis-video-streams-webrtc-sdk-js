@@ -15,16 +15,15 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [ 8, 10, 12, 14 ]
+        node: [ 10, 12, 14, 16, 18 ]
     steps:
       - name: Checkout repository
         uses: actions/checkout@master
       - name: Use Node.js
         uses: actions/setup-node@v2
-        with: 
+        with:
           node-version: ${{ matrix.node }}
       - name: Install dependencies
         run: npm install
       - name: Run release
-        run: npm run release  
-      
+        run: npm run release
