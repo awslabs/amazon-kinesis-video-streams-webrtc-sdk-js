@@ -103,12 +103,16 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
         audio: formValues.sendAudio,
     };
 
-    // Get a stream from the webcam and display it in the local view
-    try {
-        master.localStream = await navigator.mediaDevices.getUserMedia(constraints);
-        localView.srcObject = master.localStream;
-    } catch (e) {
-        console.error('[MASTER] Could not find webcam');
+    // Get a stream from the webcam and display it in the local view. 
+    // If no video/audio needed, no need to request for the sources. 
+    // Otherwise, the browser will throw an error saying that either video or audio has to be enabled.
+    if (formValues.sendVideo || formValues.sendAudio) {
+        try {
+            master.localStream = await navigator.mediaDevices.getUserMedia(constraints);
+            localView.srcObject = master.localStream;
+        } catch (e) {
+            console.error('[MASTER] Could not find webcam');
+        }
     }
 
     master.signalingClient.on('open', async () => {
@@ -164,7 +168,10 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             remoteView.srcObject = event.streams[0];
         });
 
-        master.localStream.getTracks().forEach(track => peerConnection.addTrack(track, master.localStream));
+        // If there's no video/audio, master.localStream will be null. So, we should skip adding the tracks from it.
+        if (master.localStream) {
+            master.localStream.getTracks().forEach(track => peerConnection.addTrack(track, master.localStream));
+        }
         await peerConnection.setRemoteDescription(offer);
 
         // Create an SDP answer to send back to the client
