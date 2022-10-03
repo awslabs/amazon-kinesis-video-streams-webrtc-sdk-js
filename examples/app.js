@@ -28,9 +28,21 @@ function configureLogging() {
         console._warn.apply(this, rest);
     };
 
+    console._info = console.info;
+    console.info = function(...rest) {
+        log('INFO', Array.prototype.slice.call(rest));
+        console._info.apply(this, rest);
+    };
+
+    console._debug = console.debug;
+    console.debug = function(...rest) {
+        log('DEBUG', Array.prototype.slice.call(rest));
+        console._debug.apply(this, rest);
+    };
+
     console._log = console.log;
     console.log = function(...rest) {
-        log('INFO', Array.prototype.slice.call(rest));
+        log('LOG', Array.prototype.slice.call(rest));
         console._log.apply(this, rest);
     };
 }
@@ -70,8 +82,29 @@ function toggleDataChannelElements() {
     }
 }
 
-function onStatsReport(report) {
-    // TODO: Publish stats
+function onStatsReport(stats) {
+    let statsOutput = '';
+
+    let reports = []
+    stats.forEach(report => {
+        if(!['track', 'certificate', 'codec', 'stream', ''].includes(report.type)){
+            reports.push(report)
+        }
+    });
+
+    reports.sort((a, b) => a.type - b.type);
+
+    reports.forEach((report) => {
+        statsOutput += `<h2>Report: ${report.type}</h2>\n<strong>ID: ${report.id}</strong>\nTimestamp: ${report.timestamp}\n`
+        Object.keys(report).sort().forEach((statName) => {
+            if (statName !== "id" && statName !== "timestamp" && statName !== "type") {
+                statsOutput += `\t<strong>${statName}</strong>: ${report[statName]}\n`;
+            }
+        });
+    })
+
+    $('#stats').html($(`<div>`).append(statsOutput));
+    const statsContainer = document.getElementById('stats');
 }
 
 function onStop() {
@@ -86,6 +119,12 @@ function onStop() {
         stopViewer();
         $('#viewer').addClass('d-none');
     }
+
+    $('#debug').addClass('d-none');
+
+    $('#logs').html('');    
+    $('#stats').html('');
+
 
     $('#form').removeClass('d-none');
     ROLE = null;
@@ -110,6 +149,8 @@ $('#master-button').click(async () => {
     $('#form').addClass('d-none');
     $('#master').removeClass('d-none');
 
+    $('#debug').removeClass('d-none');
+
     const localView = $('#master .local-view')[0];
     const remoteView = $('#master .remote-view')[0];
     const localMessage = $('#master .local-message')[0];
@@ -131,6 +172,7 @@ $('#viewer-button').click(async () => {
     ROLE = 'viewer';
     $('#form').addClass('d-none');
     $('#viewer').removeClass('d-none');
+    $('#debug').removeClass('d-none');
 
     const localView = $('#viewer .local-view')[0];
     const remoteView = $('#viewer .remote-view')[0];
