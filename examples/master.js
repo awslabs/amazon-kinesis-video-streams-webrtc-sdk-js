@@ -2,7 +2,9 @@
  * This file demonstrates the process of starting WebRTC streaming using a KVS Signaling Channel.
  */
 const master = {
+    kinesisVideoClient: null,
     signalingClient: null,
+    channelARN: null,
     peerConnectionByClientId: {},
     dataChannelByClientId: {},
     localStream: null,
@@ -24,6 +26,8 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
         correctClockSkew: true,
     });
 
+    master.kinesisVideoClient = kinesisVideoClient;
+
     // Get signaling channel ARN
     const describeSignalingChannelResponse = await kinesisVideoClient
         .describeSignalingChannel({
@@ -32,6 +36,8 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
         .promise();
     const channelARN = describeSignalingChannelResponse.ChannelInfo.ChannelARN;
     console.log('[MASTER] Channel ARN: ', channelARN);
+
+    master.channelARN = channelARN;
 
     // Get signaling channel endpoints
     const getSignalingChannelEndpointResponse = await kinesisVideoClient
@@ -209,6 +215,71 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
 
     console.log('[MASTER] Starting master connection');
     master.signalingClient.open();
+}
+
+async function joinSession(formValues) {
+    // Get signaling channel endpoints for WEBRTC
+    const getSignalingChannelEndpointResponse = await master.kinesisVideoClient
+        .getSignalingChannelEndpoint({
+            ChannelARN: master.channelARN,
+            SingleMasterChannelEndpointConfiguration: {
+                Protocols: ['WEBRTC'],
+                Role: KVSWebRTC.Role.MASTER,
+            },
+        })
+        .promise();
+
+    // Fetch webrtc endpoint
+    const endpointsByProtocol = getSignalingChannelEndpointResponse.ResourceEndpointList.reduce((endpoints, endpoint) => {
+        endpoints[endpoint.Protocol] = endpoint.ResourceEndpoint;
+        return endpoints;
+    }, {});
+
+    console.log('[MASTER] Received webrtc endpoint: ' + endpointsByProtocol.WEBRTC);
+
+    // TODO: Remove sigv4 signing logic once changes are added to the KinesisVideoClient
+    const endpoint = new AWS.Endpoint(endpointsByProtocol.WEBRTC);
+    const request = new AWS.HttpRequest(endpoint, formValues.region);
+
+    request.method = 'POST';
+    request.path = '/joinStorageSession';
+    request.body = JSON.stringify({
+        "channelArn": master.channelARN
+    });
+    request.headers['Host'] = endpoint.host;
+
+    var signer = new AWS.Signers.V4(request, 'kinesisvideo', true);
+    signer.addAuthorization({
+        accessKeyId: formValues.accessKeyId,
+        secretAccessKey: formValues.secretAccessKey,
+        sessionToken: formValues.sessionToken,
+    }, new Date());
+
+    const response = await fetch(endpointsByProtocol.WEBRTC + request.path, {
+        method: request.method,
+        headers: {
+            'Content-Type': 'application/json',
+            ...request.headers
+        },
+        body: request.body})
+    .then((response) => {
+          return new Promise((resolve) => response.json()
+            .then((json) => resolve({
+              status: response.status,
+              ok: response.ok,
+              json,
+            })));
+        })
+    .then(({ status, json, ok }) => {
+        if (!ok) {
+            console.log('[MASTER] Error occured while calling join session: ', json);
+        } else {
+            console.log('[MASTER] Successfully called join session.');
+        }
+    })
+    .catch((error) => {
+        console.error('[MASTER] Error occured while calling join session:', error);
+      });
 }
 
 function stopMaster() {
