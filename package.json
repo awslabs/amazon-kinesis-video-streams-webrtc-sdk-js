@@ -53,12 +53,15 @@
         "webpack-merge": "^4.2.2"
     },
     "dependencies": {
+        "amazon-kinesis-video-streams-webrtc": "^2.0.0",
         "isomorphic-webcrypto": "^2.3.6",
         "jsdom": "^20.0.0",
         "json-schema": "^0.4.0",
         "tslib": "^1.10.0"
     },
     "overrides": {
-        "qs": "6.7.3"
+        "qs": "6.7.3",
+        "@types/babel__traverse": "7.18.2",
+        "@types/express-serve-static-core": "4.17.24"
     }
 }
