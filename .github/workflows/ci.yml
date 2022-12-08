@@ -25,6 +25,8 @@ jobs:
           node-version: ${{ matrix.node }}
       - name: Clear cache
         run: npm cache clean --force
+      - name: Clear node modules
+        run: rm -rf node_modules package-lock.json
       - name: Install dependencies
         run: npm install
       - name: Run release
