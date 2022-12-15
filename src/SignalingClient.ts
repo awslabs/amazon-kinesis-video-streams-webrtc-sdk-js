@@ -312,9 +312,7 @@ export class SignalingClient extends EventEmitter {
      * Throws an error if the recipient client id is null and the current role is 'MASTER' as all messages sent as 'MASTER' should have a recipient client id.
      */
     private validateRecipientClientId(recipientClientId?: string): void {
-        if (this.config.role === Role.MASTER && !recipientClientId) {
-            throw new Error('Missing recipient client id. As the MASTER, all messages must be sent with a recipient client id.');
-        } else if (this.config.role === Role.VIEWER && recipientClientId) {
+        if (this.config.role === Role.VIEWER && recipientClientId) {
             throw new Error('Unexpected recipient client id. As the VIEWER, messages must not be sent with a recipient client id.');
         }
     }

@@ -341,19 +341,6 @@ describe('SignalingClient', () => {
                 done();
             });
         });
-
-        it('should throw an error if there is no recipient id as master', done => {
-            config.role = Role.MASTER;
-            delete config.clientId;
-            const client = new SignalingClient(config as SignalingClientConfig);
-            client.open();
-            client.on('open', () => {
-                expect(() => client.sendSdpOffer(SDP_OFFER)).toThrow(
-                    'Missing recipient client id. As the MASTER, all messages must be sent with a recipient client id.',
-                );
-                done();
-            });
-        });
     });
 
     describe('sendSdpAnswer', () => {
@@ -394,19 +381,6 @@ describe('SignalingClient', () => {
                 done();
             });
         });
-
-        it('should throw an error if there is no recipient id as master', done => {
-            config.role = Role.MASTER;
-            delete config.clientId;
-            const client = new SignalingClient(config as SignalingClientConfig);
-            client.open();
-            client.on('open', () => {
-                expect(() => client.sendSdpAnswer(SDP_ANSWER)).toThrow(
-                    'Missing recipient client id. As the MASTER, all messages must be sent with a recipient client id.',
-                );
-                done();
-            });
-        });
     });
 
     describe('sendIceCandidate', () => {
@@ -443,19 +417,6 @@ describe('SignalingClient', () => {
             client.on('open', () => {
                 expect(() => client.sendIceCandidate(ICE_CANDIDATE, CLIENT_ID)).toThrow(
                     'Unexpected recipient client id. As the VIEWER, messages must not be sent with a recipient client id.',
-                );
-                done();
-            });
-        });
-
-        it('should throw an error if there is no recipient id as master', done => {
-            config.role = Role.MASTER;
-            delete config.clientId;
-            const client = new SignalingClient(config as SignalingClientConfig);
-            client.open();
-            client.on('open', () => {
-                expect(() => client.sendIceCandidate(ICE_CANDIDATE)).toThrow(
-                    'Missing recipient client id. As the MASTER, all messages must be sent with a recipient client id.',
                 );
                 done();
             });
