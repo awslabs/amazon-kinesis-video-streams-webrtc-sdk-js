@@ -34,7 +34,6 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             ChannelName: formValues.channelName,
         })
         .promise();
-
     const channelARN = describeSignalingChannelResponse.ChannelInfo.ChannelARN;
     console.log('[MASTER] Channel ARN: ', channelARN);
 
