@@ -126,12 +126,9 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
 
         // Create an SDP offer to send to the master
         console.log('[VIEWER] Creating SDP offer');
-        await viewer.peerConnection.setLocalDescription(
-            await viewer.peerConnection.createOffer({
-                offerToReceiveAudio: true,
-                offerToReceiveVideo: true,
-            }),
-        );
+        viewer.peerConnection.addTransceiver('video', {'direction': formValues.sendVideo ? 'sendrecv' : 'recvonly'});
+        viewer.peerConnection.addTransceiver('audio', {'direction': formValues.sendAudio ? 'sendrecv' : 'recvonly'});
+        await viewer.peerConnection.setLocalDescription(await viewer.peerConnection.createOffer());
 
         // When trickle ICE is enabled, send the offer now and then send ICE candidates as they are generated. Otherwise wait on the ICE candidates.
         if (formValues.useTrickleICE) {
