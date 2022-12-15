@@ -2,7 +2,9 @@
  * This file demonstrates the process of starting WebRTC streaming using a KVS Signaling Channel.
  */
 const master = {
+    kinesisVideoClient: null,
     signalingClient: null,
+    channelARN: null,
     peerConnectionByClientId: {},
     dataChannelByClientId: {},
     localStream: null,
@@ -24,14 +26,19 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
         correctClockSkew: true,
     });
 
+    master.kinesisVideoClient = kinesisVideoClient;
+
     // Get signaling channel ARN
     const describeSignalingChannelResponse = await kinesisVideoClient
         .describeSignalingChannel({
             ChannelName: formValues.channelName,
         })
         .promise();
+
     const channelARN = describeSignalingChannelResponse.ChannelInfo.ChannelARN;
     console.log('[MASTER] Channel ARN: ', channelARN);
+
+    master.channelARN = channelARN;
 
     // Get signaling channel endpoints
     const getSignalingChannelEndpointResponse = await kinesisVideoClient
@@ -103,8 +110,8 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
         audio: formValues.sendAudio,
     };
 
-    // Get a stream from the webcam and display it in the local view. 
-    // If no video/audio needed, no need to request for the sources. 
+    // Get a stream from the webcam and display it in the local view.
+    // If no video/audio needed, no need to request for the sources.
     // Otherwise, the browser will throw an error saying that either video or audio has to be enabled.
     if (formValues.sendVideo || formValues.sendAudio) {
         try {
@@ -120,7 +127,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
     });
 
     master.signalingClient.on('sdpOffer', async (offer, remoteClientId) => {
-        console.log('[MASTER] Received SDP offer from client: ' + remoteClientId);
+        printSignalingLog('[MASTER] Received SDP offer from client', remoteClientId);
 
         // Create a new peer connection using the offer from the given client
         const peerConnection = new RTCPeerConnection(configuration);
@@ -141,19 +148,19 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
         // Send any ICE candidates to the other peer
         peerConnection.addEventListener('icecandidate', ({ candidate }) => {
             if (candidate) {
-                console.log('[MASTER] Generated ICE candidate for client: ' + remoteClientId);
+                printSignalingLog('[MASTER] Generated ICE candidate for client', remoteClientId);
 
                 // When trickle ICE is enabled, send the ICE candidates as they are generated.
                 if (formValues.useTrickleICE) {
-                    console.log('[MASTER] Sending ICE candidate to client: ' + remoteClientId);
+                    printSignalingLog('[MASTER] Sending ICE candidate to client', remoteClientId);
                     master.signalingClient.sendIceCandidate(candidate, remoteClientId);
                 }
             } else {
-                console.log('[MASTER] All ICE candidates have been generated for client: ' + remoteClientId);
+                printSignalingLog('[MASTER] All ICE candidates have been generated for client', remoteClientId);
 
                 // When trickle ICE is disabled, send the answer now that all the ICE candidates have ben generated.
                 if (!formValues.useTrickleICE) {
-                    console.log('[MASTER] Sending SDP answer to client: ' + remoteClientId);
+                    printSignalingLog('[MASTER] Sending SDP answer to client', remoteClientId);
                     master.signalingClient.sendSdpAnswer(peerConnection.localDescription, remoteClientId);
                 }
             }
@@ -161,7 +168,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
 
         // As remote tracks are received, add them to the remote view
         peerConnection.addEventListener('track', event => {
-            console.log('[MASTER] Received remote track from client: ' + remoteClientId);
+            printSignalingLog('[MASTER] Received remote track from client', remoteClientId);
             if (remoteView.srcObject) {
                 return;
             }
@@ -175,7 +182,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
         await peerConnection.setRemoteDescription(offer);
 
         // Create an SDP answer to send back to the client
-        console.log('[MASTER] Creating SDP answer for client: ' + remoteClientId);
+        printSignalingLog('[MASTER] Creating SDP answer for client', remoteClientId);
         await peerConnection.setLocalDescription(
             await peerConnection.createAnswer({
                 offerToReceiveAudio: true,
@@ -185,14 +192,14 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
 
         // When trickle ICE is enabled, send the answer now and then send ICE candidates as they are generated. Otherwise wait on the ICE candidates.
         if (formValues.useTrickleICE) {
-            console.log('[MASTER] Sending SDP answer to client: ' + remoteClientId);
+            printSignalingLog('[MASTER] Sending SDP answer to client', remoteClientId);
             master.signalingClient.sendSdpAnswer(peerConnection.localDescription, remoteClientId);
         }
-        console.log('[MASTER] Generating ICE candidates for client: ' + remoteClientId);
+        printSignalingLog('[MASTER] Generating ICE candidates for client', remoteClientId);
     });
 
     master.signalingClient.on('iceCandidate', async (candidate, remoteClientId) => {
-        console.log('[MASTER] Received ICE candidate from client: ' + remoteClientId);
+        printSignalingLog('[MASTER] Received ICE candidate from client', remoteClientId);
 
         // Add the ICE candidate received from the client to the peer connection
         const peerConnection = master.peerConnectionByClientId[remoteClientId];
@@ -209,6 +216,83 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
 
     console.log('[MASTER] Starting master connection');
     master.signalingClient.open();
+}
+
+async function joinSession(formValues) {
+    // Return if both video and audio streams are not enabled.
+    if (!formValues.sendAudio || !formValues.sendVideo) {
+        console.error('[MASTER] Both Send Video and Send Audio checkboxes need to be checked for calling join session');
+        return;
+    }
+
+    let getSignalingChannelEndpointResponse;
+    try {
+        // Get signaling channel endpoints for WEBRTC
+        getSignalingChannelEndpointResponse = await master.kinesisVideoClient
+            .getSignalingChannelEndpoint({
+                ChannelARN: master.channelARN,
+                SingleMasterChannelEndpointConfiguration: {
+                    Protocols: ['WEBRTC'],
+                    Role: KVSWebRTC.Role.MASTER,
+                },
+            })
+            .promise();
+    } catch (e) {
+        console.error('[MASTER] Storage Session is not configured for this channel');
+        return;
+    }
+
+    // Fetch webrtc endpoint
+    const endpointsByProtocol = getSignalingChannelEndpointResponse.ResourceEndpointList.reduce((endpoints, endpoint) => {
+        endpoints[endpoint.Protocol] = endpoint.ResourceEndpoint;
+        return endpoints;
+    }, {});
+
+    console.log('[MASTER] Received webrtc endpoint: ' + endpointsByProtocol.WEBRTC);
+
+    // TODO: Remove sigv4 signing logic once changes are added to the KinesisVideoClient
+    const endpoint = new AWS.Endpoint(endpointsByProtocol.WEBRTC);
+    const request = new AWS.HttpRequest(endpoint, formValues.region);
+
+    request.method = 'POST';
+    request.path = '/joinStorageSession';
+    request.body = JSON.stringify({
+        "channelArn": master.channelARN
+    });
+    request.headers['Host'] = endpoint.host;
+
+    const signer = new AWS.Signers.V4(request, 'kinesisvideo', true);
+    signer.addAuthorization({
+        accessKeyId: formValues.accessKeyId,
+        secretAccessKey: formValues.secretAccessKey,
+        sessionToken: formValues.sessionToken,
+    }, new Date());
+
+    const response = await fetch(endpointsByProtocol.WEBRTC + request.path, {
+        method: request.method,
+        headers: {
+            'Content-Type': 'application/json',
+            ...request.headers
+        },
+        body: request.body})
+        .then((response) => {
+            return new Promise((resolve) => response.json()
+                .then((json) => resolve({
+                    status: response.status,
+                    ok: response.ok,
+                    json,
+                })));
+        })
+        .then(({ status, json, ok }) => {
+            if (!ok) {
+                console.log('[MASTER] Error occured while calling join session: ', json);
+            } else {
+                console.log('[MASTER] Successfully called join session.');
+            }
+        })
+        .catch((error) => {
+            console.error('[MASTER] Error occured while calling join session:', error);
+        });
 }
 
 function stopMaster() {
@@ -257,4 +341,8 @@ function sendMasterMessage(message) {
             console.error('[MASTER] Send DataChannel: ', e.toString());
         }
     });
+}
+
+function printSignalingLog(message, clientId) {
+    console.log(`${message}${clientId ? ': ' + clientId : ''}`);
 }
