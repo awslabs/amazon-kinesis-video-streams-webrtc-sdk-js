@@ -98,10 +98,13 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
     };
     viewer.peerConnection = new RTCPeerConnection(configuration);
     if (formValues.openDataChannel) {
-        viewer.dataChannel = viewer.peerConnection.createDataChannel('kvsDataChannel');
-        viewer.peerConnection.ondatachannel = event => {
-            event.channel.onmessage = onRemoteDataMessage;
+        const dataChannelObj = viewer.peerConnection.createDataChannel('kvsDataChannel');
+        viewer.dataChannel = dataChannelObj;
+
+        dataChannelObj.onopen = event => {
+            dataChannelObj.send("Opened data channel by viewer");
         };
+        dataChannelObj.onmessage = onRemoteDataMessage;
     }
 
     // Poll for connection stats
