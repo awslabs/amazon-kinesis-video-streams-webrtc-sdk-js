@@ -15,7 +15,7 @@ const master = {
 async function startMaster(localView, remoteView, formValues, onStatsReport, onRemoteDataMessage) {
     master.localView = localView;
     master.remoteView = remoteView;
-
+    master.callbackForMessage = onRemoteDataMessage;
     // Create KVS client
     const kinesisVideoClient = new AWS.KinesisVideo({
         region: formValues.region,
@@ -133,10 +133,13 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
         master.peerConnectionByClientId[remoteClientId] = peerConnection;
 
         if (formValues.openDataChannel) {
-            master.dataChannelByClientId[remoteClientId] = peerConnection.createDataChannel('kvsDataChannel');
+            // master.dataChannelByClientId[remoteClientId] = peerConnection.createDataChannel('kvsDataChannel');
             peerConnection.ondatachannel = event => {
+                master.dataChannelByClientId[remoteClientId] = event.channel;
                 event.channel.onmessage = onRemoteDataMessage;
+                event.channel.send("Message from the master");
             };
+            // Need onmessage registered
         }
 
         // Poll for connection stats
