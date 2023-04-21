@@ -65,6 +65,6 @@
     "overrides": {
         "qs": "6.7.3",
         "@types/babel__traverse": "7.18.2",
-        "@types/express-serve-static-core": "4.17.33"
+        "@types/express-serve-static-core": "4.17.30"
     }
 }
