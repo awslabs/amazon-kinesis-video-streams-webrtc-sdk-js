@@ -441,12 +441,12 @@ describe('SignalingClient', () => {
         describe('sdpOffer', () => {
             it('should parse sdpOffer messages from the master', done => {
                 const client = new SignalingClient(config as SignalingClientConfig);
-                client.on('sdpOffer', (sdpOffer, senderClientId) => {
+                client.once('sdpOffer', (sdpOffer, senderClientId) => {
                     expect(sdpOffer).toEqual(SDP_OFFER_OBJECT);
                     expect(senderClientId).toBeFalsy();
                     done();
                 });
-                client.on('open', () => {
+                client.once('open', () => {
                     MockWebSocket.instance.emit('message', { data: SDP_OFFER_MASTER_MESSAGE });
                 });
                 client.open();
@@ -456,12 +456,12 @@ describe('SignalingClient', () => {
                 config.role = Role.MASTER;
                 delete config.clientId;
                 const client = new SignalingClient(config as SignalingClientConfig);
-                client.on('sdpOffer', (sdpOffer, senderClientId) => {
+                client.once('sdpOffer', (sdpOffer, senderClientId) => {
                     expect(sdpOffer).toEqual(SDP_OFFER_OBJECT);
                     expect(senderClientId).toEqual(CLIENT_ID);
                     done();
                 });
-                client.on('open', () => {
+                client.once('open', () => {
                     MockWebSocket.instance.emit('message', { data: SDP_OFFER_VIEWER_MESSAGE });
                 });
                 client.open();
@@ -469,16 +469,20 @@ describe('SignalingClient', () => {
 
             it('should parse sdpOffer messages from the master and release pending ICE candidates', done => {
                 const client = new SignalingClient(config as SignalingClientConfig);
-                client.on('sdpOffer', (sdpOffer, senderClientId) => {
+                let count: number = 0;
+                client.once('sdpOffer', (sdpOffer, senderClientId) => {
                     expect(sdpOffer).toEqual(SDP_OFFER_OBJECT);
                     expect(senderClientId).toBeFalsy();
                     client.on('iceCandidate', (iceCandidate, senderClientId) => {
                         expect(iceCandidate).toEqual(ICE_CANDIDATE_OBJECT);
                         expect(senderClientId).toBeFalsy();
-                        done();
+                        if (++count === 2) {
+                            done();
+                            client.removeAllListeners();
+                        }
                     });
                 });
-                client.on('open', () => {
+                client.once('open', () => {
                     MockWebSocket.instance.emit('message', { data: ICE_CANDIDATE_MASTER_MESSAGE });
                     MockWebSocket.instance.emit('message', { data: ICE_CANDIDATE_MASTER_MESSAGE });
                     MockWebSocket.instance.emit('message', { data: SDP_OFFER_MASTER_MESSAGE });
@@ -490,12 +494,12 @@ describe('SignalingClient', () => {
         describe('sdpAnswer', () => {
             it('should parse sdpAnswer messages from the master', done => {
                 const client = new SignalingClient(config as SignalingClientConfig);
-                client.on('sdpAnswer', (sdpAnswer, senderClientId) => {
+                client.once('sdpAnswer', (sdpAnswer, senderClientId) => {
                     expect(sdpAnswer).toEqual(SDP_ANSWER_OBJECT);
                     expect(senderClientId).toBeFalsy();
                     done();
                 });
-                client.on('open', () => {
+                client.once('open', () => {
                     MockWebSocket.instance.emit('message', { data: SDP_ANSWER_MASTER_MESSAGE });
                 });
                 client.open();
@@ -505,12 +509,12 @@ describe('SignalingClient', () => {
                 config.role = Role.MASTER;
                 delete config.clientId;
                 const client = new SignalingClient(config as SignalingClientConfig);
-                client.on('sdpAnswer', (sdpAnswer, senderClientId) => {
+                client.once('sdpAnswer', (sdpAnswer, senderClientId) => {
                     expect(sdpAnswer).toEqual(SDP_ANSWER_OBJECT);
                     expect(senderClientId).toEqual(CLIENT_ID);
                     done();
                 });
-                client.on('open', () => {
+                client.once('open', () => {
                     MockWebSocket.instance.emit('message', { data: SDP_ANSWER_VIEWER_MESSAGE });
                 });
                 client.open();
@@ -518,13 +522,17 @@ describe('SignalingClient', () => {
 
             it('should parse sdpAnswer messages from the master and release pending ICE candidates', done => {
                 const client = new SignalingClient(config as SignalingClientConfig);
-                client.on('sdpAnswer', (sdpAnswer, senderClientId) => {
+                client.once('sdpAnswer', (sdpAnswer, senderClientId) => {
                     expect(sdpAnswer).toEqual(SDP_ANSWER_OBJECT);
                     expect(senderClientId).toBeFalsy();
+                    let count: number = 0;
                     client.on('iceCandidate', (iceCandidate, senderClientId) => {
                         expect(iceCandidate).toEqual(ICE_CANDIDATE_OBJECT);
                         expect(senderClientId).toBeFalsy();
-                        done();
+                        if (++count === 2) {
+                            done();
+                            client.removeAllListeners();
+                        }
                     });
                 });
                 client.on('open', () => {
