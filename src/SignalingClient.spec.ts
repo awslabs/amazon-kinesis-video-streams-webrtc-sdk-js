@@ -469,7 +469,7 @@ describe('SignalingClient', () => {
 
             it('should parse sdpOffer messages from the master and release pending ICE candidates', done => {
                 const client = new SignalingClient(config as SignalingClientConfig);
-                let count: number = 0;
+                let count = 0;
                 client.once('sdpOffer', (sdpOffer, senderClientId) => {
                     expect(sdpOffer).toEqual(SDP_OFFER_OBJECT);
                     expect(senderClientId).toBeFalsy();
@@ -525,7 +525,7 @@ describe('SignalingClient', () => {
                 client.once('sdpAnswer', (sdpAnswer, senderClientId) => {
                     expect(sdpAnswer).toEqual(SDP_ANSWER_OBJECT);
                     expect(senderClientId).toBeFalsy();
-                    let count: number = 0;
+                    let count = 0;
                     client.on('iceCandidate', (iceCandidate, senderClientId) => {
                         expect(iceCandidate).toEqual(ICE_CANDIDATE_OBJECT);
                         expect(senderClientId).toBeFalsy();
