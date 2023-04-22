@@ -10,6 +10,8 @@ const master = {
     localStream: null,
     remoteStreams: [],
     peerConnectionStatsInterval: null,
+    kinesisVideoSignalingChannelsClient: null,
+    pendingIceCandidateByClientId: {},
 };
 
 async function startMaster(localView, remoteView, formValues, onStatsReport, onRemoteDataMessage) {
@@ -69,8 +71,8 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
         systemClockOffset: kinesisVideoClient.config.systemClockOffset,
     });
 
-    // Get ICE server configuration
-    const kinesisVideoSignalingChannelsClient = new AWS.KinesisVideoSignalingChannels({
+    // Create client for calling getIceServerConfig
+    master.kinesisVideoSignalingChannelsClient = new AWS.KinesisVideoSignalingChannels({
         region: formValues.region,
         accessKeyId: formValues.accessKeyId,
         secretAccessKey: formValues.secretAccessKey,
@@ -78,30 +80,6 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
         endpoint: endpointsByProtocol.HTTPS,
         correctClockSkew: true,
     });
-    const getIceServerConfigResponse = await kinesisVideoSignalingChannelsClient
-        .getIceServerConfig({
-            ChannelARN: channelARN,
-        })
-        .promise();
-    const iceServers = [];
-    if (!formValues.natTraversalDisabled && !formValues.forceTURN) {
-        iceServers.push({ urls: `stun:stun.kinesisvideo.${formValues.region}.amazonaws.com:443` });
-    }
-    if (!formValues.natTraversalDisabled) {
-        getIceServerConfigResponse.IceServerList.forEach(iceServer =>
-            iceServers.push({
-                urls: iceServer.Uris,
-                username: iceServer.Username,
-                credential: iceServer.Password,
-            }),
-        );
-    }
-    console.log('[MASTER] ICE servers: ', iceServers);
-
-    const configuration = {
-        iceServers,
-        iceTransportPolicy: formValues.forceTURN ? 'relay' : 'all',
-    };
 
     const resolution = formValues.widescreen ? { width: { ideal: 1280 }, height: { ideal: 720 } } : { width: { ideal: 640 }, height: { ideal: 480 } };
     const constraints = {
@@ -127,6 +105,35 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
 
     master.signalingClient.on('sdpOffer', async (offer, remoteClientId) => {
         printSignalingLog('[MASTER] Received SDP offer from client', remoteClientId);
+
+        // Get ICE server configuration.
+        const getIceServerConfigResponse = await master.kinesisVideoSignalingChannelsClient
+        .getIceServerConfig({
+            ChannelARN: channelARN,
+        })
+        .promise();
+
+        const iceServers = [];
+
+        if (!formValues.natTraversalDisabled && !formValues.forceTURN) {
+            iceServers.push({ urls: `stun:stun.kinesisvideo.${formValues.region}.amazonaws.com:443` });
+        }
+        if (!formValues.natTraversalDisabled) {
+            getIceServerConfigResponse.IceServerList.forEach(iceServer =>
+                iceServers.push({
+                    urls: iceServer.Uris,
+                    username: iceServer.Username,
+                    credential: iceServer.Password,
+                }),
+            );
+        }
+
+        console.log('[MASTER] ICE servers: ', iceServers);
+
+        const configuration = {
+            iceServers,
+            iceTransportPolicy: formValues.forceTURN ? 'relay' : 'all',
+        };
 
         // Create a new peer connection using the offer from the given client
         const peerConnection = new RTCPeerConnection(configuration);
@@ -180,6 +187,11 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
         }
         await peerConnection.setRemoteDescription(offer);
 
+        // Submit ice candidates after remote description has been set.
+        if (master.pendingIceCandidateByClientId[remoteClientId]) {
+            master.pendingIceCandidateByClientId[remoteClientId].forEach(iceCandidate => peerConnection.addIceCandidate(iceCandidate));
+        }
+
         // Create an SDP answer to send back to the client
         printSignalingLog('[MASTER] Creating SDP answer for client', remoteClientId);
         await peerConnection.setLocalDescription(
@@ -202,7 +214,17 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
 
         // Add the ICE candidate received from the client to the peer connection
         const peerConnection = master.peerConnectionByClientId[remoteClientId];
-        peerConnection.addIceCandidate(candidate);
+
+        // Can not deliver ice candidate until remote description has been set.
+        // Therefore store ice candidate if peerConnection is not ready.
+        if (peerConnection && peerConnection.remoteDescription) {
+            peerConnection.addIceCandidate(candidate);
+        } else {
+            if (!master.pendingIceCandidateByClientId[remoteClientId]) {
+                master.pendingIceCandidateByClientId[remoteClientId] = [];
+            }
+            master.pendingIceCandidateByClientId[remoteClientId].push(candidate);
+        }
     });
 
     master.signalingClient.on('close', () => {
