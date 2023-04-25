@@ -131,13 +131,6 @@ $('#master-button').click(async () => {
 
 $('#stop-master-button').click(onStop);
 
-$('#join-session-button').click(async () => {
-    const formValues = getFormValues();
-    joinSession(formValues, event => {
-        remoteMessage.append(`${event.data}\n`);
-    });
-});
-
 $('#viewer-button').click(async () => {
     ROLE = 'viewer';
     $('#form').addClass('d-none');
