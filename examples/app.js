@@ -4,7 +4,10 @@ function configureLogging() {
     function log(level, messages) {
         const text = messages
             .map(message => {
-                if (typeof message === 'object') {
+                if (message instanceof Error) {
+                    const { stack, ...rest } = message;
+                    return `${JSON.stringify(rest, null, 2)}\n${stack}`;
+                } else if (typeof message === 'object') {
                     return JSON.stringify(message, null, 2);
                 } else {
                     return message;
@@ -59,6 +62,7 @@ function getFormValues() {
         endpoint: $('#endpoint').val() || null,
         secretAccessKey: $('#secretAccessKey').val(),
         sessionToken: $('#sessionToken').val() || null,
+        ingestMedia: $('#ingestMedia').is(':checked'),
     };
 }
 
@@ -191,6 +195,7 @@ const fields = [
     { field: 'natTraversalEnabled', type: 'radio', name: 'natTraversal' },
     { field: 'forceTURN', type: 'radio', name: 'natTraversal' },
     { field: 'natTraversalDisabled', type: 'radio', name: 'natTraversal' },
+    { field: 'ingestMedia', type: 'checkbox' },
 ];
 fields.forEach(({ field, type, name }) => {
     const id = '#' + field;
