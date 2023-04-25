@@ -47,14 +47,6 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
                 return;
             }
 
-            master.storageClient = new AWS.KinesisVideoWebRTCStorage({
-                region: formValues.region,
-                accessKeyId: formValues.accessKeyId,
-                secretAccessKey: formValues.secretAccessKey,
-                sessionToken: formValues.sessionToken,
-                endpoint: formValues.endpoint,
-            });
-
             const describeMediaStorageConfigurationResponse = await kinesisVideoClient
                 .describeMediaStorageConfiguration({
                     ChannelARN: master.channelARN,
@@ -78,7 +70,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             .getSignalingChannelEndpoint({
                 ChannelARN: channelARN,
                 SingleMasterChannelEndpointConfiguration: {
-                    Protocols: ['WSS', 'HTTPS'],
+                    Protocols: ['WSS', 'HTTPS', 'WEBRTC'],
                     Role: KVSWebRTC.Role.MASTER,
                 },
             })
@@ -102,6 +94,16 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             },
             systemClockOffset: kinesisVideoClient.config.systemClockOffset,
         });
+
+        if (formValues.ingestMedia) {
+            master.storageClient = new AWS.KinesisVideoWebRTCStorage({
+                region: formValues.region,
+                accessKeyId: formValues.accessKeyId,
+                secretAccessKey: formValues.secretAccessKey,
+                sessionToken: formValues.sessionToken,
+                endpoint: endpointsByProtocol.WEBRTC,
+            });
+        }
 
         // Get ICE server configuration
         const kinesisVideoSignalingChannelsClient = new AWS.KinesisVideoSignalingChannels({
@@ -169,7 +171,8 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
                             channelArn: master.channelARN,
                         })
                         .promise();
-                    console.log('[MASTER] Media is being recorded to', master.streamARN);
+
+                    console.log('[MASTER] Joined storage session. Media is being recorded to', master.streamARN);
                 } catch (e) {
                     console.error('[MASTER] Error joining storage session', e);
                 }
