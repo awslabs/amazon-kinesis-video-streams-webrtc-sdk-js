@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="./app.css">
     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
-    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.585.0.min.js"></script>
+    <script src="aws-sdk-2.1363.0.min.js"></script>
     <script src="https://unpkg.com/@ungap/url-search-params"></script>
     <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
     <link rel="icon" type="image/png" href="favicon.ico">
@@ -46,9 +46,12 @@
                 <input type="password" class="form-control" id="sessionToken" placeholder="Session token">
             </div>
             <h4>Signaling Channel</h4>
-            <div class="form-group">
+            <div>
                 <label>Channel Name</label>
-                <input type="text" class="form-control" id="channelName" placeholder="Channel">
+                <div class="form-group" style="display: flex; justify-content: space-between;">
+                    <input type="text" class="form-control" id="channelName" placeholder="Channel">
+                    <button id="create-channel-button" type="button" class="btn btn-primary" style="white-space: nowrap;" title="Create a signaling channel with this name.">Create Channel</button>
+                </div>
             </div>
             <div class="form-group">
                 <label>Client Id <small>(optional)</small></label>
@@ -104,10 +107,15 @@
                     <label class="form-check-label">Use trickle ICE <small>(not supported by Alexa devices)</small></label>
                 </div>
             </div>
+            <h4>WebRTC Storage</h4>
+            <div class="form-check form-check">
+                <input class="form-check-input" type="checkbox" name="natTraversal" id="ingestMedia" value="option1" checked>
+                <label class="form-check-label">Ingest media <small>(master only)</small></label>
+            </div>
+            <br>
             <div>
                 <button id="master-button" type="button" class="btn btn-primary">Start Master</button>
                 <button id="viewer-button" type="button" class="btn btn-primary">Start Viewer</button>
-                <button id="create-channel-button" type="button" class="btn btn-primary">Create Channel</button>
             </div>
         </form>
 
@@ -116,11 +124,11 @@
             <div class="row">
                 <div class="col">
                     <h5>Master Section</h5>
-                    <div class="video-container"><video class="local-view" autoplay playsinline controls muted /></div>
+                    <div class="video-container"><video class="local-view" autoplay playsinline controls muted></video></div>
                 </div>
                 <div class="col">
                     <h5>Viewer Return Channel</h5>
-                    <div class="video-container"><video class="remote-view" autoplay playsinline controls /></div>
+                    <div class="video-container"><video class="remote-view" autoplay playsinline controls></video></div>
                 </div>
             </div>
             <div class="row datachannel">
