@@ -1,4 +1,4 @@
-name: CI Action WebRTC C SDK
+name: CI Action AWS KVS WebRTC JS SDK
 
 on:
   push:
