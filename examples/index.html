@@ -185,9 +185,16 @@
 
         <h3 id="logs-header">Logs</h3>
         <div class="card bg-light mb-3">
+            <div style="display: flex; justify-content: space-between;">
+                <div id="tabs">
+                    <button id="info-button" class="btn btn-primary" onClick="logLevelSelected(event)" data-level="INFO">INFO</button>
+                    <button id="warn-button" class="btn btn-light" onClick="logLevelSelected(event)" data-level="WARN">WARN</button>
+                    <button id="error-button" class="btn btn-light" onClick="logLevelSelected(event)" data-level="ERROR">ERROR</button>
+                </div>
+                <button id="clear-logs" class="btn btn-light">Clear Logs</button>
+            </div>
             <pre id="logs" class="card-body text-monospace preserve-whitespace"></pre>
         </div>
-
     </div>
 </div>
 
