@@ -1,4 +1,6 @@
 let ROLE = null; // Possible values: 'master', 'viewer', null
+const LOG_LEVELS = ['info', 'warn', 'error'];
+let LOG_LEVEL = 'info';
 
 function configureLogging() {
     function log(level, messages) {
@@ -14,7 +16,12 @@ function configureLogging() {
                 }
             })
             .join(' ');
-        $('#logs').append($(`<div class="${level.toLowerCase()}">`).text(`[${new Date().toISOString()}] [${level}] ${text}\n`));
+
+        const logLine = $(`<div class="${level.toLowerCase()}">`).text(`[${new Date().toISOString()}] [${level}] ${text}\n`);
+        if (LOG_LEVELS.indexOf(level.toLowerCase()) < LOG_LEVELS.indexOf(LOG_LEVEL)) {
+            logLine.hide();
+        }
+        $('#logs').append(logLine);
         const logsContainer = document.getElementById('logs');
         logsContainer.scrollTo(0, logsContainer.scrollHeight);
     }
@@ -129,6 +136,12 @@ $('#master-button').click(async () => {
     });
 });
 
+$('#clear-logs').click(() => {
+    for (const child of $('#logs').children()) {
+        child.remove();
+    }
+});
+
 $('#stop-master-button').click(onStop);
 
 $('#viewer-button').click(async () => {
@@ -168,6 +181,27 @@ $('#viewer .send-message').click(async () => {
     const viewerLocalMessage = $('#viewer .local-message')[0];
     sendViewerMessage(viewerLocalMessage.value);
 });
+
+async function logLevelSelected(event) {
+    LOG_LEVEL = event.target.getAttribute('data-level').toLowerCase();
+
+    // Change which button is selected
+    for (const child of $('#tabs').children()) {
+        // console.log(child);
+        child.setAttribute('class', event.target.id === child.id ? 'btn btn-primary' : 'btn btn-light');
+    }
+
+    // Change which one is best.
+    for (const child of $('#logs').children()) {
+        // if (child.getAttribute('class') === 'info') {
+        // if (child.getAttribute('class') === LOG_LEVEL) {
+        if (LOG_LEVELS.indexOf(LOG_LEVEL) <= LOG_LEVELS.indexOf(child.getAttribute('class'))) {
+            child.removeAttribute('hidden');
+        } else {
+            child.setAttribute('hidden', true);
+        }
+    }
+}
 
 // Read/Write all of the fields to/from localStorage so that fields are not lost on refresh.
 const urlParams = new URLSearchParams(window.location.search);
