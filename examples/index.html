@@ -48,9 +48,11 @@
             <h4>Signaling Channel</h4>
             <div>
                 <label for="channelName">Channel Name</label>
-                <div class="form-group" style="display: flex; justify-content: space-between;">
+                <div class="form-group input-group">
                     <input type="text" class="form-control" id="channelName" placeholder="Channel" required>
-                    <button id="create-channel-button" type="button" class="btn btn-primary" style="white-space: nowrap;" title="Create a signaling channel with this name.">Create Channel</button>
+                    <div class="input-group-append">
+                        <button id="create-channel-button" type="submit" class="btn btn-primary text-nowrap" title="Create a signaling channel with this name.">Create Channel</button>
+                    </div>
                 </div>
             </div>
             <div class="form-group">
