@@ -117,8 +117,12 @@ window.addEventListener('unhandledrejection', function(event) {
 configureLogging();
 
 $('#master-button').click(async () => {
+    const form = $('#form');
+    if (!form[0].checkValidity()) {
+        return;
+    }
     ROLE = 'master';
-    $('#form').addClass('d-none');
+    form.addClass('d-none');
     $('#master').removeClass('d-none');
 
     const localView = $('#master .local-view')[0];
@@ -145,8 +149,12 @@ $('#clear-logs').click(() => {
 $('#stop-master-button').click(onStop);
 
 $('#viewer-button').click(async () => {
+    const form = $('#form');
+    if (!form[0].checkValidity()) {
+        return;
+    }
     ROLE = 'viewer';
-    $('#form').addClass('d-none');
+    form.addClass('d-none');
     $('#viewer').removeClass('d-none');
 
     const localView = $('#viewer .local-view')[0];
@@ -180,6 +188,16 @@ $('#master .send-message').click(async () => {
 $('#viewer .send-message').click(async () => {
     const viewerLocalMessage = $('#viewer .local-message')[0];
     sendViewerMessage(viewerLocalMessage.value);
+});
+
+$('#more-logs').click(async () => {
+    const logElement = $('#logs');
+    logElement.height(logElement.height() + 50);
+});
+
+$('#less-logs').click(async () => {
+    const logElement = $('#logs');
+    logElement.height(Math.max(100, logElement.height() - 50));
 });
 
 async function logLevelSelected(event) {
