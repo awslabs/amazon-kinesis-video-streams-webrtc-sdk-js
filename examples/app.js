@@ -19,7 +19,7 @@ function configureLogging() {
 
         const logLine = $(`<div class="${level.toLowerCase()}">`).text(`[${new Date().toISOString()}] [${level}] ${text}\n`);
         if (LOG_LEVELS.indexOf(level.toLowerCase()) < LOG_LEVELS.indexOf(LOG_LEVEL)) {
-            logLine.hide();
+            logLine.addClass('d-none');
         }
         $('#logs').append(logLine);
         const logsContainer = document.getElementById('logs');
@@ -214,9 +214,9 @@ async function logLevelSelected(event) {
         // if (child.getAttribute('class') === 'info') {
         // if (child.getAttribute('class') === LOG_LEVEL) {
         if (LOG_LEVELS.indexOf(LOG_LEVEL) <= LOG_LEVELS.indexOf(child.getAttribute('class'))) {
-            child.removeAttribute('hidden');
+            child.removeClass('d-hide');
         } else {
-            child.setAttribute('hidden', true);
+            child.addClass('d-hide');
         }
     }
 }
