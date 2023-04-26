@@ -214,9 +214,9 @@ async function logLevelSelected(event) {
         // if (child.getAttribute('class') === 'info') {
         // if (child.getAttribute('class') === LOG_LEVEL) {
         if (LOG_LEVELS.indexOf(LOG_LEVEL) <= LOG_LEVELS.indexOf(child.getAttribute('class'))) {
-            child.removeClass('d-hide');
+            child.removeClass('d-none');
         } else {
-            child.addClass('d-hide');
+            child.addClass('d-none');
         }
     }
 }
