@@ -22,39 +22,39 @@
 
     <div class="row loader"></div>
     <div id="main" class="d-none">
-        <form id="form">
+        <form id="form" onsubmit="return false">
             <h4>KVS Endpoint</h4>
             <div class="form-group">
-                <label>Region</label>
-                <input type="text" class="form-control" id="region" value="us-west-2">
+                <label for="region">Region</label>
+                <input type="text" class="form-control" id="region" value="us-west-2" required>
             </div>
             <div class="form-group">
-                <label>Endpoint <small>(optional)</small></label>
+                <label for="endpoint">Endpoint <small>(optional)</small></label>
                 <input type="text" class="form-control" id="endpoint" placeholder="Endpoint">
             </div>
             <h4>AWS Credentials</h4>
             <div class="form-group">
-                <label>Access Key ID</label>
-                <input type="text" class="form-control" id="accessKeyId" placeholder="Access key id">
+                <label for="accessKeyId">Access Key ID</label>
+                <input type="text" class="form-control" id="accessKeyId" placeholder="Access key id" required>
             </div>
             <div class="form-group">
-                <label>Secret Access Key</label>
-                <input type="password" class="form-control" id="secretAccessKey" placeholder="Secret access key">
+                <label for="secretAccessKey">Secret Access Key</label>
+                <input type="password" class="form-control" id="secretAccessKey" placeholder="Secret access key" required>
             </div>
             <div class="form-group">
-                <label>Session Token <small>(optional)</small></label>
+                <label for="sessionToken">Session Token <small>(optional)</small></label>
                 <input type="password" class="form-control" id="sessionToken" placeholder="Session token">
             </div>
             <h4>Signaling Channel</h4>
             <div>
-                <label>Channel Name</label>
+                <label for="channelName">Channel Name</label>
                 <div class="form-group" style="display: flex; justify-content: space-between;">
-                    <input type="text" class="form-control" id="channelName" placeholder="Channel">
+                    <input type="text" class="form-control" id="channelName" placeholder="Channel" required>
                     <button id="create-channel-button" type="button" class="btn btn-primary" style="white-space: nowrap;" title="Create a signaling channel with this name.">Create Channel</button>
                 </div>
             </div>
             <div class="form-group">
-                <label>Client Id <small>(optional)</small></label>
+                <label for="clientId">Client Id <small>(optional)</small></label>
                 <input type="text" class="form-control" id="clientId" placeholder="Client id">
             </div>
             <h4>Tracks</h4>
@@ -62,15 +62,15 @@
             <div class="form-group">
                 <div class="form-check form-check-inline">
                     <input class="form-check-input" type="checkbox" id="sendVideo" value="video" checked>
-                    <label class="form-check-label">Send Video</label>
+                    <label for="sendVideo" class="form-check-label">Send Video</label>
                 </div>
                 <div class="form-check form-check-inline">
                     <input class="form-check-input" type="checkbox" id="sendAudio" value="audio">
-                    <label class="form-check-label">Send Audio</label>
+                    <label for="sendAudio" class="form-check-label">Send Audio</label>
                 </div>
                 <div class="form-check form-check-inline">
                     <input class="form-check-input" type="checkbox" id="openDataChannel" value="datachannel">
-                    <label class="form-check-label">Open DataChannel</label>
+                    <label for="openDataChannel" class="form-check-label">Open DataChannel</label>
                 </div>
             </div>
             <h4>Video Resolution</h4>
@@ -104,18 +104,18 @@
             <div class="form-group">
                 <div class="form-check form-check-inline">
                     <input class="form-check-input" type="checkbox" id="useTrickleICE" value="useTrickleICE" checked>
-                    <label class="form-check-label">Use trickle ICE <small>(not supported by Alexa devices)</small></label>
+                    <label for="useTrickleICE" class="form-check-label">Use trickle ICE <small>(not supported by Alexa devices)</small></label>
                 </div>
             </div>
             <h4>WebRTC Storage</h4>
             <div class="form-check form-check">
-                <input class="form-check-input" type="checkbox" name="natTraversal" id="ingestMedia" value="option1">
-                <label class="form-check-label">Ingest media <small>(master only)</small></label>
+                <input class="form-check-input" type="checkbox" id="ingestMedia" value="option1">
+                <label for="ingestMedia" class="form-check-label">Ingest media <small>(master only)</small></label>
             </div>
             <br>
             <div>
-                <button id="master-button" type="button" class="btn btn-primary">Start Master</button>
-                <button id="viewer-button" type="button" class="btn btn-primary">Start Viewer</button>
+                <button id="master-button" type="submit" class="btn btn-primary">Start Master</button>
+                <button id="viewer-button" type="submit" class="btn btn-primary">Start Viewer</button>
             </div>
         </form>
 
@@ -156,11 +156,11 @@
             <div class="row">
                 <div class="col">
                     <h5>Return Channel</h5>
-                    <div class="video-container"><video class="local-view" autoplay playsinline controls muted /></div>
+                    <div class="video-container"><video class="local-view" autoplay playsinline controls muted></video></div>
                 </div>
                 <div class="col">
                     <h5>From Master</h5>
-                    <div class="video-container"><video class="remote-view" autoplay playsinline controls /></div>
+                    <div class="video-container"><video class="remote-view" autoplay playsinline controls></video></div>
                 </div>
             </div>
             <div class="row datachannel">
@@ -176,7 +176,7 @@
                 </div>
             </div>
             <div>
-                <span class="send-message datachannel" class="d-none">
+                <span class="send-message datachannel d-none">
                   <button type="button" class="btn btn-primary">Send DataChannel Message</button>
                 </span>
                 <button id="stop-viewer-button" type="button" class="btn btn-primary">Stop Viewer</button>
@@ -185,9 +185,20 @@
 
         <h3 id="logs-header">Logs</h3>
         <div class="card bg-light mb-3">
+            <div style="display: flex; justify-content: space-between;">
+                <div id="tabs">
+                    <button id="info-button" class="btn btn-primary" onClick="logLevelSelected(event)" data-level="INFO">INFO</button>
+                    <button id="warn-button" class="btn btn-light" onClick="logLevelSelected(event)" data-level="WARN">WARN</button>
+                    <button id="error-button" class="btn btn-light" onClick="logLevelSelected(event)" data-level="ERROR">ERROR</button>
+                </div>
+                <div>
+                    <button id="more-logs" class="btn btn-light" title="Show more logs">+</button>
+                    <button id="less-logs" class="btn btn-light" title="Show less logs">-</button>
+                    <button id="clear-logs" class="btn btn-light">Clear Logs</button>
+                </div>
+            </div>
             <pre id="logs" class="card-body text-monospace preserve-whitespace"></pre>
         </div>
-
     </div>
 </div>
 

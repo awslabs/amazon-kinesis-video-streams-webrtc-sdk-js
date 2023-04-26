@@ -1,4 +1,6 @@
 let ROLE = null; // Possible values: 'master', 'viewer', null
+const LOG_LEVELS = ['info', 'warn', 'error'];
+let LOG_LEVEL = 'info';
 
 function configureLogging() {
     function log(level, messages) {
@@ -14,7 +16,12 @@ function configureLogging() {
                 }
             })
             .join(' ');
-        $('#logs').append($(`<div class="${level.toLowerCase()}">`).text(`[${new Date().toISOString()}] [${level}] ${text}\n`));
+
+        const logLine = $(`<div class="${level.toLowerCase()}">`).text(`[${new Date().toISOString()}] [${level}] ${text}\n`);
+        if (LOG_LEVELS.indexOf(level.toLowerCase()) < LOG_LEVELS.indexOf(LOG_LEVEL)) {
+            logLine.addClass('d-none');
+        }
+        $('#logs').append(logLine);
         const logsContainer = document.getElementById('logs');
         logsContainer.scrollTo(0, logsContainer.scrollHeight);
     }
@@ -110,8 +117,12 @@ window.addEventListener('unhandledrejection', function(event) {
 configureLogging();
 
 $('#master-button').click(async () => {
+    const form = $('#form');
+    if (!form[0].checkValidity()) {
+        return;
+    }
     ROLE = 'master';
-    $('#form').addClass('d-none');
+    form.addClass('d-none');
     $('#master').removeClass('d-none');
 
     const localView = $('#master .local-view')[0];
@@ -129,11 +140,21 @@ $('#master-button').click(async () => {
     });
 });
 
+$('#clear-logs').click(() => {
+    for (const child of $('#logs').children()) {
+        child.remove();
+    }
+});
+
 $('#stop-master-button').click(onStop);
 
 $('#viewer-button').click(async () => {
+    const form = $('#form');
+    if (!form[0].checkValidity()) {
+        return;
+    }
     ROLE = 'viewer';
-    $('#form').addClass('d-none');
+    form.addClass('d-none');
     $('#viewer').removeClass('d-none');
 
     const localView = $('#viewer .local-view')[0];
@@ -168,6 +189,37 @@ $('#viewer .send-message').click(async () => {
     const viewerLocalMessage = $('#viewer .local-message')[0];
     sendViewerMessage(viewerLocalMessage.value);
 });
+
+$('#more-logs').click(async () => {
+    const logElement = $('#logs');
+    logElement.height(logElement.height() + 50);
+});
+
+$('#less-logs').click(async () => {
+    const logElement = $('#logs');
+    logElement.height(Math.max(100, logElement.height() - 50));
+});
+
+async function logLevelSelected(event) {
+    LOG_LEVEL = event.target.getAttribute('data-level').toLowerCase();
+
+    // Change which button is selected
+    for (const child of $('#tabs').children()) {
+        // console.log(child);
+        child.setAttribute('class', event.target.id === child.id ? 'btn btn-primary' : 'btn btn-light');
+    }
+
+    // Change which one is best.
+    for (const child of $('#logs').children()) {
+        // if (child.getAttribute('class') === 'info') {
+        // if (child.getAttribute('class') === LOG_LEVEL) {
+        if (LOG_LEVELS.indexOf(LOG_LEVEL) <= LOG_LEVELS.indexOf(child.getAttribute('class'))) {
+            child.removeClass('d-none');
+        } else {
+            child.addClass('d-none');
+        }
+    }
+}
 
 // Read/Write all of the fields to/from localStorage so that fields are not lost on refresh.
 const urlParams = new URLSearchParams(window.location.search);

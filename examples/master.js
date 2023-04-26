@@ -41,6 +41,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
 
         master.channelARN = channelARN;
 
+        const protocols = ['WSS', 'HTTPS'];
         if (formValues.ingestMedia) {
             if (!formValues.sendAudio || !formValues.sendVideo) {
                 console.error('[MASTER] Both Send Video and Send Audio checkboxes need to be checked to ingest media.');
@@ -61,6 +62,8 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
 
             master.streamARN = mediaStorageConfiguration.StreamARN;
             console.log(`[MASTER] Stream ARN: ${master.streamARN}`);
+
+            protocols.push('WEBRTC');
         } else {
             master.streamARN = null;
         }
@@ -70,7 +73,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             .getSignalingChannelEndpoint({
                 ChannelARN: channelARN,
                 SingleMasterChannelEndpointConfiguration: {
-                    Protocols: ['WSS', 'HTTPS', 'WEBRTC'],
+                    Protocols: protocols,
                     Role: KVSWebRTC.Role.MASTER,
                 },
             })
