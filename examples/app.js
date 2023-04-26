@@ -1,6 +1,6 @@
 let ROLE = null; // Possible values: 'master', 'viewer', null
 const LOG_LEVELS = ['info', 'warn', 'error'];
-let LOG_LEVEL = 'info';
+let LOG_LEVEL = 'info'; // Possible values: any value of LOG_LEVELS
 
 function configureLogging() {
     function log(level, messages) {
@@ -18,7 +18,7 @@ function configureLogging() {
             .join(' ');
 
         const logLine = $(`<div class="${level.toLowerCase()}">`).text(`[${new Date().toISOString()}] [${level}] ${text}\n`);
-        if (LOG_LEVELS.indexOf(level.toLowerCase()) < LOG_LEVELS.indexOf(LOG_LEVEL)) {
+        if (LOG_LEVELS.indexOf(LOG_LEVEL) > LOG_LEVELS.indexOf(level.toLowerCase())) {
             logLine.addClass('d-none');
         }
         $('#logs').append(logLine);
@@ -141,9 +141,7 @@ $('#master-button').click(async () => {
 });
 
 $('#clear-logs').click(() => {
-    for (const child of $('#logs').children()) {
-        child.remove();
-    }
+    $('#logs').empty();
 });
 
 $('#stop-master-button').click(onStop);
@@ -205,20 +203,17 @@ async function logLevelSelected(event) {
 
     // Change which button is selected
     for (const child of $('#tabs').children()) {
-        // console.log(child);
         child.setAttribute('class', event.target.id === child.id ? 'btn btn-primary' : 'btn btn-light');
     }
 
-    // Change which one is best.
-    for (const child of $('#logs').children()) {
-        // if (child.getAttribute('class') === 'info') {
-        // if (child.getAttribute('class') === LOG_LEVEL) {
-        if (LOG_LEVELS.indexOf(LOG_LEVEL) <= LOG_LEVELS.indexOf(child.getAttribute('class'))) {
-            child.removeClass('d-none');
+    // Make the logs hidden and shown based on the selected level
+    $('#logs > div').each((idx, child) => {
+        if (LOG_LEVELS.indexOf(LOG_LEVEL) <= LOG_LEVELS.indexOf(child.classList[0])) {
+            child.classList.remove('d-none');
         } else {
-            child.addClass('d-none');
+            child.classList.add('d-none');
         }
-    }
+    });
 }
 
 // Read/Write all of the fields to/from localStorage so that fields are not lost on refresh.
