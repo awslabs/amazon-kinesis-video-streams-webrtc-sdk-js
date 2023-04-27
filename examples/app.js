@@ -240,6 +240,7 @@ fetch('https://api.regional-table.region-services.aws.a2z.com/index.jsons')
         data?.prices
             ?.filter(serviceData => serviceData?.attributes['aws:serviceName'] === 'Amazon Kinesis Video Streams')
             .map(kinesisVideoServiceData => kinesisVideoServiceData?.attributes['aws:region'])
+            .sort()
             .forEach(region => {
                 $('#regionList').append(
                     $('<option>', {
