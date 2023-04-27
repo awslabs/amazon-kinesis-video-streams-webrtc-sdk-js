@@ -7,7 +7,7 @@ async function createSignalingChannel(formValues) {
     });
 
     try {
-        console.log('[CREATE_SIGNALING_CHANNEL] Attempting to Creating signaling channel with name', formValues.channelName);
+        console.log('[CREATE_SIGNALING_CHANNEL] Attempting to create signaling channel with name', formValues.channelName);
         // Create KVS client
         const kinesisVideoClient = new AWS.KinesisVideo({
             region: formValues.region,

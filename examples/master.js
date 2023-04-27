@@ -323,6 +323,7 @@ function sendMasterMessage(message) {
     Object.keys(master.dataChannelByClientId).forEach(clientId => {
         try {
             master.dataChannelByClientId[clientId].send(message);
+            console.log('[MASTER] Sent', message);
         } catch (e) {
             console.error('[MASTER] Send DataChannel:', e.toString());
         }

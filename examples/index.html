@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="loader.css">
     <link rel="stylesheet" href="./app.css">
     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js"></script>
     <script src="aws-sdk-2.1363.0.min.js"></script>
     <script src="https://unpkg.com/@ungap/url-search-params"></script>
     <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
@@ -24,9 +24,11 @@
     <div id="main" class="d-none">
         <form id="form" onsubmit="return false">
             <h4>KVS Endpoint</h4>
-            <div class="form-group">
+            <div class="form-group has-validation" style="position: relative;">
                 <label for="region">Region</label>
-                <input type="text" class="form-control" id="region" value="us-west-2" required>
+                <input type="text" class="form-control valid" id="region" placeholder="Region" value="us-west-2" autocomplete="off" required>
+                <datalist id="regionList"></datalist>
+                <div id="region-invalid-feedback" class="invalid-feedback"></div>
             </div>
             <div class="form-group">
                 <label for="endpoint">Endpoint <small>(optional)</small></label>
@@ -51,7 +53,7 @@
                 <div class="form-group input-group">
                     <input type="text" class="form-control" id="channelName" placeholder="Channel" required>
                     <div class="input-group-append">
-                        <button id="create-channel-button" type="submit" class="btn btn-primary text-nowrap" title="Create a signaling channel with this name.">Create Channel</button>
+                        <button id="create-channel-button" type="submit" class="btn btn-primary" title="Create a signaling channel with this name.">Create Channel</button>
                     </div>
                 </div>
             </div>
@@ -73,7 +75,17 @@
                 <div class="form-check form-check-inline">
                     <input class="form-check-input" type="checkbox" id="openDataChannel" value="datachannel">
                     <label for="openDataChannel" class="form-check-label">Open DataChannel</label>
+                    <span data-delay="{ &quot;hide&quot;: 1500 }" data-position="auto" tabindex="0" class="text-info ml-1" data-toggle="tooltip" data-html="true" title="
+                    <p>Open a channel which can be used for bidirectional peer-to-peer transfers of data.</p>
+                    <a href=&quot;https://www.w3.org/TR/webrtc/#rtcdatachannel&quot;>Additional information</a>
+                    "><sup>&#9432;</sup></span>
                 </div>
+            </div>
+            <h4>WebRTC Storage</h4>
+            <div class="form-group form-check">
+                <input class="form-check-input" type="checkbox" id="ingestMedia" value="option1">
+                <label for="ingestMedia" class="form-check-label">Ingest media <small>(master only)</small></label>
+                <div id="webrtc-storage-invalid-feedback" class="invalid-feedback">Audio and video must be enabled for WebRTC Storage!</div>
             </div>
             <h4>Video Resolution</h4>
             <p><small>Set the desired video resolution and aspect ratio.</small></p>
@@ -106,15 +118,13 @@
             <div class="form-group">
                 <div class="form-check form-check-inline">
                     <input class="form-check-input" type="checkbox" id="useTrickleICE" value="useTrickleICE" checked>
-                    <label for="useTrickleICE" class="form-check-label">Use trickle ICE <small>(not supported by Alexa devices)</small></label>
+                    <label for="useTrickleICE" class="form-check-label">Use trickle ICE</label>
+                    <span data-delay="{ &quot;hide&quot;: 1500 }" data-position="auto" tabindex="0" class="text-info ml-1" data-toggle="tooltip" data-html="true" title="
+                    <p>ICE candidates are exchanged incrementally as soon as they become available (and simultaneously with the gathering of other candidates). Supported by browsers, but not by Alexa devices.</p>
+                    <a href=&quot;https://www.google.com/&quot;>Additional information</a>
+                "><sup>&#9432;</sup></span>
                 </div>
             </div>
-            <h4>WebRTC Storage</h4>
-            <div class="form-check form-check">
-                <input class="form-check-input" type="checkbox" id="ingestMedia" value="option1">
-                <label for="ingestMedia" class="form-check-label">Ingest media <small>(master only)</small></label>
-            </div>
-            <br>
             <div>
                 <button id="master-button" type="submit" class="btn btn-primary">Start Master</button>
                 <button id="viewer-button" type="submit" class="btn btn-primary">Start Viewer</button>
@@ -147,7 +157,7 @@
             </div>
             <div>
                 <span class="send-message datachannel">
-                  <button type="button" class="btn btn-primary">Send DataChannel Message</button>
+                  <button id="send-message" type="button" class="btn btn-primary">Send DataChannel Message</button>
                 </span>
                 <button id="stop-master-button" type="button" class="btn btn-primary">Stop Master</button>
             </div>
