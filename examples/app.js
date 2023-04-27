@@ -192,13 +192,17 @@ $('#create-channel-button').click(async () => {
 });
 
 $('#master .send-message').click(async () => {
-    const masterLocalMessage = $('#master .local-message')[0];
-    sendMasterMessage(masterLocalMessage.value);
+    const masterLocalMessage = $('#master .local-message');
+    if (sendMasterMessage(masterLocalMessage.val())) {
+        masterLocalMessage.val('');
+    }
 });
 
 $('#viewer .send-message').click(async () => {
-    const viewerLocalMessage = $('#viewer .local-message')[0];
-    sendViewerMessage(viewerLocalMessage.value);
+    const viewerLocalMessage = $('#viewer .local-message');
+    if (sendViewerMessage(viewerLocalMessage.val())) {
+        viewerLocalMessage.val('');
+    }
 });
 
 $('#more-logs').click(async () => {

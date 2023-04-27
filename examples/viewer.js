@@ -253,8 +253,14 @@ function sendViewerMessage(message) {
     if (viewer.dataChannel) {
         try {
             viewer.dataChannel.send(message);
+            console.log('[VIEWER] Sent', message, 'to MASTER!');
+            return true;
         } catch (e) {
             console.error('[VIEWER] Send DataChannel:', e.toString());
+            return false;
         }
+    } else {
+        console.warn('[VIEWER] No DataChannel exists!');
+        return false;
     }
 }
