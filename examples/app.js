@@ -8,13 +8,11 @@ function configureLogging() {
             .map(message => {
                 if (message instanceof Error) {
                     const { stack, ...rest } = message;
-                    if (!rest) {
-                        console.debug('aaaa', message);
+                    if (Object.keys(rest).length === 0) {
                         return stack;
                     }
                     return `${JSON.stringify(rest, null, 2)}\n${stack}`;
                 } else if (typeof message === 'object') {
-                    console.debug('aaaaaaa', message);
                     return JSON.stringify(message, null, 2);
                 } else {
                     return message;
