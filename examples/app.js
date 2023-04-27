@@ -8,6 +8,9 @@ function configureLogging() {
             .map(message => {
                 if (message instanceof Error) {
                     const { stack, ...rest } = message;
+                    if (Object.keys(rest).length === 0) {
+                        return stack;
+                    }
                     return `${JSON.stringify(rest, null, 2)}\n${stack}`;
                 } else if (typeof message === 'object') {
                     return JSON.stringify(message, null, 2);
@@ -121,6 +124,10 @@ $('#master-button').click(async () => {
     if (!form[0].checkValidity()) {
         return;
     }
+    if (!checkWebRTCStorageRequirements()) {
+        console.error('Both Send Video and Send Audio checkboxes need to be checked to ingest media.');
+        return;
+    }
     ROLE = 'master';
     form.addClass('d-none');
     $('#master').removeClass('d-none');
@@ -151,6 +158,10 @@ $('#viewer-button').click(async () => {
     if (!form[0].checkValidity()) {
         return;
     }
+    if (!checkWebRTCStorageRequirements()) {
+        console.error('Both Send Video and Send Audio checkboxes need to be checked to ingest media.');
+        return;
+    }
     ROLE = 'viewer';
     form.addClass('d-none');
     $('#viewer').removeClass('d-none');
@@ -179,13 +190,17 @@ $('#create-channel-button').click(async () => {
 });
 
 $('#master .send-message').click(async () => {
-    const masterLocalMessage = $('#master .local-message')[0];
-    sendMasterMessage(masterLocalMessage.value);
+    const masterLocalMessage = $('#master .local-message');
+    if (sendMasterMessage(masterLocalMessage.val())) {
+        masterLocalMessage.val('');
+    }
 });
 
 $('#viewer .send-message').click(async () => {
-    const viewerLocalMessage = $('#viewer .local-message')[0];
-    sendViewerMessage(viewerLocalMessage.value);
+    const viewerLocalMessage = $('#viewer .local-message');
+    if (sendViewerMessage(viewerLocalMessage.val())) {
+        viewerLocalMessage.val('');
+    }
 });
 
 $('#more-logs').click(async () => {
@@ -215,6 +230,108 @@ async function logLevelSelected(event) {
         }
     });
 }
+
+// Fetch regions
+fetch('https://api.regional-table.region-services.aws.a2z.com/index.jsons')
+    .then(res => res.json())
+    .then(data => {
+        data?.prices
+            ?.filter(serviceData => serviceData?.attributes['aws:serviceName'] === 'Amazon Kinesis Video Streams')
+            .map(kinesisVideoServiceData => kinesisVideoServiceData?.attributes['aws:region'])
+            .sort()
+            .forEach(region => {
+                $('#regionList').append(
+                    $('<option>', {
+                        value: region,
+                        text: region,
+                    }),
+                );
+            });
+        $('#region').attr('list', 'regionList');
+        console.log('[FETCH-REGIONS] Successfully fetched regions!');
+    })
+    .catch(err => {
+        console.error('[FETCH-REGIONS] Encountered error fetching regions', err);
+    });
+
+// Region verification
+$('#region').on('focusout', event => {
+    const region = event.target.value;
+    let found = false;
+    let anyRegions = false;
+    for (const child of $('dataList').children()) {
+        anyRegions = true;
+        if (child.value === region) {
+            found = true;
+            break;
+        }
+    }
+    if (!anyRegions) {
+        return;
+    }
+
+    const regionElement = $('#region');
+
+    if (found) {
+        regionElement.addClass('is-valid');
+        regionElement.removeClass('is-invalid');
+    } else {
+        if (!region) {
+            $('#region-invalid-feedback').text('Please enter a region!');
+        } else {
+            // The dataset used mentions that it does not guarantee accuracy. In the case that
+            // it does not contain a certain region needed, we can still input regions needed.
+            $('#region-invalid-feedback').text('This region is not in the list of fetched regions!');
+            console.warn(`[REGION-VALIDATION] The region entered: \"${region}\" may be invalid!`);
+        }
+
+        regionElement.addClass('is-invalid');
+        regionElement.removeClass('is-valid');
+    }
+});
+
+// Audio/Video checkbox validation with WebRTC Storage
+function checkWebRTCStorageRequirements() {
+    const audio = $('#sendAudio');
+    const video = $('#sendVideo');
+    const ingestMedia = $('#ingestMedia');
+    if (ingestMedia.is(':checked')) {
+        let good = true;
+        if (!audio.is(':checked')) {
+            good = false;
+            audio.addClass('is-invalid');
+        } else {
+            audio.removeClass('is-invalid');
+        }
+        if (!video.is(':checked')) {
+            good = false;
+            video.addClass('is-invalid');
+        } else {
+            video.removeClass('is-invalid');
+        }
+        if (!good) {
+            ingestMedia.addClass('is-invalid');
+            return false;
+        }
+
+        ingestMedia.removeClass('is-invalid');
+    } else {
+        audio.removeClass('is-invalid');
+        video.removeClass('is-invalid');
+        ingestMedia.removeClass('is-invalid');
+    }
+    return true;
+}
+
+$('#sendAudio').click(() => {
+    checkWebRTCStorageRequirements();
+});
+$('#sendVideo').click(() => {
+    checkWebRTCStorageRequirements();
+});
+$('#ingestMedia').click(() => {
+    checkWebRTCStorageRequirements();
+});
 
 // Read/Write all of the fields to/from localStorage so that fields are not lost on refresh.
 const urlParams = new URLSearchParams(window.location.search);
@@ -283,6 +400,11 @@ fields.forEach(({ field, type, name }) => {
             /* Don't use localStorage */
         }
     });
+});
+
+// Enable tooltips
+$(document).ready(function () {
+    $('[data-toggle="tooltip"]').tooltip();
 });
 
 // The page is all setup. Hide the loading spinner and show the page content.

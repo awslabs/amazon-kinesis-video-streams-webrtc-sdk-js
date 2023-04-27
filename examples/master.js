@@ -320,13 +320,26 @@ function stopMaster() {
 }
 
 function sendMasterMessage(message) {
+    if (message === '') {
+        console.warn('[MASTER] Trying to send an empty message?');
+        return false;
+    }
+    if (Object.keys(master.dataChannelByClientId).length === 0) {
+        console.warn('[MASTER] No viewers have connected yet!');
+        return false;
+    }
+
+    let sent = false;
     Object.keys(master.dataChannelByClientId).forEach(clientId => {
         try {
             master.dataChannelByClientId[clientId].send(message);
+            console.log('[MASTER] Sent', message, 'to', clientId);
+            sent = true;
         } catch (e) {
             console.error('[MASTER] Send DataChannel:', e.toString());
         }
     });
+    return sent;
 }
 
 function printSignalingLog(message, clientId) {

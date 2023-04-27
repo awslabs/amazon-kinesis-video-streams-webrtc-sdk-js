@@ -2,8 +2,12 @@
  * This file demonstrates the process of creating a KVS Signaling Channel.
  */
 async function createSignalingChannel(formValues) {
+    $('#logs-header')[0].scrollIntoView({
+        block: 'start',
+    });
+
     try {
-        console.log('[CREATE_SIGNALING_CHANNEL] Attempting to Creating signaling channel with name', formValues.channelName);
+        console.log('[CREATE_SIGNALING_CHANNEL] Attempting to create signaling channel with name', formValues.channelName);
         // Create KVS client
         const kinesisVideoClient = new AWS.KinesisVideo({
             region: formValues.region,
