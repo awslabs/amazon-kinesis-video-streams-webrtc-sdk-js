@@ -237,7 +237,12 @@ async function logLevelSelected(event) {
 
 // Fetch regions
 fetch('https://api.regional-table.region-services.aws.a2z.com/index.jsons')
-    .then(res => res.json())
+    .then(res => {
+        if (res.ok) {
+            return res.json();
+        }
+        return Promise.reject(`${res.status}: ${res.statusText}`);
+    })
     .then(data => {
         data?.prices
             ?.filter(serviceData => serviceData?.attributes['aws:serviceName'] === 'Amazon Kinesis Video Streams')
