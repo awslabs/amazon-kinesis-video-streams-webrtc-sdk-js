@@ -161,7 +161,8 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
                 master.localStream = await navigator.mediaDevices.getUserMedia(constraints);
                 localView.srcObject = master.localStream;
             } catch (e) {
-                console.error('[MASTER] Could not find webcam');
+                console.error(`[MASTER] Could not find ${Object.keys(constraints).filter(k => constraints[k])} input device.`, e);
+                return;
             }
         }
 
