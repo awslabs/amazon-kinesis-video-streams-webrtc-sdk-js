@@ -9,7 +9,11 @@ function configureLogging() {
                 if (message instanceof Error) {
                     const { stack, ...rest } = message;
                     if (Object.keys(rest).length === 0) {
-                        return stack;
+                        if (stack) {
+                            return stack;
+                        } else {
+                            return message;
+                        }
                     }
                     return `${JSON.stringify(rest, null, 2)}\n${stack}`;
                 } else if (typeof message === 'object') {
