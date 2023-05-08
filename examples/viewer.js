@@ -125,7 +125,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
                     viewer.localStream.getTracks().forEach(track => viewer.peerConnection.addTrack(track, viewer.localStream));
                     localView.srcObject = viewer.localStream;
                 } catch (e) {
-                    console.error(`[MASTER] Could not find ${Object.keys(constraints).filter(k => constraints[k])} input device.`, e);
+                    console.error(`[VIEWER] Could not find ${Object.keys(constraints).filter(k => constraints[k])} input device.`, e);
                     return;
                 }
             }
