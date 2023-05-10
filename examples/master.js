@@ -344,5 +344,5 @@ function sendMasterMessage(message) {
 }
 
 function printSignalingLog(message, clientId) {
-    console.log(`${message}${clientId ? ': ' + clientId : ''}`);
+    console.log(`${message}${clientId ? ': ' + clientId : ' (no senderClientId provided)'}`);
 }
