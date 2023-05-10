@@ -39,6 +39,8 @@ let timeArray = [];
 
 async function startViewer(localView, remoteView, formValues, onStatsReport, onRemoteDataMessage) {
     try {
+        console.log('[VIEWER] Client id is:', formValues.clientId);
+
         viewer.localView = localView;
         viewer.remoteView = remoteView;
 
