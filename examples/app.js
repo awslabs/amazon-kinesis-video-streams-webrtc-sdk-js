@@ -18,6 +18,8 @@ function configureLogging() {
                     return `${JSON.stringify(rest, null, 2)}\n${stack}`;
                 } else if (typeof message === 'object') {
                     return JSON.stringify(message, null, 2);
+                } else if (message === undefined) {
+                    return 'undefined';
                 } else {
                     return message;
                 }
