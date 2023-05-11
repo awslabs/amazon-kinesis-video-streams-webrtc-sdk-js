@@ -1,5 +1,5 @@
 let ROLE = null; // Possible values: 'master', 'viewer', null
-const LOG_LEVELS = ['info', 'warn', 'error'];
+const LOG_LEVELS = ['debug', 'info', 'warn', 'error'];
 let LOG_LEVEL = 'info'; // Possible values: any value of LOG_LEVELS
 
 function configureLogging() {
@@ -50,6 +50,12 @@ function configureLogging() {
         log('INFO', Array.prototype.slice.call(rest));
         console._log.apply(this, rest);
     };
+
+    console._debug = console.debug;
+    console.debug = function(...rest) {
+        log('DEBUG', Array.prototype.slice.call(rest));
+        console._debug.apply(this, rest);
+    };
 }
 
 function getRandomClientId() {
@@ -89,7 +95,7 @@ function toggleDataChannelElements() {
 }
 
 function onStatsReport(report) {
-    // TODO: Publish stats
+    console.debug('[STATS]', [...report.entries()]);
 }
 
 function onStop() {
