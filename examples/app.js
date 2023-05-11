@@ -79,6 +79,7 @@ function getFormValues() {
         secretAccessKey: $('#secretAccessKey').val(),
         sessionToken: $('#sessionToken').val() || null,
         ingestMedia: $('#ingestMedia').is(':checked'),
+        enableDQPmetrics: $('#enableDQPmetrics').is(':checked'),
     };
 }
 
@@ -105,6 +106,11 @@ function onStop() {
     } else {
         stopViewer();
         $('#viewer').addClass('d-none');
+    }
+
+    if (getFormValues().enableDQPmetrics) {
+        $('#dqpmetrics').addClass('d-none');
+        $('#webrtc-live-stats').addClass('d-none');
     }
 
     $('#form').removeClass('d-none');
@@ -177,6 +183,11 @@ $('#viewer-button').click(async () => {
     const localMessage = $('#viewer .local-message')[0];
     const remoteMessage = $('#viewer .remote-message')[0];
     const formValues = getFormValues();
+
+    if (formValues.enableDQPmetrics) {
+        $('#dqpmetrics').removeClass('d-none');
+        $('#webrtc-live-stats').removeClass('d-none');
+    }
 
     $(remoteMessage).empty();
     localMessage.value = '';
@@ -414,7 +425,7 @@ fields.forEach(({ field, type, name }) => {
 });
 
 // Enable tooltips
-$(document).ready(function () {
+$(document).ready(function() {
     $('[data-toggle="tooltip"]').tooltip();
 });
 
