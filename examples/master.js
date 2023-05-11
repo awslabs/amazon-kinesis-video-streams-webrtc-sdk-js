@@ -257,6 +257,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
 
         master.signalingClient.on('iceCandidate', async (candidate, remoteClientId) => {
             printSignalingLog('[MASTER] Received ICE candidate from client', remoteClientId);
+            console.debug('[MASTER] ICE candidate:', candidate);
 
             // Add the ICE candidate received from the client to the peer connection
             const peerConnection = master.peerConnectionByClientId[remoteClientId];
