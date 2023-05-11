@@ -99,7 +99,7 @@ function toggleDataChannelElements() {
 }
 
 function onStatsReport(report) {
-    console.debug('[STATS]', [...report.entries()]);
+    console._debug('[STATS]', Object.fromEntries([...report.entries()]));
 }
 
 function onStop() {
