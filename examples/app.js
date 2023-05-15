@@ -99,6 +99,7 @@ function toggleDataChannelElements() {
 }
 
 function onStatsReport(report) {
+    // Only print these to the console, as this prints a LOT of stuff.
     console._debug('[STATS]', Object.fromEntries([...report.entries()]));
 }
 
