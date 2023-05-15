@@ -251,7 +251,7 @@ This class is the main class for interfacing with the KVS signaling service. It 
     * `secretAccessKey` {string} AWS secret access key.
     * `sessionToken` {string} Optional. AWS session token.
   * `requestSigner` {RequestSigner} Optional. A custom method for overriding the default SigV4 request signing.
-  * `systemClockOffset` {number} Optional. Applies the given offset when setting the date in the SigV4 signature. 
+  * `systemClockOffset` {number} Optional. Applies the given offset when setting the date in the SigV4 signature.
   See [systemClockOffset](https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/Config.html#systemClockOffset-property) and [correctClockSkew](https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/Config.html#correctClockSkew-property)
   properties of the AWS SDK.
 
@@ -399,7 +399,7 @@ See [KVS WebRTC Access Control Documentation](https://docs.aws.amazon.com/kinesi
 #### Running WebRTC Test Page Locally
 The SDK and test page can be edited and run locally by following these instructions:
 
-NodeJS version 8+ is required.
+See the supported node versions in [ci.yml](.github/workflows/ci.yml).
 
 1. Run `npm install` to download dependencies.
 1. Run `npm run develop` to run the webserver.
@@ -408,6 +408,8 @@ NodeJS version 8+ is required.
 You will need to provide an AWS region, AWS credentials, and a Channel Name.
 
 The source code for the test page is in the [`examples`](examples) directory.
+
+For advanced debugging, use the `WebRTC Internals` tool your browser provides.
 
 ## License
 
