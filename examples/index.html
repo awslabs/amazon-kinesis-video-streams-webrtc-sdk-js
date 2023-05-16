@@ -21,7 +21,7 @@
     <p>This is the KVS Signaling Channel WebRTC test page. Use this page to connect to a signaling channel as either the MASTER or as a VIEWER.</p>
 
     <div class="row loader"></div>
-    <div id="main" class="d-none">
+    <flex id="main" class="d-none">
         <form id="form" onsubmit="return false">
             <h4>KVS Endpoint</h4>
             <div class="form-group has-validation" style="position: relative;">
@@ -104,7 +104,11 @@
                 </div>
             </div>
             <h4>NAT Traversal</h4>
-            <p><small>Control settings for ICE candidate generation.</small></p>
+            <p><small>Control settings for ICE candidate generation.</small>
+            <span data-delay="{ &quot;hide&quot;: 1500 }" data-position="auto" tabindex="0" class="text-info" data-toggle="tooltip" data-html="true" title="
+                    <p>Determines the types of <code>ICE candidates</code> that are generated.<br/><br/>STUN/TURN = host, server reflexive, and relay<br/>TURN only = relay<br/>Disabled = host</p>
+                    <a href=&quot;https://docs.aws.amazon.com/kinesisvideostreams-webrtc-dg/latest/devguide/kvswebrtc-how-it-works.html#how-kvswebrtc-works&quot;>Additional information</a>
+                "><sup>&#9432;</sup></span></p>
             <div class="form-group">
                 <div class="form-check form-check">
                     <input class="form-check-input" type="radio" name="natTraversal" id="natTraversalEnabled" value="option2" checked>
