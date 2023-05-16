@@ -436,6 +436,13 @@ fields.forEach(({ field, type, name }) => {
 // Enable tooltips
 $(document).ready(function() {
     $('[data-toggle="tooltip"]').tooltip();
+
+    // $('[data-toggle="tooltip"]').on('show.bs.tooltip', function (key) {
+    //     // Only one tooltip should ever be open at a time
+    //     $('.tooltip')
+    //         .not(this)
+    //         .fadeOut();
+    // });
 });
 
 // The page is all setup. Hide the loading spinner and show the page content.

@@ -174,7 +174,8 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             if (formValues.ingestMedia && master.streamARN) {
                 try {
                     console.log('[MASTER] Joining storage session...');
-                    await master.storageClient.joinStorageSession({
+                    await master.storageClient
+                        .joinStorageSession({
                             channelArn: master.channelARN,
                         })
                         .promise();
@@ -205,6 +206,40 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             if (!master.peerConnectionStatsInterval) {
                 master.peerConnectionStatsInterval = setInterval(() => peerConnection.getStats().then(onStatsReport), 10000);
             }
+
+            peerConnection.addEventListener('connectionstatechange', async event => {
+                if (peerConnection.connectionState === 'connected') {
+                    console.log('[MASTER] Connection to viewer successful!');
+                    const stats = await peerConnection.getStats();
+                    if (!stats) return;
+
+                    let selectedPairId = null;
+                    for (const [, stat] of stats) {
+                        if (stat.type === 'transport') {
+                            selectedPairId = stat.selectedCandidatePairId;
+                            break;
+                        }
+                    }
+
+                    let candidatePair = stats.get(selectedPairId);
+                    if (!candidatePair) {
+                        for (const [, stat] of stats) {
+                            if (stat.type === 'candidate-pair' && stat.selected) {
+                                candidatePair = stat;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (candidatePair) {
+                        console.debug('[MASTER] Chosen pair:', candidatePair);
+                        console.debug('remote candidate:', stats.get(candidatePair.remoteCandidateId));
+                        console.debug('local candidate:', stats.get(candidatePair.localCandidateId));
+                    }
+                } else if (peerConnection.connectionState === 'failed') {
+                    console.error('[MASTER] Connection to viewer failed!');
+                }
+            });
 
             // Send any ICE candidates to the other peer
             peerConnection.addEventListener('icecandidate', ({ candidate }) => {
