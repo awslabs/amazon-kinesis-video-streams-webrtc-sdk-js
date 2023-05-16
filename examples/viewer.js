@@ -196,6 +196,8 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
         });
 
         viewer.peerConnection.addEventListener('connectionstatechange', async event => {
+            console.debug('[VIEWER] PeerConnection state:', viewer.peerConnection.connectionState);
+
             if (viewer.peerConnection.connectionState === 'connected') {
                 console.log('[VIEWER] Connection to master successful!');
                 const stats = await viewer.peerConnection.getStats();
