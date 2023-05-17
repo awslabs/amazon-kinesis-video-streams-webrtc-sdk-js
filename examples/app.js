@@ -306,6 +306,42 @@ $('#region').on('focusout', event => {
     }
 });
 
+async function printPeerConnectionStateInfo(event, logPrefix) {
+    const rtcPeerConnection = event.target;
+    console.debug(logPrefix, 'PeerConnection state:', rtcPeerConnection.connectionState);
+    if (rtcPeerConnection.connectionState === 'connected') {
+        console.log(logPrefix, 'Connection to peer successful!');
+        const stats = await rtcPeerConnection.getStats();
+        if (!stats) return;
+
+        let selectedPairId = null;
+        for (const [, stat] of stats) {
+            if (stat.type === 'transport') {
+                selectedPairId = stat.selectedCandidatePairId;
+                break;
+            }
+        }
+
+        let candidatePair = stats.get(selectedPairId);
+        if (!candidatePair) {
+            for (const [, stat] of stats) {
+                if (stat.type === 'candidate-pair' && stat.selected) {
+                    candidatePair = stat;
+                    break;
+                }
+            }
+        }
+
+        if (candidatePair) {
+            console.debug(logPrefix, 'Chosen pair:', candidatePair);
+            console.debug('remote candidate:', stats.get(rtcPeerConnection.remoteCandidateId));
+            console.debug('local candidate:', stats.get(rtcPeerConnection.localCandidateId));
+        }
+    } else if (rtcPeerConnection.connectionState === 'failed') {
+        console.error(logPrefix, 'Connection to peer failed!');
+    }
+}
+
 // Audio/Video checkbox validation with WebRTC Storage
 function checkWebRTCStorageRequirements() {
     const audio = $('#sendAudio');

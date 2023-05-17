@@ -196,39 +196,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
         });
 
         viewer.peerConnection.addEventListener('connectionstatechange', async event => {
-            console.debug('[VIEWER] PeerConnection state:', viewer.peerConnection.connectionState);
-
-            if (viewer.peerConnection.connectionState === 'connected') {
-                console.log('[VIEWER] Connection to master successful!');
-                const stats = await viewer.peerConnection.getStats();
-                if (!stats) return;
-
-                let selectedPairId = null;
-                for (const [, stat] of stats) {
-                    if (stat.type === 'transport') {
-                        selectedPairId = stat.selectedCandidatePairId;
-                        break;
-                    }
-                }
-
-                let candidatePair = stats.get(selectedPairId);
-                if (!candidatePair) {
-                    for (const [, stat] of stats) {
-                        if (stat.type === 'candidate-pair' && stat.selected) {
-                            candidatePair = stat;
-                            break;
-                        }
-                    }
-                }
-
-                if (candidatePair) {
-                    console.debug('[VIEWER] Chosen pair:', candidatePair);
-                    console.debug('remote candidate:', stats.get(candidatePair.remoteCandidateId));
-                    console.debug('local candidate:', stats.get(candidatePair.localCandidateId));
-                }
-            } else if (viewer.peerConnection.connectionState === 'failed') {
-                console.error('[VIEWER] Connection to master failed!');
-            }
+            printPeerConnectionStateInfo(event, '[VIEWER]');
         });
 
         // As remote tracks are received, add them to the remote view
