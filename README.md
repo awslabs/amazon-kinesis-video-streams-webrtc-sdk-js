@@ -399,7 +399,7 @@ See [KVS WebRTC Access Control Documentation](https://docs.aws.amazon.com/kinesi
 #### Running WebRTC Test Page Locally
 The SDK and test page can be edited and run locally by following these instructions:
 
-See the supported node versions in [ci.yml](.github/workflows/ci.yml).
+NodeJS version 16+ is required.
 
 1. Run `npm install` to download dependencies.
 1. Run `npm run develop` to run the webserver.
