@@ -128,7 +128,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             iceServers.push({ urls: `stun:stun.kinesisvideo.${formValues.region}.amazonaws.com:443` });
         }
 
-        // Add TURN only if user does not select NAT traversal disabled and STUN only mode
+        // Don't add turn if user selects STUN only or NAT traversal disabled
         if (!formValues.natTraversalDisabled && !formValues.forceSTUN) {
             getIceServerConfigResponse.IceServerList.forEach(iceServer =>
                 iceServers.push({

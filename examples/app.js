@@ -373,6 +373,7 @@ const fields = [
     { field: 'openDataChannel', type: 'checkbox' },
     { field: 'useTrickleICE', type: 'checkbox' },
     { field: 'natTraversalEnabled', type: 'radio', name: 'natTraversal' },
+    { field: 'forceSTUN', type: 'radio', name: 'natTraversal' },
     { field: 'forceTURN', type: 'radio', name: 'natTraversal' },
     { field: 'natTraversalDisabled', type: 'radio', name: 'natTraversal' },
     { field: 'ingestMedia', type: 'checkbox' },
