@@ -156,10 +156,13 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
             })
             .promise();
         const iceServers = [];
+        // Don't add stun if user selects TURN only or NAT traversal disabled
         if (!formValues.natTraversalDisabled && !formValues.forceTURN) {
             iceServers.push({ urls: `stun:stun.kinesisvideo.${formValues.region}.amazonaws.com:443` });
         }
-        if (!formValues.natTraversalDisabled) {
+
+        // Don't add turn if user selects STUN only or NAT traversal disabled
+        if (!formValues.natTraversalDisabled && !formValues.forceSTUN) {
             getIceServerConfigResponse.IceServerList.forEach(iceServer =>
                 iceServers.push({
                     urls: iceServer.Uris,
