@@ -73,6 +73,7 @@ function getFormValues() {
         fullscreen: $('#fullscreen').is(':checked'),
         useTrickleICE: $('#useTrickleICE').is(':checked'),
         natTraversalDisabled: $('#natTraversalDisabled').is(':checked'),
+        forceSTUN: $('#forceSTUN').is(':checked'),
         forceTURN: $('#forceTURN').is(':checked'),
         accessKeyId: $('#accessKeyId').val(),
         endpoint: $('#endpoint').val() || null,
