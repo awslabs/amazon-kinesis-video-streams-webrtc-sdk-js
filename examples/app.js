@@ -153,7 +153,7 @@ $('#master-button').click(async () => {
     $('#master').removeClass('d-none');
 
     const localView = $('#master .local-view')[0];
-    const remoteView = $('#master .remote-view')[0];
+    const remoteView = $('#viewer-view-holder')[0];
     const localMessage = $('#master .local-message')[0];
     const remoteMessage = $('#master .remote-message')[0];
     const formValues = getFormValues();
@@ -320,7 +320,35 @@ $('#region').on('focusout', event => {
     }
 });
 
-async function printPeerConnectionStateInfo(event, logPrefix) {
+function addViewerTrackToMaster(viewerId, track) {
+    $('#empty-video-placeholder')?.remove();
+
+    const container = $(`<div id="${viewerId}"></div>`);
+    const video = $(`<video autoPlay playsInline controls title="${viewerId}"></video>`);
+    video.addClass('remote-view');
+
+    const title = $(`<p>${viewerId}</p>`);
+
+    container.append(video);
+    container.append(title);
+
+    video[0].srcObject = track;
+
+    $('#viewer-view-holder').append(container);
+}
+
+function removeViewerTrackFromMaster(viewerId) {
+    $('#viewer-view-holder')
+        .find('#' + viewerId)
+        .remove();
+
+    // Put an empty video player there, so it doesn't look empty
+    if ($('#viewer-view-holder').children().length === 1) {
+        $('#viewer-view-holder').append(`<video id="empty-video-placeholder" autoPlay playsInline controls title="${viewerId}"></video>`);
+    }
+}
+
+async function printPeerConnectionStateInfo(event, logPrefix, remoteClientId) {
     const rtcPeerConnection = event.target;
     console.debug(logPrefix, 'PeerConnection state:', rtcPeerConnection.connectionState);
     if (rtcPeerConnection.connectionState === 'connected') {
@@ -328,31 +356,22 @@ async function printPeerConnectionStateInfo(event, logPrefix) {
         const stats = await rtcPeerConnection.getStats();
         if (!stats) return;
 
-        let selectedPairId = null;
-        for (const [, stat] of stats) {
-            if (stat.type === 'transport') {
-                selectedPairId = stat.selectedCandidatePairId;
-                break;
+        rtcPeerConnection.getSenders().map(sender => {
+            const trackType = sender.track?.kind;
+            if (sender.transport) {
+                const iceTransport = sender.transport.iceTransport;
+                const logSelectedCandidate = () => console.debug(`Chosen candidate pair (${trackType || 'unknown'}):`, iceTransport.getSelectedCandidatePair());
+                iceTransport.onselectedcandidatepairchange = logSelectedCandidate;
+                logSelectedCandidate();
+            } else {
+                console.error('Failed to fetch the candidate pair!');
             }
-        }
-
-        let candidatePair = stats.get(selectedPairId);
-        if (!candidatePair) {
-            for (const [, stat] of stats) {
-                if (stat.type === 'candidate-pair' && stat.selected) {
-                    candidatePair = stat;
-                    break;
-                }
-            }
-        }
-
-        if (candidatePair) {
-            console.debug(logPrefix, 'Chosen pair:', candidatePair);
-            console.debug('remote candidate:', stats.get(rtcPeerConnection.remoteCandidateId));
-            console.debug('local candidate:', stats.get(rtcPeerConnection.localCandidateId));
-        }
+        });
     } else if (rtcPeerConnection.connectionState === 'failed') {
-        console.error(logPrefix, 'Connection to peer failed!');
+        if (remoteClientId) {
+            removeViewerTrackFromMaster(remoteClientId);
+        }
+        console.error(logPrefix, `Connection to ${remoteClientId || 'peer'} failed!`);
     }
 }
 
