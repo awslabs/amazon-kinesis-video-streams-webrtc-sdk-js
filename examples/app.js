@@ -18,6 +18,8 @@ function configureLogging() {
                     return `${JSON.stringify(rest, null, 2)}\n${stack}`;
                 } else if (typeof message === 'object') {
                     return JSON.stringify(message, null, 2);
+                } else if (message === undefined) {
+                    return 'undefined';
                 } else {
                     return message;
                 }
@@ -77,12 +79,14 @@ function getFormValues() {
         fullscreen: $('#fullscreen').is(':checked'),
         useTrickleICE: $('#useTrickleICE').is(':checked'),
         natTraversalDisabled: $('#natTraversalDisabled').is(':checked'),
+        forceSTUN: $('#forceSTUN').is(':checked'),
         forceTURN: $('#forceTURN').is(':checked'),
         accessKeyId: $('#accessKeyId').val(),
         endpoint: $('#endpoint').val() || null,
         secretAccessKey: $('#secretAccessKey').val(),
         sessionToken: $('#sessionToken').val() || null,
         ingestMedia: $('#ingestMedia').is(':checked'),
+        enableDQPmetrics: $('#enableDQPmetrics').is(':checked'),
     };
 }
 
@@ -110,6 +114,11 @@ function onStop() {
     } else {
         stopViewer();
         $('#viewer').addClass('d-none');
+    }
+
+    if (getFormValues().enableDQPmetrics) {
+        $('#dqpmetrics').addClass('d-none');
+        $('#webrtc-live-stats').addClass('d-none');
     }
 
     $('#form').removeClass('d-none');
@@ -182,6 +191,11 @@ $('#viewer-button').click(async () => {
     const localMessage = $('#viewer .local-message')[0];
     const remoteMessage = $('#viewer .remote-message')[0];
     const formValues = getFormValues();
+
+    if (formValues.enableDQPmetrics) {
+        $('#dqpmetrics').removeClass('d-none');
+        $('#webrtc-live-stats').removeClass('d-none');
+    }
 
     $(remoteMessage).empty();
     localMessage.value = '';
@@ -402,6 +416,7 @@ const fields = [
     { field: 'openDataChannel', type: 'checkbox' },
     { field: 'useTrickleICE', type: 'checkbox' },
     { field: 'natTraversalEnabled', type: 'radio', name: 'natTraversal' },
+    { field: 'forceSTUN', type: 'radio', name: 'natTraversal' },
     { field: 'forceTURN', type: 'radio', name: 'natTraversal' },
     { field: 'natTraversalDisabled', type: 'radio', name: 'natTraversal' },
     { field: 'ingestMedia', type: 'checkbox' },
