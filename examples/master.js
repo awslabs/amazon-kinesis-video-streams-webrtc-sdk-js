@@ -208,7 +208,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             }
 
             peerConnection.addEventListener('connectionstatechange', async event => {
-                printPeerConnectionStateInfo(event, '[MASTER]');
+                printPeerConnectionStateInfo(event, '[MASTER]', remoteClientId);
             });
 
             // Send any ICE candidates to the other peer
@@ -237,7 +237,9 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             // As remote tracks are received, add them to the remote view
             peerConnection.addEventListener('track', event => {
                 printSignalingLog('[MASTER] Received remote track from client', remoteClientId);
-                if (remoteView.srcObject) {
+                if (!remoteView.srcObject) {
+                    console.log('asdfasdfsadfsafdsfasfdasfasfsadfasdfasdfsafdsfasdfadsfasdfsdafdsafadsf');
+                    addViewerTrackToMaster(remoteClientId, event.streams[0]);
                     return;
                 }
                 remoteView.srcObject = event.streams[0];
