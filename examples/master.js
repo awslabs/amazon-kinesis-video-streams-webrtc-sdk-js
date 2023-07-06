@@ -298,6 +298,7 @@ function stopMaster() {
 
         Object.keys(master.peerConnectionByClientId).forEach(clientId => {
             master.peerConnectionByClientId[clientId].close();
+            removeViewerTrackFromMaster(clientId);
         });
         master.peerConnectionByClientId = [];
 
