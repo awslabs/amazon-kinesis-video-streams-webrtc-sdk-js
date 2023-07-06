@@ -215,7 +215,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
         // Poll for connection stats if metrics enabled
         if (formValues.enableDQPmetrics) {
             // viewer.peerConnectionStatsInterval = setInterval(() => viewer.peerConnection.getStats().then(onStatsReport), 1000);
-            viewer.peerConnectionStatsInterval = setInterval(() => viewer.peerConnection.getStats().then(stats => calcStats(stats)), 1000);
+            viewer.peerConnectionStatsInterval = setInterval(() => viewer.peerConnection.getStats().then(stats => calcStats(stats, formValues.clientId)), 1000);
         }
 
         viewer.signalingClient.on('open', async () => {
@@ -398,7 +398,7 @@ function calcDiffTimestamp2Sec(large, small) {
     return ((large - small) / 1000).toFixed(2);
 }
 
-function calcStats(stats) {
+function calcStats(stats, clientId) {
     let rttCurrent = 0;
 
     let videoBitrate = 0;
@@ -544,7 +544,7 @@ function calcStats(stats) {
                 // prettier-ignore
                 htmlString =
                     '<table><tr><strong>DQP TEST (2min) - <FONT COLOR=RED>RESULTS READY IN: ' + (DQPtestLength - statRunTime) + ' sec</FONT></strong></tr>' +
-                    '<tr><td>Client ID: </td><td>' + getFormValues().clientId + '</td></tr>' +
+                    '<tr><td>Client ID: </td><td>' + clientId + '</td></tr>' +
                     '<tr><td>Time to P2P connection: </td><td>' + connectionTime + ' sec</td></tr>' +
                     '<tr><td>Time to decoded stream(sec): </td><td>' + calcDiffTimestamp2Sec(statStartTime, viewerButtonPressed.getTime()) + ' sec</td></tr></table>';
                 testAvgRTT = avgRtt;
@@ -567,7 +567,7 @@ function calcStats(stats) {
                 htmlString =
                     '<table><tr><th>DQP TEST COMPLETE - RESULTS:</th></tr>' +
                     '<tr><td>Test Run Time:</td><td>' + DQPtestLength + ' sec</td></tr>' +
-                    '<tr><td>Client ID: </td><td>' + getFormValues().clientId + '</td></tr>' +
+                    '<tr><td>Client ID: </td><td>' + clientId + '</td></tr>' +
                     '<tr><td>Time to P2P connection: </td><td>' + connectionTime + ' sec</td></tr>' +
                     '<tr><td>Time to decoded frames: </td><td>' + calcDiffTimestamp2Sec(statStartTime, viewerButtonPressed.getTime()) + ' sec</td></tr>' +
                     '<tr><td>Peer Connection: </td><td>' + connectionString + '</td></tr>' +
