@@ -39,6 +39,8 @@ let timeArray = [];
 
 async function startViewer(localView, remoteView, formValues, onStatsReport, onRemoteDataMessage) {
     try {
+        console.log('[VIEWER] Client id is:', formValues.clientId);
+
         viewer.localView = localView;
         viewer.remoteView = remoteView;
 
@@ -213,7 +215,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
         // Poll for connection stats if metrics enabled
         if (formValues.enableDQPmetrics) {
             // viewer.peerConnectionStatsInterval = setInterval(() => viewer.peerConnection.getStats().then(onStatsReport), 1000);
-            viewer.peerConnectionStatsInterval = setInterval(() => viewer.peerConnection.getStats().then(stats => calcStats(stats)), 1000);
+            viewer.peerConnectionStatsInterval = setInterval(() => viewer.peerConnection.getStats().then(stats => calcStats(stats, formValues.clientId)), 1000);
         }
 
         viewer.signalingClient.on('open', async () => {
@@ -245,6 +247,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
             // When trickle ICE is enabled, send the offer now and then send ICE candidates as they are generated. Otherwise wait on the ICE candidates.
             if (formValues.useTrickleICE) {
                 console.log('[VIEWER] Sending SDP offer');
+                console.debug('SDP offer:', viewer.peerConnection.localDescription);
                 viewer.signalingClient.sendSdpOffer(viewer.peerConnection.localDescription);
             }
             console.log('[VIEWER] Generating ICE candidates');
@@ -253,12 +256,14 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
         viewer.signalingClient.on('sdpAnswer', async answer => {
             // Add the SDP answer to the peer connection
             console.log('[VIEWER] Received SDP answer');
+            console.debug('SDP answer:', answer);
             await viewer.peerConnection.setRemoteDescription(answer);
         });
 
         viewer.signalingClient.on('iceCandidate', candidate => {
             // Add the ICE candidate received from the MASTER to the peer connection
             console.log('[VIEWER] Received ICE candidate');
+            console.debug('ICE candidate', candidate);
             viewer.peerConnection.addIceCandidate(candidate);
         });
 
@@ -274,6 +279,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
         viewer.peerConnection.addEventListener('icecandidate', ({ candidate }) => {
             if (candidate) {
                 console.log('[VIEWER] Generated ICE candidate');
+                console.debug('ICE candidate:', candidate);
 
                 // When trickle ICE is enabled, send the ICE candidates as they are generated.
                 if (formValues.useTrickleICE) {
@@ -286,9 +292,14 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
                 // When trickle ICE is disabled, send the offer now that all the ICE candidates have ben generated.
                 if (!formValues.useTrickleICE) {
                     console.log('[VIEWER] Sending SDP offer');
+                    console.debug('SDP offer:', peerConnection.localDescription);
                     viewer.signalingClient.sendSdpOffer(viewer.peerConnection.localDescription);
                 }
             }
+        });
+
+        viewer.peerConnection.addEventListener('connectionstatechange', async event => {
+            printPeerConnectionStateInfo(event, '[VIEWER]');
         });
 
         // As remote tracks are received, add them to the remote view
@@ -387,7 +398,7 @@ function calcDiffTimestamp2Sec(large, small) {
     return ((large - small) / 1000).toFixed(2);
 }
 
-function calcStats(stats) {
+function calcStats(stats, clientId) {
     let rttCurrent = 0;
 
     let videoBitrate = 0;
@@ -533,7 +544,7 @@ function calcStats(stats) {
                 // prettier-ignore
                 htmlString =
                     '<table><tr><strong>DQP TEST (2min) - <FONT COLOR=RED>RESULTS READY IN: ' + (DQPtestLength - statRunTime) + ' sec</FONT></strong></tr>' +
-                    '<tr><td>Client ID: </td><td>' + getFormValues().clientId + '</td></tr>' +
+                    '<tr><td>Client ID: </td><td>' + clientId + '</td></tr>' +
                     '<tr><td>Time to P2P connection: </td><td>' + connectionTime + ' sec</td></tr>' +
                     '<tr><td>Time to decoded stream(sec): </td><td>' + calcDiffTimestamp2Sec(statStartTime, viewerButtonPressed.getTime()) + ' sec</td></tr></table>';
                 testAvgRTT = avgRtt;
@@ -556,7 +567,7 @@ function calcStats(stats) {
                 htmlString =
                     '<table><tr><th>DQP TEST COMPLETE - RESULTS:</th></tr>' +
                     '<tr><td>Test Run Time:</td><td>' + DQPtestLength + ' sec</td></tr>' +
-                    '<tr><td>Client ID: </td><td>' + getFormValues().clientId + '</td></tr>' +
+                    '<tr><td>Client ID: </td><td>' + clientId + '</td></tr>' +
                     '<tr><td>Time to P2P connection: </td><td>' + connectionTime + ' sec</td></tr>' +
                     '<tr><td>Time to decoded frames: </td><td>' + calcDiffTimestamp2Sec(statStartTime, viewerButtonPressed.getTime()) + ' sec</td></tr>' +
                     '<tr><td>Peer Connection: </td><td>' + connectionString + '</td></tr>' +

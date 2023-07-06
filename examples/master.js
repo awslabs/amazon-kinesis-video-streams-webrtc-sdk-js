@@ -174,7 +174,8 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             if (formValues.ingestMedia && master.streamARN) {
                 try {
                     console.log('[MASTER] Joining storage session...');
-                    await master.storageClient.joinStorageSession({
+                    await master.storageClient
+                        .joinStorageSession({
                             channelArn: master.channelARN,
                         })
                         .promise();
@@ -188,6 +189,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
 
         master.signalingClient.on('sdpOffer', async (offer, remoteClientId) => {
             printSignalingLog('[MASTER] Received SDP offer from client', remoteClientId);
+            console.debug('SDP offer:', offer);
 
             // Create a new peer connection using the offer from the given client
             const peerConnection = new RTCPeerConnection(configuration);
@@ -202,13 +204,18 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
 
             // Poll for connection stats
             if (!master.peerConnectionStatsInterval) {
-                master.peerConnectionStatsInterval = setInterval(() => peerConnection.getStats().then(onStatsReport), 1000);
+                master.peerConnectionStatsInterval = setInterval(() => peerConnection.getStats().then(onStatsReport), 10000);
             }
+
+            peerConnection.addEventListener('connectionstatechange', async event => {
+                printPeerConnectionStateInfo(event, '[MASTER]', remoteClientId);
+            });
 
             // Send any ICE candidates to the other peer
             peerConnection.addEventListener('icecandidate', ({ candidate }) => {
                 if (candidate) {
                     printSignalingLog('[MASTER] Generated ICE candidate for client', remoteClientId);
+                    console.debug('ICE candidate:', candidate);
 
                     // When trickle ICE is enabled, send the ICE candidates as they are generated.
                     if (formValues.useTrickleICE) {
@@ -221,6 +228,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
                     // When trickle ICE is disabled, send the answer now that all the ICE candidates have ben generated.
                     if (!formValues.useTrickleICE) {
                         printSignalingLog('[MASTER] Sending SDP answer to client', remoteClientId);
+                        console.debug('SDP answer:', peerConnection.localDescription);
                         master.signalingClient.sendSdpAnswer(peerConnection.localDescription, remoteClientId);
                     }
                 }
@@ -229,10 +237,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             // As remote tracks are received, add them to the remote view
             peerConnection.addEventListener('track', event => {
                 printSignalingLog('[MASTER] Received remote track from client', remoteClientId);
-                if (remoteView.srcObject) {
-                    return;
-                }
-                remoteView.srcObject = event.streams[0];
+                addViewerTrackToMaster(remoteClientId, event.streams[0]);
             });
 
             // If there's no video/audio, master.localStream will be null. So, we should skip adding the tracks from it.
@@ -253,6 +258,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             // When trickle ICE is enabled, send the answer now and then send ICE candidates as they are generated. Otherwise wait on the ICE candidates.
             if (formValues.useTrickleICE) {
                 printSignalingLog('[MASTER] Sending SDP answer to client', remoteClientId);
+                console.debug('SDP answer:', peerConnection.localDescription);
                 master.signalingClient.sendSdpAnswer(peerConnection.localDescription, remoteClientId);
             }
             printSignalingLog('[MASTER] Generating ICE candidates for client', remoteClientId);
@@ -260,6 +266,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
 
         master.signalingClient.on('iceCandidate', async (candidate, remoteClientId) => {
             printSignalingLog('[MASTER] Received ICE candidate from client', remoteClientId);
+            console.debug('[MASTER] ICE candidate:', candidate);
 
             // Add the ICE candidate received from the client to the peer connection
             const peerConnection = master.peerConnectionByClientId[remoteClientId];
@@ -291,6 +298,7 @@ function stopMaster() {
 
         Object.keys(master.peerConnectionByClientId).forEach(clientId => {
             master.peerConnectionByClientId[clientId].close();
+            removeViewerTrackFromMaster(clientId);
         });
         master.peerConnectionByClientId = [];
 

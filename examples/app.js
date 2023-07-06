@@ -1,5 +1,5 @@
 let ROLE = null; // Possible values: 'master', 'viewer', null
-const LOG_LEVELS = ['info', 'warn', 'error'];
+const LOG_LEVELS = ['debug', 'info', 'warn', 'error'];
 let LOG_LEVEL = 'info'; // Possible values: any value of LOG_LEVELS
 
 function configureLogging() {
@@ -7,7 +7,7 @@ function configureLogging() {
         const text = messages
             .map(message => {
                 if (message instanceof Error) {
-                    const { stack, ...rest } = message;
+                    const {stack, ...rest} = message;
                     if (Object.keys(rest).length === 0) {
                         if (stack) {
                             return stack;
@@ -36,21 +36,27 @@ function configureLogging() {
     }
 
     console._error = console.error;
-    console.error = function(...rest) {
+    console.error = function (...rest) {
         log('ERROR', Array.prototype.slice.call(rest));
         console._error.apply(this, rest);
     };
 
     console._warn = console.warn;
-    console.warn = function(...rest) {
+    console.warn = function (...rest) {
         log('WARN', Array.prototype.slice.call(rest));
         console._warn.apply(this, rest);
     };
 
     console._log = console.log;
-    console.log = function(...rest) {
+    console.log = function (...rest) {
         log('INFO', Array.prototype.slice.call(rest));
         console._log.apply(this, rest);
+    };
+
+    console._debug = console.debug;
+    console.debug = function (...rest) {
+        log('DEBUG', Array.prototype.slice.call(rest));
+        console._debug.apply(this, rest);
     };
 }
 
@@ -93,7 +99,8 @@ function toggleDataChannelElements() {
 }
 
 function onStatsReport(report) {
-    // TODO: Publish stats
+    // Only print these to the console, as this prints a LOT of stuff.
+    console._debug('[STATS]', Object.fromEntries([...report.entries()]));
 }
 
 function onStop() {
@@ -120,12 +127,12 @@ function onStop() {
 
 window.addEventListener('beforeunload', onStop);
 
-window.addEventListener('error', function(event) {
+window.addEventListener('error', function (event) {
     console.error(event.message);
     event.preventDefault();
 });
 
-window.addEventListener('unhandledrejection', function(event) {
+window.addEventListener('unhandledrejection', function (event) {
     console.error(event.reason.toString());
     event.preventDefault();
 });
@@ -146,7 +153,7 @@ $('#master-button').click(async () => {
     $('#master').removeClass('d-none');
 
     const localView = $('#master .local-view')[0];
-    const remoteView = $('#master .remote-view')[0];
+    const remoteView = $('#viewer-view-holder')[0];
     const localMessage = $('#master .local-message')[0];
     const remoteMessage = $('#master .remote-message')[0];
     const formValues = getFormValues();
@@ -313,6 +320,65 @@ $('#region').on('focusout', event => {
     }
 });
 
+function addViewerTrackToMaster(viewerId, track) {
+    $('#empty-video-placeholder')?.remove();
+
+    $('#viewer-view-holder')
+        .find('#' + viewerId)
+        ?.remove();
+
+    const container = $(`<div id="${viewerId}"></div>`);
+    const video = $(`<video autoPlay playsInline controls title="${viewerId}"></video>`);
+    video.addClass('remote-view');
+
+    const title = $(`<p>${viewerId}</p>`);
+
+    container.append(video);
+    container.append(title);
+
+    video[0].srcObject = track;
+
+    $('#viewer-view-holder').append(container);
+}
+
+function removeViewerTrackFromMaster(viewerId) {
+    $('#viewer-view-holder')
+        .find('#' + viewerId)
+        .remove();
+
+    // Put an empty video player there, so it doesn't look empty
+    if ($('#viewer-view-holder').children().length === 1) {
+        $('#viewer-view-holder').append(`<video id="empty-video-placeholder" autoPlay playsInline controls title="${viewerId}"></video>`);
+    }
+}
+
+async function printPeerConnectionStateInfo(event, logPrefix, remoteClientId) {
+    const rtcPeerConnection = event.target;
+    console.debug(logPrefix, 'PeerConnection state:', rtcPeerConnection.connectionState);
+    if (rtcPeerConnection.connectionState === 'connected') {
+        console.log(logPrefix, 'Connection to peer successful!');
+        const stats = await rtcPeerConnection.getStats();
+        if (!stats) return;
+
+        rtcPeerConnection.getSenders().map(sender => {
+            const trackType = sender.track?.kind;
+            if (sender.transport) {
+                const iceTransport = sender.transport.iceTransport;
+                const logSelectedCandidate = () => console.debug(`Chosen candidate pair (${trackType || 'unknown'}):`, iceTransport.getSelectedCandidatePair());
+                iceTransport.onselectedcandidatepairchange = logSelectedCandidate;
+                logSelectedCandidate();
+            } else {
+                console.error('Failed to fetch the candidate pair!');
+            }
+        });
+    } else if (rtcPeerConnection.connectionState === 'failed') {
+        if (remoteClientId) {
+            removeViewerTrackFromMaster(remoteClientId);
+        }
+        console.error(logPrefix, `Connection to ${remoteClientId || 'peer'} failed!`);
+    }
+}
+
 // Audio/Video checkbox validation with WebRTC Storage
 function checkWebRTCStorageRequirements() {
     const audio = $('#sendAudio');
@@ -359,26 +425,26 @@ $('#ingestMedia').click(() => {
 // Read/Write all of the fields to/from localStorage so that fields are not lost on refresh.
 const urlParams = new URLSearchParams(window.location.search);
 const fields = [
-    { field: 'channelName', type: 'text' },
-    { field: 'clientId', type: 'text' },
-    { field: 'region', type: 'text' },
-    { field: 'accessKeyId', type: 'text' },
-    { field: 'secretAccessKey', type: 'text' },
-    { field: 'sessionToken', type: 'text' },
-    { field: 'endpoint', type: 'text' },
-    { field: 'sendVideo', type: 'checkbox' },
-    { field: 'sendAudio', type: 'checkbox' },
-    { field: 'widescreen', type: 'radio', name: 'resolution' },
-    { field: 'fullscreen', type: 'radio', name: 'resolution' },
-    { field: 'openDataChannel', type: 'checkbox' },
-    { field: 'useTrickleICE', type: 'checkbox' },
-    { field: 'natTraversalEnabled', type: 'radio', name: 'natTraversal' },
-    { field: 'forceSTUN', type: 'radio', name: 'natTraversal' },
-    { field: 'forceTURN', type: 'radio', name: 'natTraversal' },
-    { field: 'natTraversalDisabled', type: 'radio', name: 'natTraversal' },
-    { field: 'ingestMedia', type: 'checkbox' },
+    {field: 'channelName', type: 'text'},
+    {field: 'clientId', type: 'text'},
+    {field: 'region', type: 'text'},
+    {field: 'accessKeyId', type: 'text'},
+    {field: 'secretAccessKey', type: 'text'},
+    {field: 'sessionToken', type: 'text'},
+    {field: 'endpoint', type: 'text'},
+    {field: 'sendVideo', type: 'checkbox'},
+    {field: 'sendAudio', type: 'checkbox'},
+    {field: 'widescreen', type: 'radio', name: 'resolution'},
+    {field: 'fullscreen', type: 'radio', name: 'resolution'},
+    {field: 'openDataChannel', type: 'checkbox'},
+    {field: 'useTrickleICE', type: 'checkbox'},
+    {field: 'natTraversalEnabled', type: 'radio', name: 'natTraversal'},
+    {field: 'forceSTUN', type: 'radio', name: 'natTraversal'},
+    {field: 'forceTURN', type: 'radio', name: 'natTraversal'},
+    {field: 'natTraversalDisabled', type: 'radio', name: 'natTraversal'},
+    {field: 'ingestMedia', type: 'checkbox'},
 ];
-fields.forEach(({ field, type, name }) => {
+fields.forEach(({field, type, name}) => {
     const id = '#' + field;
 
     // Read field from localStorage
@@ -407,7 +473,7 @@ fields.forEach(({ field, type, name }) => {
     }
 
     // Write field to localstorage on change event
-    $(id).change(function() {
+    $(id).change(function () {
         try {
             if (type === 'checkbox') {
                 localStorage.setItem(field, $(id).is(':checked'));
@@ -427,7 +493,7 @@ fields.forEach(({ field, type, name }) => {
 });
 
 // Enable tooltips
-$(document).ready(function() {
+$(document).ready(function () {
     $('[data-toggle="tooltip"]').tooltip();
 });
 

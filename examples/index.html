@@ -22,7 +22,7 @@
     <p>This is the KVS Signaling Channel WebRTC test page. Use this page to connect to a signaling channel as either the MASTER or as a VIEWER.</p>
 
     <div class="row loader"></div>
-    <div id="main" class="d-none">
+    <flex id="main" class="d-none">
         <form id="form" onsubmit="return false">
             <h4>KVS Endpoint</h4>
             <div class="form-group has-validation" style="position: relative;">
@@ -60,6 +60,10 @@
             </div>
             <div class="form-group">
                 <label for="clientId">Client Id <small>(optional)</small></label>
+                <span data-delay="{ &quot;hide&quot;: 1500 }" data-position="auto" tabindex="0" class="text-info" data-toggle="tooltip" data-html="true" title="
+                    <p>Only used in <code>viewer</code> mode. A unique identifier for the client. If left empty, a random client id will be generated.</p>
+                    <a href=&quot;https://docs.aws.amazon.com/kinesisvideostreams-webrtc-dg/latest/devguide/kvswebrtc-websocket-apis-1.html&quot;>Additional information</a>
+                    "><sup>&#9432;</sup></span>
                 <input type="text" class="form-control" id="clientId" placeholder="Client id">
             </div>
             <h4>Tracks</h4>
@@ -101,7 +105,11 @@
                 </div>
             </div>
             <h4>NAT Traversal</h4>
-            <p><small>Control settings for ICE candidate generation.</small></p>
+            <p><small>Control settings for ICE candidate generation.</small>
+            <span data-delay="{ &quot;hide&quot;: 1500 }" data-position="auto" tabindex="0" class="text-info" data-toggle="tooltip" data-html="true" title="
+                    <p>Determines the types of <code>ICE candidates</code> that are generated.<br/><br/>STUN/TURN = host, server reflexive, and relay<br/>STUN only = server reflexive<br/>TURN only = relay<br/>Disabled = host</p>
+                    <a href=&quot;https://docs.aws.amazon.com/kinesisvideostreams-webrtc-dg/latest/devguide/kvswebrtc-how-it-works.html#how-kvswebrtc-works&quot;>Additional information</a>
+                "><sup>&#9432;</sup></span></p>
             <div class="form-group">
                 <div class="form-check form-check">
                     <input class="form-check-input" type="radio" name="natTraversal" id="natTraversalEnabled" value="option2" checked>
@@ -155,9 +163,9 @@
                     <h5>Master Section</h5>
                     <div class="video-container"><video class="local-view" autoplay playsinline controls muted></video></div>
                 </div>
-                <div class="col">
+                <div id="viewer-view-holder" class="col">
                     <h5>Viewer Return Channel</h5>
-                    <div class="video-container"><video class="remote-view" autoplay playsinline controls></video></div>
+                    <div id="empty-video-placeholder" class="video-container"><video class="remote-view" autoplay playsinline controls></video></div>
                 </div>
             </div>
             <div class="row datachannel">
@@ -236,6 +244,7 @@
         <div class="card bg-light mb-3">
             <div style="display: flex; justify-content: space-between;">
                 <div id="tabs">
+                    <button id="debug-button" class="btn btn-light" onClick="logLevelSelected(event)" data-level="DEBUG">DEBUG</button>
                     <button id="info-button" class="btn btn-primary" onClick="logLevelSelected(event)" data-level="INFO">INFO</button>
                     <button id="warn-button" class="btn btn-light" onClick="logLevelSelected(event)" data-level="WARN">WARN</button>
                     <button id="error-button" class="btn btn-light" onClick="logLevelSelected(event)" data-level="ERROR">ERROR</button>
