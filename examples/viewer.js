@@ -207,7 +207,10 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
         viewer.peerConnection = new RTCPeerConnection(configuration);
         if (formValues.openDataChannel) {
             viewer.dataChannel = viewer.peerConnection.createDataChannel('kvsDataChannel');
+            // Callback for the data channel created by viewer
+            viewer.dataChannel.onmessage = onRemoteDataMessage;
             viewer.peerConnection.ondatachannel = event => {
+                // Callback for the data channel created by master
                 event.channel.onmessage = onRemoteDataMessage;
             };
         }
