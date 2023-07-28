@@ -196,9 +196,10 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             master.peerConnectionByClientId[remoteClientId] = peerConnection;
 
             if (formValues.openDataChannel) {
-                master.dataChannelByClientId[remoteClientId] = peerConnection.createDataChannel('kvsDataChannel');
                 peerConnection.ondatachannel = event => {
+                    master.dataChannelByClientId[remoteClientId] = event.channel;
                     event.channel.onmessage = onRemoteDataMessage;
+                    event.channel.send("Message from the master");
                 };
             }
 
