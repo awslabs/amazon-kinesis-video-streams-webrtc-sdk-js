@@ -10,7 +10,16 @@
 [![Coverage Status](https://codecov.io/gh/awslabs/amazon-kinesis-video-streams-webrtc-sdk-js/branch/master/graph/badge.svg)](https://codecov.io/gh/awslabs/amazon-kinesis-video-streams-webrtc-sdk-js)
 [![Known Vulnerabilities](https://img.shields.io/snyk/vulnerabilities/npm/amazon-kinesis-video-streams-webrtc?style=flat-square)](https://snyk.io/test/github/awslabs/amazon-kinesis-video-streams-webrtc-sdk-js?targetFile=package.json)
 
+
+## What is Amazon Kinesis Video Streams with WebRTC?
+
+Amazon Kinesis Video Streams provides a standards-compliant WebRTC implementation as a fully managed capability. You can use Amazon Kinesis Video Streams with WebRTC to securely live stream media or perform two-way audio or video interaction between any camera IoT device and WebRTC-compliant mobile or web players. As a fully managed capability, you don't have to build, operate, or scale any WebRTC-related cloud infrastructure, such as signaling or media relay servers to securely stream media across applications and devices.
+
+For more information about Amazon Kinesis Video Streams with WebRTC, check out the [documentation](https://docs.aws.amazon.com/kinesisvideostreams-webrtc-dg/latest/devguide/what-is-kvswebrtc.html).
+
 This SDK is intended to be used along side the [AWS SDK for JS](https://github.com/aws/aws-sdk-js) (version 2.585.0+) to interface with the Amazon Kinesis Video Streams Signaling Service for WebRTC streaming.
+
+Note: If you are looking to stream media from a Kinesis Video _Stream_ (different from a Kinesis Video Streams _Signaling Channel_), check out the [Kinesis Video Streams web media viewer](https://github.com/aws-samples/amazon-kinesis-video-streams-media-viewer).
 
 ## Installing
 #### In the Browser
