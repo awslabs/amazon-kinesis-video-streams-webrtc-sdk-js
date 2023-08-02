@@ -249,10 +249,15 @@
                     <button id="warn-button" class="btn btn-light" onClick="logLevelSelected(event)" data-level="WARN">WARN</button>
                     <button id="error-button" class="btn btn-light" onClick="logLevelSelected(event)" data-level="ERROR">ERROR</button>
                 </div>
-                <div>
+                <div class="d-inline-flex">
                     <button id="more-logs" class="btn btn-light" title="Show more logs">+</button>
                     <button id="less-logs" class="btn btn-light" title="Show less logs">-</button>
                     <button id="clear-logs" class="btn btn-light">Clear Logs</button>
+                    <div>
+                        <button id="copy-logs" class="btn btn-light" title="Copy logs">
+                            <span id="copy-tooltip" aria-live="assertive" class="text-info" role="tooltip" data-position="auto" title="Copied logs to clipboard!">📋</span>
+                        </button>
+                    </div>
                 </div>
             </div>
             <pre id="logs" class="card-body text-monospace preserve-whitespace"></pre>
