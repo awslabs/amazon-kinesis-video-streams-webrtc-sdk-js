@@ -422,9 +422,10 @@ async function callJoinStorageSessionUntilSDPOfferReceived(runId, kinesisVideoWe
                 .promise();
         } catch (e) {
             console.error(e);
-            // We should only retry on ClientLimitExceededException. All other
+            // We should only retry on ClientLimitExceededException, or internal failure. All other
             // cases e.g. IllegalArgumentException we should not retry.
-            shouldRetryCallingJoinStorageSession = e.code === 'ClientLimitExceededException';
+            shouldRetryCallingJoinStorageSession = e.code === 'ClientLimitExceededException' ||
+                e.statusCode === 500;
         }
         await new Promise(resolve => setTimeout(resolve, retryIntervalForJoinStorageSession));
     }
