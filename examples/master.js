@@ -300,7 +300,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
 
 function onPeerConnectionFailed() {
     if (master.streamARN) {
-        log.warn('[MASTER] Lost connection to media server. Reconnecting...');
+        console.warn('[MASTER] Lost connection to media server. Reconnecting...');
         master.sdpOfferReceived = false;
         if (!master.websocketOpened) {
             master.signalingClient.open();
@@ -416,7 +416,7 @@ async function callJoinStorageSessionUntilSDPOfferReceived(runId, kinesisVideoWe
             console.error(e);
             // We should only retry on ClientLimitExceededException, or internal failure. All other
             // cases e.g. IllegalArgumentException we should not retry.
-            shouldRetryCallingJoinStorageSession = e.code === 'ClientLimitExceededException' || e.statusCode === 500;
+            shouldRetryCallingJoinStorageSession = e.code === 'ClientLimitExceededException' || e.code === 'NetworkingError' || e.statusCode === 500;
         }
         await new Promise(resolve => setTimeout(resolve, retryIntervalForJoinStorageSession));
     }
