@@ -187,17 +187,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             master.websocketOpened = true;
             console.log('[MASTER] Connected to signaling service');
             if (master.streamARN) {
-                console.log('[MASTER] Joining storage session...');
-                const success = await callJoinStorageSessionUntilSDPOfferReceived(masterRunId, master.storageClient, master.channelARN);
-                if (success) {
-                    console.log('[MASTER] Joined storage session. Media is being recorded to', master.streamARN);
-                } else if (masterRunId === master.runId) {
-                    console.error('[MASTER] Error joining storage session');
-                } else if (!master.websocketOpened) {
-                    // TODO: ideally, we send a ping message. But, that's unavailable in browsers.
-                    console.log('[MASTER] Reopening the WebSocket.');
-                    master.signalingClient.open();
-                }
+                await connectToMediaServer(masterRunId);
             }
         });
 
@@ -310,10 +300,12 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
 
 function onPeerConnectionFailed() {
     if (master.streamARN) {
+        log.warn('[MASTER] Lost connection to media server. Reconnecting...');
         master.sdpOfferReceived = false;
         if (!master.websocketOpened) {
             master.signalingClient.open();
-
+        } else {
+            connectToMediaServer(++master.runId);
         }
     }
 }
@@ -403,7 +395,7 @@ function printSignalingLog(message, clientId) {
  * @param runId The current run identifier. If {@link master.runId} is different, we stop retrying.
  * @param kinesisVideoWebrtcStorageClient Kinesis Video Streams WebRTC Storage client.
  * @param channelARN The ARN of the signaling channel. It must have MediaStorage ENABLED.
- * @returns {Promise<boolean>} true if successfuly joined, and sdp offer was received. false if not; this includes
+ * @returns {Promise<boolean>} true if successfully joined, and sdp offer was received. false if not; this includes
  * when the {@link master.runId} is incremented during a retry attempt.
  */
 async function callJoinStorageSessionUntilSDPOfferReceived(runId, kinesisVideoWebrtcStorageClient, channelARN) {
@@ -424,10 +416,23 @@ async function callJoinStorageSessionUntilSDPOfferReceived(runId, kinesisVideoWe
             console.error(e);
             // We should only retry on ClientLimitExceededException, or internal failure. All other
             // cases e.g. IllegalArgumentException we should not retry.
-            shouldRetryCallingJoinStorageSession = e.code === 'ClientLimitExceededException' ||
-                e.statusCode === 500;
+            shouldRetryCallingJoinStorageSession = e.code === 'ClientLimitExceededException' || e.statusCode === 500;
         }
         await new Promise(resolve => setTimeout(resolve, retryIntervalForJoinStorageSession));
     }
     return shouldRetryCallingJoinStorageSession && master.runId === runId && master.websocketOpened;
+}
+
+async function connectToMediaServer(masterRunId) {
+    console.log('[MASTER] Joining storage session...');
+    const success = await callJoinStorageSessionUntilSDPOfferReceived(masterRunId, master.storageClient, master.channelARN);
+    if (success) {
+        console.log('[MASTER] Joined storage session. Media is being recorded to', master.streamARN);
+    } else if (masterRunId === master.runId) {
+        console.error('[MASTER] Error joining storage session');
+    } else if (!master.websocketOpened) {
+        // TODO: ideally, we send a ping message. But, that's unavailable in browsers.
+        console.log('[MASTER] Reopening the WebSocket.');
+        master.signalingClient.open();
+    }
 }
