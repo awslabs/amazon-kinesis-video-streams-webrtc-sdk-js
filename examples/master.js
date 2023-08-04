@@ -303,6 +303,7 @@ function onPeerConnectionFailed() {
         console.warn('[MASTER] Lost connection to media server. Reconnecting...');
         master.sdpOfferReceived = false;
         if (!master.websocketOpened) {
+            console.log('[MASTER] Websocket is closed. Reopening...');
             master.signalingClient.open();
         } else {
             connectToMediaServer(++master.runId);
@@ -432,7 +433,7 @@ async function connectToMediaServer(masterRunId) {
         console.error('[MASTER] Error joining storage session');
     } else if (!master.websocketOpened) {
         // TODO: ideally, we send a ping message. But, that's unavailable in browsers.
-        console.log('[MASTER] Reopening the WebSocket.');
+        console.log('[MASTER] Websocket is closed. Reopening...');
         master.signalingClient.open();
     }
 }
