@@ -144,10 +144,6 @@ $('#master-button').click(async () => {
     if (!form[0].checkValidity()) {
         return;
     }
-    if (!checkWebRTCStorageRequirements()) {
-        console.error('Both Send Video and Send Audio checkboxes need to be checked to ingest media.');
-        return;
-    }
     ROLE = 'master';
     form.addClass('d-none');
     $('#master').removeClass('d-none');
@@ -176,10 +172,6 @@ $('#stop-master-button').click(onStop);
 $('#viewer-button').click(async () => {
     const form = $('#form');
     if (!form[0].checkValidity()) {
-        return;
-    }
-    if (!checkWebRTCStorageRequirements()) {
-        console.error('Both Send Video and Send Audio checkboxes need to be checked to ingest media.');
         return;
     }
     ROLE = 'viewer';
