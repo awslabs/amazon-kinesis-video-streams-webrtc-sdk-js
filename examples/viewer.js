@@ -126,6 +126,17 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
         const channelARN = describeSignalingChannelResponse.ChannelInfo.ChannelARN;
         console.log('[VIEWER] Channel ARN:', channelARN);
 
+        const mediaStorageConfiguration = await kinesisVideoClient
+            .describeMediaStorageConfiguration({
+                ChannelName: formValues.channelName,
+            })
+            .promise();
+
+        if (mediaStorageConfiguration.MediaStorageConfiguration.Status !== 'DISABLED') {
+            log.error('[VIEWER]')
+            return;
+        }
+
         // Get signaling channel endpoints
         const getSignalingChannelEndpointResponse = await kinesisVideoClient
             .getSignalingChannelEndpoint({
@@ -213,7 +224,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
             };
             // Callback for the data channel created by viewer
             dataChannelObj.onmessage = onRemoteDataMessage;
-            
+
             viewer.peerConnection.ondatachannel = event => {
                 // Callback for the data channel created by master
                 event.channel.onmessage = onRemoteDataMessage;

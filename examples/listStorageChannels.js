@@ -27,6 +27,7 @@ async function listStorageChannels(formValues) {
             return channel.ChannelARN;
         });
 
+        let progressCounter = 0;
         const output = [];
         // Print channel ARN and its storage stream ARN if media storage is enabled for the channel
         for (const channelARN of allChannelARNs) {
@@ -40,6 +41,8 @@ async function listStorageChannels(formValues) {
                     StreamARN: storageResult.MediaStorageConfiguration.StreamARN,
                 });
             }
+            console.log('[LIST_STORAGE_CHANNELS] Progress:', ++progressCounter, '/', allChannelARNs.length);
+            await new Promise(res => setTimeout(res, 500)); // To avoid getting rate limited
         }
 
         console.log('[LIST_STORAGE_CHANNELS] You have', output.length, 'channels configured for storage:');
