@@ -471,6 +471,11 @@ $('#update-media-storage-configuration-button').on('click', async function() {
     updateMediaStorageConfiguration(formValues);
 });
 
+$('#describe-media-storage-configuration-button').on('click', async function() {
+    const formValues = getFormValues();
+    describeMediaStorageConfiguration(formValues);
+});
+
 // Enable tooltips
 $(document).ready(function() {
     $('[data-toggle="tooltip"]').tooltip();

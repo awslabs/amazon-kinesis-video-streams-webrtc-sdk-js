@@ -36,7 +36,6 @@ async function updateMediaStorageConfiguration(formValues) {
             const channelARN = describeSignalingChannelResponse.ChannelInfo.ChannelARN;
 
             // Finally, update the media storage configuration.
-
             await kinesisVideoClient
                 .updateMediaStorageConfiguration({
                     ChannelARN: channelARN,
