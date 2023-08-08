@@ -74,6 +74,7 @@ function getFormValues() {
         clientId: $('#clientId').val() || getRandomClientId(),
         sendVideo: $('#sendVideo').is(':checked'),
         sendAudio: $('#sendAudio').is(':checked'),
+        streamName: $('#streamName').val(),
         openDataChannel: $('#openDataChannel').is(':checked'),
         widescreen: $('#widescreen').is(':checked'),
         fullscreen: $('#fullscreen').is(':checked'),
@@ -85,7 +86,6 @@ function getFormValues() {
         endpoint: $('#endpoint').val() || null,
         secretAccessKey: $('#secretAccessKey').val(),
         sessionToken: $('#sessionToken').val() || null,
-        ingestMedia: $('#ingestMedia').is(':checked'),
         enableDQPmetrics: $('#enableDQPmetrics').is(':checked'),
     };
 }
@@ -380,49 +380,6 @@ async function printPeerConnectionStateInfo(event, logPrefix, remoteClientId) {
     }
 }
 
-// Audio/Video checkbox validation with WebRTC Storage
-function checkWebRTCStorageRequirements() {
-    const audio = $('#sendAudio');
-    const video = $('#sendVideo');
-    const ingestMedia = $('#ingestMedia');
-    if (ingestMedia.is(':checked')) {
-        let good = true;
-        if (!audio.is(':checked')) {
-            good = false;
-            audio.addClass('is-invalid');
-        } else {
-            audio.removeClass('is-invalid');
-        }
-        if (!video.is(':checked')) {
-            good = false;
-            video.addClass('is-invalid');
-        } else {
-            video.removeClass('is-invalid');
-        }
-        if (!good) {
-            ingestMedia.addClass('is-invalid');
-            return false;
-        }
-
-        ingestMedia.removeClass('is-invalid');
-    } else {
-        audio.removeClass('is-invalid');
-        video.removeClass('is-invalid');
-        ingestMedia.removeClass('is-invalid');
-    }
-    return true;
-}
-
-$('#sendAudio').click(() => {
-    checkWebRTCStorageRequirements();
-});
-$('#sendVideo').click(() => {
-    checkWebRTCStorageRequirements();
-});
-$('#ingestMedia').click(() => {
-    checkWebRTCStorageRequirements();
-});
-
 // Read/Write all of the fields to/from localStorage so that fields are not lost on refresh.
 const urlParams = new URLSearchParams(window.location.search);
 const fields = [
@@ -435,6 +392,7 @@ const fields = [
     { field: 'endpoint', type: 'text' },
     { field: 'sendVideo', type: 'checkbox' },
     { field: 'sendAudio', type: 'checkbox' },
+    { field: 'streamName', type: 'text' },
     { field: 'widescreen', type: 'radio', name: 'resolution' },
     { field: 'fullscreen', type: 'radio', name: 'resolution' },
     { field: 'openDataChannel', type: 'checkbox' },
@@ -443,7 +401,6 @@ const fields = [
     { field: 'forceSTUN', type: 'radio', name: 'natTraversal' },
     { field: 'forceTURN', type: 'radio', name: 'natTraversal' },
     { field: 'natTraversalDisabled', type: 'radio', name: 'natTraversal' },
-    { field: 'ingestMedia', type: 'checkbox' },
 ];
 fields.forEach(({ field, type, name }) => {
     const id = '#' + field;
@@ -515,6 +472,11 @@ $('#copy-logs').on('click', async function() {
 $('#listStorageChannels').on('click', async function() {
     const formValues = getFormValues();
     listStorageChannels(formValues);
+});
+
+$('#update-media-storage-configuration-button').on('click', async function() {
+    const formValues = getFormValues();
+    updateMediaStorageConfiguration(formValues);
 });
 
 // Enable tooltips
