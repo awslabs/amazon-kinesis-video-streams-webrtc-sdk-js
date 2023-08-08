@@ -95,11 +95,13 @@
                         <button id="update-media-storage-configuration-button" type="submit" class="btn btn-primary" title="Ingest and Store media to a specific Kinesis Video Stream.">Update Media Storage Configuration</button>
                     </div>
                 </div>
-
-                <button id="describe-media-storage-configuration-button" class="btn btn-primary">Describe Media Storage Configuration</button>
-
-                <button id="listStorageChannels" class="btn btn-primary">List Storage Channels</button>
-                <p><small>List storage channels outputs the ARNs of all signaling channels configured for storage and their associated stream's ARN.</small></p>
+                <div class="form-group">
+                    <button id="describe-media-storage-configuration-button" class="btn btn-primary">Describe Media Storage Configuration</button>
+                </div>
+                <div class="form-group justify-content-center align-items-center">
+                    <button id="listStorageChannels" class="btn btn-primary">List All Media Storage Channels</button>
+                    <p><small>List storage channels outputs the ARNs of all signaling channels configured for storage and their associated stream's ARN.</small></p>
+                </div>
             </div>
             <h4>Video Resolution</h4>
             <p><small>Set the desired video resolution and aspect ratio.</small></p>
