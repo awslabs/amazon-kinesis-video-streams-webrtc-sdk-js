@@ -67,7 +67,7 @@
                 <input type="text" class="form-control" id="clientId" placeholder="Client id">
             </div>
             <h4>Tracks</h4>
-            <p><small>Control which media types are transmitted to the remote client.</small></p>
+            <p><small>Control which media types are transmitted to the remote client. Both audio and video must be sent for WebRTC Ingestion and Storage.</small></p>
             <div class="form-group">
                 <div class="form-check form-check-inline">
                     <input class="form-check-input" type="checkbox" id="sendVideo" value="video" checked>
@@ -86,14 +86,21 @@
                     "><sup>&#9432;</sup></span>
                 </div>
             </div>
-            <h4>WebRTC Storage</h4>
-            <div class="form-group form-check">
-                <input class="form-check-input" type="checkbox" id="ingestMedia" value="option1">
-                <label for="ingestMedia" class="form-check-label">Ingest media <small>(master only)</small></label>
-                <div id="webrtc-storage-invalid-feedback" class="invalid-feedback">Audio and video must be enabled for WebRTC Storage!</div>
+            <h4>WebRTC Ingestion and Storage</h4>
+            <div>
+                <p><small>Configure which stream to ingest and store media to. Call update media storage configuration with an empty Stream name to disable this feature.</small></p>
+                <div class="form-group input-group">
+                    <input type="text" class="form-control" id="streamName" placeholder="Stream name">
+                    <div class="input-group-append">
+                        <button id="update-media-storage-configuration-button" type="submit" class="btn btn-primary" title="Ingest and Store media to a specific Kinesis Video Stream.">Update Media Storage Configuration</button>
+                    </div>
+                </div>
+
+                <button id="describeMediaStorageConfiguration" class="btn btn-primary">Describe Media Storage Configuration</button>
+
+                <button id="listStorageChannels" class="btn btn-primary">List Storage Channels</button>
+                <p><small>List storage channels outputs the ARNs of all signaling channels configured for storage and their associated stream's ARN.</small></p>
             </div>
-            <button id="listStorageChannels" class="btn btn-primary" style="font-size : 14px;">List Storage Channels</button>
-            <p><small>Output the ARNs of all signaling channels configured for storage and their associated stream's ARN.</small></p>
             <h4>Video Resolution</h4>
             <p><small>Set the desired video resolution and aspect ratio.</small></p>
             <div class="form-group">
@@ -274,6 +281,7 @@
 <script src="./viewer.js"></script>
 <script src="./createSignalingChannel.js"></script>
 <script src="./listStorageChannels.js"></script>
+<script src="./updateMediaStorageConfiguration.js"></script>
 <script src="./app.js"></script>
 
 </body>

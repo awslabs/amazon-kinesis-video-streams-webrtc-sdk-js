@@ -19,36 +19,31 @@ async function listStorageChannels(formValues) {
         });
 
         // Get all signaling channels
-        const result = await kinesisVideoClient
-            .listSignalingChannels(
-            )
-            .promise();
-        let allChannels = result.ChannelInfoList;
-        
+        const result = await kinesisVideoClient.listSignalingChannels().promise();
+        const allChannels = result.ChannelInfoList;
+
         // Grab channel ARNs
-        let allChannelARNs = allChannels.map((channel) => {
-            return channel.ChannelARN
+        const allChannelARNs = allChannels.map(channel => {
+            return channel.ChannelARN;
         });
 
-        let output = [];
+        const output = [];
         // Print channel ARN and its storage stream ARN if media storage is enabled for the channel
-        for(let channelARN of allChannelARNs)
-        {
-            let request = {
+        for (const channelARN of allChannelARNs) {
+            const request = {
                 ChannelARN: channelARN,
-            }
-            let storageResult = await kinesisVideoClient.describeMediaStorageConfiguration(request).promise();
-            if(storageResult.MediaStorageConfiguration.Status === 'ENABLED') {
+            };
+            const storageResult = await kinesisVideoClient.describeMediaStorageConfiguration(request).promise();
+            if (storageResult.MediaStorageConfiguration.Status === 'ENABLED') {
                 output.push({
-                    "ChannelARN" : channelARN,
-                    "StreamARN"  : storageResult.MediaStorageConfiguration.StreamARN,
-                })
+                    ChannelARN: channelARN,
+                    StreamARN: storageResult.MediaStorageConfiguration.StreamARN,
+                });
             }
         }
-        
-        console.log("You have", output.length, "channels configured for storage:")
-        console.log(output);
 
+        console.log('[LIST_STORAGE_CHANNELS] You have', output.length, 'channels configured for storage:');
+        console.log('[LIST_STORAGE_CHANNELS]', output);
     } catch (e) {
         console.error('[LIST_STORAGE_CHANNELS] Encountered error:', e);
     }
