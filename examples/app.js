@@ -512,6 +512,11 @@ $('#copy-logs').on('click', async function() {
     $('#copy-logs').addClass('btn-light');
 });
 
+$('#listStorageChannels').on('click', async function() {
+    const formValues = getFormValues();
+    listStorageChannels(formValues);
+});
+
 // Enable tooltips
 $(document).ready(function() {
     $('[data-toggle="tooltip"]').tooltip();
