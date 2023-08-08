@@ -7,13 +7,7 @@ async function describeMediaStorageConfiguration(formValues) {
     });
 
     try {
-        console.log(
-            '[DESCRIBE_MEDIA_STORAGE_CONFIGURATION] Attempting to update media storage configuration to have media from',
-            formValues.channelName,
-            formValues.streamName ? '' : 'not',
-            'to be ingested and stored',
-            formValues.streamName ? ' in ' + formValues.streamName : '',
-        );
+        console.log('[DESCRIBE_MEDIA_STORAGE_CONFIGURATION] Fetching the media storage configuration for', formValues.channelName);
 
         // Create KVS client
         const kinesisVideoClient = new AWS.KinesisVideo({
