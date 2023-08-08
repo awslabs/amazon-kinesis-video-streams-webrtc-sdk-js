@@ -55,28 +55,23 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
         master.channelARN = channelARN;
 
         const protocols = ['WSS', 'HTTPS'];
-        if (formValues.ingestMedia) {
+
+        const describeMediaStorageConfigurationResponse = await kinesisVideoClient
+            .describeMediaStorageConfiguration({
+                ChannelARN: master.channelARN,
+            })
+            .promise();
+        const mediaStorageConfiguration = describeMediaStorageConfigurationResponse.MediaStorageConfiguration;
+
+        const mediaServiceMode = mediaStorageConfiguration.Status === 'ENABLED' || mediaStorageConfiguration.StreamARN !== null;
+        if (mediaServiceMode) {
             if (!formValues.sendAudio || !formValues.sendVideo) {
                 console.error('[MASTER] Both Send Video and Send Audio checkboxes need to be checked to ingest media.');
                 return;
             }
-
-            const describeMediaStorageConfigurationResponse = await kinesisVideoClient
-                .describeMediaStorageConfiguration({
-                    ChannelARN: master.channelARN,
-                })
-                .promise();
-            const mediaStorageConfiguration = describeMediaStorageConfigurationResponse.MediaStorageConfiguration;
-
-            if (mediaStorageConfiguration.Status !== 'ENABLED' || mediaStorageConfiguration.StreamARN === null) {
-                console.error('[MASTER] The media storage configuration is not yet configured for this channel.');
-                return;
-            }
-
+            protocols.push('WEBRTC');
             master.streamARN = mediaStorageConfiguration.StreamARN;
             console.log(`[MASTER] Stream ARN: ${master.streamARN}`);
-
-            protocols.push('WEBRTC');
         } else {
             master.streamARN = null;
         }
@@ -111,7 +106,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             systemClockOffset: kinesisVideoClient.config.systemClockOffset,
         });
 
-        if (formValues.ingestMedia) {
+        if (master.streamARN) {
             master.storageClient = new AWS.KinesisVideoWebRTCStorage({
                 region: formValues.region,
                 accessKeyId: formValues.accessKeyId,
@@ -314,6 +309,8 @@ function onPeerConnectionFailed() {
 function stopMaster() {
     try {
         console.log('[MASTER] Stopping master connection');
+        master.sdpOfferReceived = true;
+
         if (master.signalingClient) {
             master.signalingClient.close();
             master.signalingClient = null;
@@ -431,7 +428,7 @@ async function connectToMediaServer(masterRunId) {
         console.log('[MASTER] Joined storage session. Media is being recorded to', master.streamARN);
     } else if (masterRunId === master.runId) {
         console.error('[MASTER] Error joining storage session');
-    } else if (!master.websocketOpened) {
+    } else if (!master.websocketOpened && !master.sdpOfferReceived) {
         // TODO: ideally, we send a ping message. But, that's unavailable in browsers.
         console.log('[MASTER] Websocket is closed. Reopening...');
         master.signalingClient.open();
