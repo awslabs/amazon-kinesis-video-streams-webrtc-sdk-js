@@ -182,7 +182,13 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             master.websocketOpened = true;
             console.log('[MASTER] Connected to signaling service');
             if (master.streamARN) {
-                await connectToMediaServer(masterRunId);
+                if (formValues.ingestMedia) {
+                    await connectToMediaServer(masterRunId);
+                } else {
+                    console.log('[MASTER] Waiting for media ingestion and storage viewer to join...');
+                }
+            } else {
+                console.log('[MASTER] Media ingestion and storage is not enabled for this channel. Waiting for peers to join...');
             }
         });
 
@@ -300,7 +306,7 @@ function onPeerConnectionFailed() {
         if (!master.websocketOpened) {
             console.log('[MASTER] Websocket is closed. Reopening...');
             master.signalingClient.open();
-        } else {
+        } else if (getFormValues().ingestMedia) {
             connectToMediaServer(++master.runId);
         }
     }
