@@ -15,6 +15,7 @@ const master = {
     runId: 0,
     sdpOfferReceived: false,
     websocketOpened: false,
+    connectionFailures: [], // Dates of when PeerConnection transitions to failed state.
 };
 
 /**
@@ -25,8 +26,21 @@ const master = {
  */
 const retryIntervalForJoinStorageSession = 6000;
 
+/**
+ * Maximum number of times we will attempt to establish Peer connection
+ * (via joinStorageSession) with the storage session within a ten-minute window
+ * before exiting the application.
+ * @constant
+ * @type {number}
+ * @default
+ */
+const maxConnectionFailuresWithinTenMinutesForRetries = 5;
+
+const millisecondsInTenMinutes = 600_000;
+
 async function startMaster(localView, remoteView, formValues, onStatsReport, onRemoteDataMessage) {
     master.sdpOfferReceived = false;
+    master.connectionFailures = [];
 
     try {
         master.localView = localView;
@@ -218,6 +232,10 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
 
             peerConnection.addEventListener('connectionstatechange', async event => {
                 printPeerConnectionStateInfo(event, '[MASTER]', remoteClientId);
+
+                if (master.streamARN && event.target.connectionState === 'connected') {
+                    console.log('[MASTER] Successfully joined the storage session. Media is being recorded to', master.streamARN);
+                }
             });
 
             // Send any ICE candidates to the other peer
@@ -301,7 +319,22 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
 
 function onPeerConnectionFailed() {
     if (master.streamARN) {
-        console.warn('[MASTER] Lost connection to media server. Reconnecting...');
+        console.warn('[MASTER] Lost connection to the storage session.');
+        master.connectionFailures.push(new Date().getTime());
+        if (shouldStopRetryingJoinStorageSession()) {
+            console.error(
+                '[MASTER] Stopping the application after',
+                maxConnectionFailuresWithinTenMinutesForRetries,
+                'failed attempts to connect to the storage session within a 10-minute interval ',
+                master.connectionFailures.map(date => new Date(date)),
+                '. Exiting the application.',
+            );
+            onStop();
+            return;
+        }
+
+        console.warn('[MASTER] Reconnecting...');
+
         master.sdpOfferReceived = false;
         if (!master.websocketOpened) {
             console.log('[MASTER] Websocket is closed. Reopening...');
@@ -431,7 +464,7 @@ async function connectToMediaServer(masterRunId) {
     console.log('[MASTER] Joining storage session...');
     const success = await callJoinStorageSessionUntilSDPOfferReceived(masterRunId, master.storageClient, master.channelARN);
     if (success) {
-        console.log('[MASTER] Joined storage session. Media is being recorded to', master.streamARN);
+        console.log('[MASTER] Join storage session API call completed.');
     } else if (masterRunId === master.runId) {
         console.error('[MASTER] Error joining storage session');
     } else if (!master.websocketOpened && !master.sdpOfferReceived) {
@@ -439,4 +472,20 @@ async function connectToMediaServer(masterRunId) {
         console.log('[MASTER] Websocket is closed. Reopening...');
         master.signalingClient.open();
     }
+}
+
+/**
+ * Check if we should stop retrying join storage session.
+ * @returns {boolean} true if we exhausted the retries within a ten-minute window. false if we can continue retrying.
+ */
+function shouldStopRetryingJoinStorageSession() {
+    const tenMinutesAgoEpochMillis = new Date().getTime() - millisecondsInTenMinutes;
+
+    let front = master.connectionFailures[0];
+    while (front && front < tenMinutesAgoEpochMillis) {
+        master.connectionFailures.shift();
+        front = master.connectionFailures[0];
+    }
+
+    return master.connectionFailures.length >= maxConnectionFailuresWithinTenMinutesForRetries;
 }
