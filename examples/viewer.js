@@ -133,7 +133,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
             .promise();
 
         if (mediaStorageConfiguration.MediaStorageConfiguration.Status !== 'DISABLED') {
-            console.error('[VIEWER] Media storage and ingestion is ENABLED for this channel. Only the Kinesis video producing device can join as a viewer.');
+            console.error('[VIEWER] Media storage and ingestion is ENABLED for this channel. Only the WebRTC Ingestion and Storage peer can join as a viewer.');
             return;
         }
 
