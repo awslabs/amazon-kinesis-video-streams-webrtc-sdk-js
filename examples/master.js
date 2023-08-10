@@ -443,7 +443,7 @@ async function callJoinStorageSessionUntilSDPOfferReceived(runId, kinesisVideoWe
     let shouldRetryCallingJoinStorageSession = true;
     while (shouldRetryCallingJoinStorageSession && !master.sdpOfferReceived && master.runId === runId && master.websocketOpened) {
         if (!firstTime) {
-            console.warn(`Did not receive SDP offer from Media Service. Retrying... (${master.currentJoinStorageSessionRetries++})`);
+            console.warn(`Did not receive SDP offer from Media Service. Retrying... (${++master.currentJoinStorageSessionRetries})`);
         }
         firstTime = false;
         try {
