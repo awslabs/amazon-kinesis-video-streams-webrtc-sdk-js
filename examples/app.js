@@ -159,10 +159,20 @@ $('#master-button').click(async () => {
     localMessage.value = '';
     toggleDataChannelElements();
 
+    printFormValues(formValues);
+
     startMaster(localView, remoteView, formValues, onStatsReport, event => {
         remoteMessage.append(`${event.data}\n`);
     });
 });
+
+function printFormValues(formValues) {
+    const copyOfForm = Object.assign({}, formValues);
+    delete copyOfForm.accessKeyId;
+    delete copyOfForm.secretAccessKey;
+    delete copyOfForm.sessionToken;
+    console.log('[FORM_VALUES] Running the sample with the following options:', copyOfForm);
+}
 
 $('#clear-logs').click(() => {
     $('#logs').empty();
