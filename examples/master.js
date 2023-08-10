@@ -16,10 +16,11 @@ const master = {
     sdpOfferReceived: false,
     websocketOpened: false,
     connectionFailures: [], // Dates of when PeerConnection transitions to failed state.
+    currentJoinStorageSessionRetries: 0,
 };
 
 /**
- * Milliseconds between retries of joinStorageSession API calls.
+ * Base milliseconds between retries of joinStorageSession API calls.
  * @constant
  * @type {number}
  * @default
@@ -27,9 +28,11 @@ const master = {
 const retryIntervalForJoinStorageSession = 6000;
 
 /**
- * Maximum number of times we will attempt to establish Peer connection
- * (via joinStorageSession) with the storage session within a ten-minute window
- * before exiting the application.
+ * Maximum number of times we will attempt to establish Peer connection (perform
+ * ICE connectivity checks) with the storage session within a ten-minute window
+ * before exiting the application. This means, we have received this many SDP
+ * offers within a 10-minute window, and, for all of them, the peer connection failed
+ * to be established.
  * @constant
  * @type {number}
  * @default
@@ -41,6 +44,7 @@ const millisecondsInTenMinutes = 600_000;
 async function startMaster(localView, remoteView, formValues, onStatsReport, onRemoteDataMessage) {
     master.sdpOfferReceived = false;
     master.connectionFailures = [];
+    master.currentJoinStorageSessionRetries = 0;
 
     try {
         master.localView = localView;
@@ -147,7 +151,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
         const iceServers = [];
         // Don't add stun if user selects TURN only or NAT traversal disabled
         if (!formValues.natTraversalDisabled && !formValues.forceTURN) {
-            iceServers.push({ urls: `stun:stun.kinesisvideo.${formValues.region}.amazonaws.com:443` });
+            iceServers.push({urls: `stun:stun.kinesisvideo.${formValues.region}.amazonaws.com:443`});
         }
 
         // Don't add turn if user selects STUN only or NAT traversal disabled
@@ -169,10 +173,10 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
 
         const resolution = formValues.widescreen
             ? {
-                  width: { ideal: 1280 },
-                  height: { ideal: 720 },
-              }
-            : { width: { ideal: 640 }, height: { ideal: 480 } };
+                width: {ideal: 1280},
+                height: {ideal: 720},
+            }
+            : {width: {ideal: 640}, height: {ideal: 480}};
         const constraints = {
             video: formValues.sendVideo ? resolution : false,
             audio: formValues.sendAudio,
@@ -209,6 +213,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
         master.signalingClient.on('sdpOffer', async (offer, remoteClientId) => {
             printSignalingLog('[MASTER] Received SDP offer from client', remoteClientId);
             master.sdpOfferReceived = true;
+            master.currentJoinStorageSessionRetries = 0;
             console.debug('SDP offer:', offer);
 
             // Create a new peer connection using the offer from the given client
@@ -239,7 +244,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             });
 
             // Send any ICE candidates to the other peer
-            peerConnection.addEventListener('icecandidate', ({ candidate }) => {
+            peerConnection.addEventListener('icecandidate', ({candidate}) => {
                 if (candidate) {
                     printSignalingLog('[MASTER] Generated ICE candidate for client', remoteClientId);
                     console.debug('ICE candidate:', candidate);
@@ -325,9 +330,7 @@ function onPeerConnectionFailed() {
             console.error(
                 '[MASTER] Stopping the application after',
                 maxConnectionFailuresWithinTenMinutesForRetries,
-                'failed attempts to connect to the storage session within a 10-minute interval ',
-                master.connectionFailures.map(date => new Date(date)),
-                '. Exiting the application.',
+                `failed attempts to connect to the storage session within a 10-minute interval [${master.connectionFailures.map(date => new Date(date)).join(', ')}]. Exiting the application.`,
             );
             onStop();
             return;
@@ -440,7 +443,7 @@ async function callJoinStorageSessionUntilSDPOfferReceived(runId, kinesisVideoWe
     let shouldRetryCallingJoinStorageSession = true;
     while (shouldRetryCallingJoinStorageSession && !master.sdpOfferReceived && master.runId === runId && master.websocketOpened) {
         if (!firstTime) {
-            console.warn('Did not receive SDP offer from Media Service. Retrying...');
+            console.warn(`Did not receive SDP offer from Media Service. Retrying... (${master.currentJoinStorageSessionRetries++})`);
         }
         firstTime = false;
         try {
@@ -455,7 +458,7 @@ async function callJoinStorageSessionUntilSDPOfferReceived(runId, kinesisVideoWe
             // cases e.g. IllegalArgumentException we should not retry.
             shouldRetryCallingJoinStorageSession = e.code === 'ClientLimitExceededException' || e.code === 'NetworkingError' || e.statusCode === 500;
         }
-        await new Promise(resolve => setTimeout(resolve, retryIntervalForJoinStorageSession));
+        await new Promise(resolve => setTimeout(resolve, calculateJoinStorageSessionDelayMilliseconds()));
     }
     return shouldRetryCallingJoinStorageSession && master.runId === runId && master.websocketOpened;
 }
@@ -488,4 +491,13 @@ function shouldStopRetryingJoinStorageSession() {
     }
 
     return master.connectionFailures.length >= maxConnectionFailuresWithinTenMinutesForRetries;
+}
+
+/**
+ * The delay between joinStorageSession retries (in milliseconds) is
+ * retryIntervalForJoinStorageSession + min(rand(0, 1) * 200 * (currentRetryNumber)^2, 10_000)
+ * @returns {number} How long to wait between joinStorageSession retries, in milliseconds
+ */
+function calculateJoinStorageSessionDelayMilliseconds() {
+    return retryIntervalForJoinStorageSession + Math.min(Math.random() * Math.pow(200, master.currentJoinStorageSessionRetries - 1), 10_000);
 }
