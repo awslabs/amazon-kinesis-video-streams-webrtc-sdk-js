@@ -447,6 +447,7 @@ async function callJoinStorageSessionUntilSDPOfferReceived(runId, kinesisVideoWe
         }
         firstTime = false;
         try {
+            // The AWS SDK for JS will perform limited retries on this API call.
             await kinesisVideoWebrtcStorageClient
                 .joinStorageSession({
                     channelArn: channelARN,
