@@ -168,9 +168,9 @@ $('#master-button').click(async () => {
 
 function printFormValues(formValues) {
     const copyOfForm = Object.assign({}, formValues);
-    delete copyOfForm.accessKeyId;
-    delete copyOfForm.secretAccessKey;
-    delete copyOfForm.sessionToken;
+    copyOfForm.accessKeyId = copyOfForm.accessKeyId.replace(/./g, '*');
+    copyOfForm.secretAccessKey = copyOfForm.secretAccessKey.replace(/./g, '*');
+    copyOfForm.sessionToken = copyOfForm.sessionToken?.replace(/./g, '*');
     console.log('[FORM_VALUES] Running the sample with the following options:', copyOfForm);
 }
 
