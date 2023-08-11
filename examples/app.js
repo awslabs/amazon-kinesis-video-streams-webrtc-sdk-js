@@ -204,6 +204,8 @@ $('#viewer-button').click(async () => {
     localMessage.value = '';
     toggleDataChannelElements();
 
+    printFormValues(formValues);
+
     startViewer(localView, remoteView, formValues, onStatsReport, event => {
         remoteMessage.append(`${event.data}\n`);
     });
