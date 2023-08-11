@@ -131,6 +131,10 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
                 secretAccessKey: formValues.secretAccessKey,
                 sessionToken: formValues.sessionToken,
                 endpoint: endpointsByProtocol.WEBRTC,
+                maxRetries: 0,
+                httpOptions: {
+                    timeout: retryIntervalForJoinStorageSession,
+                },
             });
         }
 
@@ -457,7 +461,8 @@ async function callJoinStorageSessionUntilSDPOfferReceived(runId, kinesisVideoWe
             console.error(e);
             // We should only retry on ClientLimitExceededException, or internal failure. All other
             // cases e.g. IllegalArgumentException we should not retry.
-            shouldRetryCallingJoinStorageSession = e.code === 'ClientLimitExceededException' || e.code === 'NetworkingError' || e.statusCode === 500;
+            shouldRetryCallingJoinStorageSession =
+                e.code === 'ClientLimitExceededException' || e.code === 'NetworkingError' || e.code === 'TimeoutError' || e.statusCode === 500;
         }
         await new Promise(resolve => setTimeout(resolve, calculateJoinStorageSessionDelayMilliseconds()));
     }
@@ -468,7 +473,7 @@ async function connectToMediaServer(masterRunId) {
     console.log('[MASTER] Joining storage session...');
     const success = await callJoinStorageSessionUntilSDPOfferReceived(masterRunId, master.storageClient, master.channelARN);
     if (success) {
-        console.log('[MASTER] Join storage session API call completed.');
+        console.log('[MASTER] Join storage session API call(s) completed.');
     } else if (masterRunId === master.runId) {
         console.error('[MASTER] Error joining storage session');
     } else if (!master.websocketOpened && !master.sdpOfferReceived) {
