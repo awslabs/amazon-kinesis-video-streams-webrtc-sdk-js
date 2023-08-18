@@ -369,9 +369,12 @@ async function printPeerConnectionStateInfo(event, logPrefix, remoteClientId) {
             const trackType = sender.track?.kind;
             if (sender.transport) {
                 const iceTransport = sender.transport.iceTransport;
-                const logSelectedCandidate = () => console.debug(`Chosen candidate pair (${trackType || 'unknown'}):`, iceTransport.getSelectedCandidatePair());
-                iceTransport.onselectedcandidatepairchange = logSelectedCandidate;
-                logSelectedCandidate();
+                if (iceTransport) {
+                    const logSelectedCandidate = () =>
+                        console.debug(`Chosen candidate pair (${trackType || 'unknown'}):`, iceTransport.getSelectedCandidatePair());
+                    iceTransport.onselectedcandidatepairchange = logSelectedCandidate;
+                    logSelectedCandidate();
+                }
             } else {
                 console.error('Failed to fetch the candidate pair!');
             }
