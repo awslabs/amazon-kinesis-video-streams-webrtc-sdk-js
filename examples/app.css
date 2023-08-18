@@ -26,7 +26,7 @@ pre .warn {
     color: goldenrod;
 }
 
-#logs {
-    height: 300px;
+#debug pre {
+    height: 500px;
     overflow: auto;
 }

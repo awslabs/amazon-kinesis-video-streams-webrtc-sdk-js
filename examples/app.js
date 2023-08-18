@@ -7,7 +7,7 @@ function configureLogging() {
         const text = messages
             .map(message => {
                 if (message instanceof Error) {
-                    const {stack, ...rest} = message;
+                    const { stack, ...rest } = message;
                     if (Object.keys(rest).length === 0) {
                         if (stack) {
                             return stack;
@@ -36,25 +36,25 @@ function configureLogging() {
     }
 
     console._error = console.error;
-    console.error = function (...rest) {
+    console.error = function(...rest) {
         log('ERROR', Array.prototype.slice.call(rest));
         console._error.apply(this, rest);
     };
 
     console._warn = console.warn;
-    console.warn = function (...rest) {
+    console.warn = function(...rest) {
         log('WARN', Array.prototype.slice.call(rest));
         console._warn.apply(this, rest);
     };
 
     console._log = console.log;
-    console.log = function (...rest) {
+    console.log = function(...rest) {
         log('INFO', Array.prototype.slice.call(rest));
         console._log.apply(this, rest);
     };
 
     console._debug = console.debug;
-    console.debug = function (...rest) {
+    console.debug = function(...rest) {
         log('DEBUG', Array.prototype.slice.call(rest));
         console._debug.apply(this, rest);
     };
@@ -74,6 +74,8 @@ function getFormValues() {
         clientId: $('#clientId').val() || getRandomClientId(),
         sendVideo: $('#sendVideo').is(':checked'),
         sendAudio: $('#sendAudio').is(':checked'),
+        streamName: $('#streamName').val(),
+        ingestMedia: $('#ingest-media').is(':checked'),
         openDataChannel: $('#openDataChannel').is(':checked'),
         widescreen: $('#widescreen').is(':checked'),
         fullscreen: $('#fullscreen').is(':checked'),
@@ -85,7 +87,6 @@ function getFormValues() {
         endpoint: $('#endpoint').val() || null,
         secretAccessKey: $('#secretAccessKey').val(),
         sessionToken: $('#sessionToken').val() || null,
-        ingestMedia: $('#ingestMedia').is(':checked'),
         enableDQPmetrics: $('#enableDQPmetrics').is(':checked'),
     };
 }
@@ -127,12 +128,12 @@ function onStop() {
 
 window.addEventListener('beforeunload', onStop);
 
-window.addEventListener('error', function (event) {
+window.addEventListener('error', function(event) {
     console.error(event.message);
     event.preventDefault();
 });
 
-window.addEventListener('unhandledrejection', function (event) {
+window.addEventListener('unhandledrejection', function(event) {
     console.error(event.reason.toString());
     event.preventDefault();
 });
@@ -142,10 +143,6 @@ configureLogging();
 $('#master-button').click(async () => {
     const form = $('#form');
     if (!form[0].checkValidity()) {
-        return;
-    }
-    if (!checkWebRTCStorageRequirements()) {
-        console.error('Both Send Video and Send Audio checkboxes need to be checked to ingest media.');
         return;
     }
     ROLE = 'master';
@@ -162,10 +159,20 @@ $('#master-button').click(async () => {
     localMessage.value = '';
     toggleDataChannelElements();
 
+    printFormValues(formValues);
+
     startMaster(localView, remoteView, formValues, onStatsReport, event => {
         remoteMessage.append(`${event.data}\n`);
     });
 });
+
+function printFormValues(formValues) {
+    const copyOfForm = Object.assign({}, formValues);
+    copyOfForm.accessKeyId = copyOfForm.accessKeyId.replace(/./g, '*');
+    copyOfForm.secretAccessKey = copyOfForm.secretAccessKey.replace(/./g, '*');
+    copyOfForm.sessionToken = copyOfForm.sessionToken?.replace(/./g, '*');
+    console.log('[FORM_VALUES] Running the sample with the following options:', copyOfForm);
+}
 
 $('#clear-logs').click(() => {
     $('#logs').empty();
@@ -176,10 +183,6 @@ $('#stop-master-button').click(onStop);
 $('#viewer-button').click(async () => {
     const form = $('#form');
     if (!form[0].checkValidity()) {
-        return;
-    }
-    if (!checkWebRTCStorageRequirements()) {
-        console.error('Both Send Video and Send Audio checkboxes need to be checked to ingest media.');
         return;
     }
     ROLE = 'viewer';
@@ -200,6 +203,8 @@ $('#viewer-button').click(async () => {
     $(remoteMessage).empty();
     localMessage.value = '';
     toggleDataChannelElements();
+
+    printFormValues(formValues);
 
     startViewer(localView, remoteView, formValues, onStatsReport, event => {
         remoteMessage.append(`${event.data}\n`);
@@ -364,9 +369,12 @@ async function printPeerConnectionStateInfo(event, logPrefix, remoteClientId) {
             const trackType = sender.track?.kind;
             if (sender.transport) {
                 const iceTransport = sender.transport.iceTransport;
-                const logSelectedCandidate = () => console.debug(`Chosen candidate pair (${trackType || 'unknown'}):`, iceTransport.getSelectedCandidatePair());
-                iceTransport.onselectedcandidatepairchange = logSelectedCandidate;
-                logSelectedCandidate();
+                if (iceTransport) {
+                    const logSelectedCandidate = () =>
+                        console.debug(`Chosen candidate pair (${trackType || 'unknown'}):`, iceTransport.getSelectedCandidatePair());
+                    iceTransport.onselectedcandidatepairchange = logSelectedCandidate;
+                    logSelectedCandidate();
+                }
             } else {
                 console.error('Failed to fetch the candidate pair!');
             }
@@ -376,75 +384,34 @@ async function printPeerConnectionStateInfo(event, logPrefix, remoteClientId) {
             removeViewerTrackFromMaster(remoteClientId);
         }
         console.error(logPrefix, `Connection to ${remoteClientId || 'peer'} failed!`);
+        onPeerConnectionFailed();
     }
 }
-
-// Audio/Video checkbox validation with WebRTC Storage
-function checkWebRTCStorageRequirements() {
-    const audio = $('#sendAudio');
-    const video = $('#sendVideo');
-    const ingestMedia = $('#ingestMedia');
-    if (ingestMedia.is(':checked')) {
-        let good = true;
-        if (!audio.is(':checked')) {
-            good = false;
-            audio.addClass('is-invalid');
-        } else {
-            audio.removeClass('is-invalid');
-        }
-        if (!video.is(':checked')) {
-            good = false;
-            video.addClass('is-invalid');
-        } else {
-            video.removeClass('is-invalid');
-        }
-        if (!good) {
-            ingestMedia.addClass('is-invalid');
-            return false;
-        }
-
-        ingestMedia.removeClass('is-invalid');
-    } else {
-        audio.removeClass('is-invalid');
-        video.removeClass('is-invalid');
-        ingestMedia.removeClass('is-invalid');
-    }
-    return true;
-}
-
-$('#sendAudio').click(() => {
-    checkWebRTCStorageRequirements();
-});
-$('#sendVideo').click(() => {
-    checkWebRTCStorageRequirements();
-});
-$('#ingestMedia').click(() => {
-    checkWebRTCStorageRequirements();
-});
 
 // Read/Write all of the fields to/from localStorage so that fields are not lost on refresh.
 const urlParams = new URLSearchParams(window.location.search);
 const fields = [
-    {field: 'channelName', type: 'text'},
-    {field: 'clientId', type: 'text'},
-    {field: 'region', type: 'text'},
-    {field: 'accessKeyId', type: 'text'},
-    {field: 'secretAccessKey', type: 'text'},
-    {field: 'sessionToken', type: 'text'},
-    {field: 'endpoint', type: 'text'},
-    {field: 'sendVideo', type: 'checkbox'},
-    {field: 'sendAudio', type: 'checkbox'},
-    {field: 'widescreen', type: 'radio', name: 'resolution'},
-    {field: 'fullscreen', type: 'radio', name: 'resolution'},
-    {field: 'openDataChannel', type: 'checkbox'},
-    {field: 'useTrickleICE', type: 'checkbox'},
-    {field: 'natTraversalEnabled', type: 'radio', name: 'natTraversal'},
-    {field: 'forceSTUN', type: 'radio', name: 'natTraversal'},
-    {field: 'forceTURN', type: 'radio', name: 'natTraversal'},
-    {field: 'natTraversalDisabled', type: 'radio', name: 'natTraversal'},
-    {field: 'ingestMedia', type: 'checkbox'},
+    { field: 'channelName', type: 'text' },
+    { field: 'clientId', type: 'text' },
+    { field: 'region', type: 'text' },
+    { field: 'accessKeyId', type: 'text' },
+    { field: 'secretAccessKey', type: 'text' },
+    { field: 'sessionToken', type: 'text' },
+    { field: 'endpoint', type: 'text' },
+    { field: 'sendVideo', type: 'checkbox' },
+    { field: 'sendAudio', type: 'checkbox' },
+    { field: 'streamName', type: 'text' },
+    { field: 'ingest-media', type: 'checkbox' },
+    { field: 'widescreen', type: 'radio', name: 'resolution' },
+    { field: 'fullscreen', type: 'radio', name: 'resolution' },
+    { field: 'openDataChannel', type: 'checkbox' },
+    { field: 'useTrickleICE', type: 'checkbox' },
+    { field: 'natTraversalEnabled', type: 'radio', name: 'natTraversal' },
+    { field: 'forceSTUN', type: 'radio', name: 'natTraversal' },
+    { field: 'forceTURN', type: 'radio', name: 'natTraversal' },
+    { field: 'natTraversalDisabled', type: 'radio', name: 'natTraversal' },
 ];
-fields.forEach(({field, type, name}) => {
+fields.forEach(({ field, type, name }) => {
     const id = '#' + field;
 
     // Read field from localStorage
@@ -473,7 +440,7 @@ fields.forEach(({field, type, name}) => {
     }
 
     // Write field to localstorage on change event
-    $(id).change(function () {
+    $(id).change(function() {
         try {
             if (type === 'checkbox') {
                 localStorage.setItem(field, $(id).is(':checked'));
@@ -492,9 +459,46 @@ fields.forEach(({field, type, name}) => {
     });
 });
 
+$('#copy-logs').on('click', async function() {
+    const logsResult = [];
+    $('#logs')
+        .children()
+        // Only copy the logs that are visible
+        .filter((_, element) => !element.getAttribute('class')?.includes('d-none'))
+        .each(function() {
+            logsResult.push(this.textContent);
+        });
+    navigator.clipboard.writeText(logsResult.join(''));
+    $('#copy-tooltip').tooltip('show');
+    $('#copy-logs').removeClass('btn-light');
+    $('#copy-logs').addClass('btn-success');
+    await new Promise(r => setTimeout(r, 1000));
+    $('#copy-tooltip').tooltip('hide');
+    $('#copy-logs').removeClass('btn-success');
+    $('#copy-logs').addClass('btn-light');
+});
+
+$('#listStorageChannels').on('click', async function() {
+    const formValues = getFormValues();
+    listStorageChannels(formValues);
+});
+
+$('#update-media-storage-configuration-button').on('click', async function() {
+    const formValues = getFormValues();
+    updateMediaStorageConfiguration(formValues);
+});
+
+$('#describe-media-storage-configuration-button').on('click', async function() {
+    const formValues = getFormValues();
+    describeMediaStorageConfiguration(formValues);
+});
+
 // Enable tooltips
-$(document).ready(function () {
+$(document).ready(function() {
     $('[data-toggle="tooltip"]').tooltip();
+
+    // Except the copy-logs tooltip
+    $('#copy-tooltip').tooltip({ trigger: 'manual' });
 });
 
 // The page is all setup. Hide the loading spinner and show the page content.

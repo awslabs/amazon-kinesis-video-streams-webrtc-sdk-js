@@ -12,9 +12,40 @@ const master = {
     localStream: null,
     remoteStreams: [],
     peerConnectionStatsInterval: null,
+    runId: 0,
+    sdpOfferReceived: false,
+    websocketOpened: false,
+    connectionFailures: [], // Dates of when PeerConnection transitions to failed state.
+    currentJoinStorageSessionRetries: 0,
 };
 
+/**
+ * Base milliseconds between retries of joinStorageSession API calls.
+ * @constant
+ * @type {number}
+ * @default
+ */
+const retryIntervalForJoinStorageSession = 6000;
+
+/**
+ * Maximum number of times we will attempt to establish Peer connection (perform
+ * ICE connectivity checks) with the storage session within a ten-minute window
+ * before exiting the application. This means, we have received this many SDP
+ * offers within a 10-minute window, and, for all of them, the peer connection failed
+ * to be established.
+ * @constant
+ * @type {number}
+ * @default
+ */
+const maxConnectionFailuresWithinTenMinutesForRetries = 5;
+
+const millisecondsInTenMinutes = 600_000;
+
 async function startMaster(localView, remoteView, formValues, onStatsReport, onRemoteDataMessage) {
+    master.sdpOfferReceived = false;
+    master.connectionFailures = [];
+    master.currentJoinStorageSessionRetries = 0;
+
     try {
         master.localView = localView;
         master.remoteView = remoteView;
@@ -42,28 +73,23 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
         master.channelARN = channelARN;
 
         const protocols = ['WSS', 'HTTPS'];
-        if (formValues.ingestMedia) {
+
+        const describeMediaStorageConfigurationResponse = await kinesisVideoClient
+            .describeMediaStorageConfiguration({
+                ChannelARN: master.channelARN,
+            })
+            .promise();
+        const mediaStorageConfiguration = describeMediaStorageConfigurationResponse.MediaStorageConfiguration;
+
+        const mediaServiceMode = mediaStorageConfiguration.Status === 'ENABLED' || mediaStorageConfiguration.StreamARN !== null;
+        if (mediaServiceMode) {
             if (!formValues.sendAudio || !formValues.sendVideo) {
-                console.error('[MASTER] Both Send Video and Send Audio checkboxes need to be checked to ingest media.');
+                console.error('[MASTER] Both Send Video and Send Audio checkboxes need to be checked to ingest and store media.');
                 return;
             }
-
-            const describeMediaStorageConfigurationResponse = await kinesisVideoClient
-                .describeMediaStorageConfiguration({
-                    ChannelARN: master.channelARN,
-                })
-                .promise();
-            const mediaStorageConfiguration = describeMediaStorageConfigurationResponse.MediaStorageConfiguration;
-
-            if (mediaStorageConfiguration.Status !== 'ENABLED' || mediaStorageConfiguration.StreamARN === null) {
-                console.error('[MASTER] The media storage configuration is not yet configured for this channel.');
-                return;
-            }
-
+            protocols.push('WEBRTC');
             master.streamARN = mediaStorageConfiguration.StreamARN;
             console.log(`[MASTER] Stream ARN: ${master.streamARN}`);
-
-            protocols.push('WEBRTC');
         } else {
             master.streamARN = null;
         }
@@ -98,13 +124,17 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             systemClockOffset: kinesisVideoClient.config.systemClockOffset,
         });
 
-        if (formValues.ingestMedia) {
+        if (master.streamARN) {
             master.storageClient = new AWS.KinesisVideoWebRTCStorage({
                 region: formValues.region,
                 accessKeyId: formValues.accessKeyId,
                 secretAccessKey: formValues.secretAccessKey,
                 sessionToken: formValues.sessionToken,
                 endpoint: endpointsByProtocol.WEBRTC,
+                maxRetries: 0,
+                httpOptions: {
+                    timeout: retryIntervalForJoinStorageSession,
+                },
             });
         }
 
@@ -125,7 +155,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
         const iceServers = [];
         // Don't add stun if user selects TURN only or NAT traversal disabled
         if (!formValues.natTraversalDisabled && !formValues.forceTURN) {
-            iceServers.push({ urls: `stun:stun.kinesisvideo.${formValues.region}.amazonaws.com:443` });
+            iceServers.push({urls: `stun:stun.kinesisvideo.${formValues.region}.amazonaws.com:443`});
         }
 
         // Don't add turn if user selects STUN only or NAT traversal disabled
@@ -147,10 +177,10 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
 
         const resolution = formValues.widescreen
             ? {
-                  width: { ideal: 1280 },
-                  height: { ideal: 720 },
-              }
-            : { width: { ideal: 640 }, height: { ideal: 480 } };
+                width: {ideal: 1280},
+                height: {ideal: 720},
+            }
+            : {width: {ideal: 640}, height: {ideal: 480}};
         const constraints = {
             video: formValues.sendVideo ? resolution : false,
             audio: formValues.sendAudio,
@@ -170,34 +200,36 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
         }
 
         master.signalingClient.on('open', async () => {
+            const masterRunId = ++master.runId;
+            master.websocketOpened = true;
             console.log('[MASTER] Connected to signaling service');
-            if (formValues.ingestMedia && master.streamARN) {
-                try {
-                    console.log('[MASTER] Joining storage session...');
-                    await master.storageClient
-                        .joinStorageSession({
-                            channelArn: master.channelARN,
-                        })
-                        .promise();
-
-                    console.log('[MASTER] Joined storage session. Media is being recorded to', master.streamARN);
-                } catch (e) {
-                    console.error('[MASTER] Error joining storage session', e);
+            if (master.streamARN) {
+                if (formValues.ingestMedia) {
+                    await connectToMediaServer(masterRunId);
+                } else {
+                    console.log('[MASTER] Waiting for media ingestion and storage viewer to join...');
                 }
+            } else {
+                console.log('[MASTER] Media ingestion and storage is not enabled for this channel. Waiting for peers to join...');
             }
         });
 
         master.signalingClient.on('sdpOffer', async (offer, remoteClientId) => {
             printSignalingLog('[MASTER] Received SDP offer from client', remoteClientId);
+            master.sdpOfferReceived = true;
+            master.currentJoinStorageSessionRetries = 0;
             console.debug('SDP offer:', offer);
 
             // Create a new peer connection using the offer from the given client
+            if (master.peerConnectionByClientId[remoteClientId] && master.peerConnectionByClientId[remoteClientId].connectionState !== 'closed') {
+                master.peerConnectionByClientId[remoteClientId].close();
+            }
             const peerConnection = new RTCPeerConnection(configuration);
             master.peerConnectionByClientId[remoteClientId] = peerConnection;
 
             if (formValues.openDataChannel) {
-                master.dataChannelByClientId[remoteClientId] = peerConnection.createDataChannel('kvsDataChannel');
                 peerConnection.ondatachannel = event => {
+                    master.dataChannelByClientId[remoteClientId] = event.channel;
                     event.channel.onmessage = onRemoteDataMessage;
                 };
             }
@@ -209,10 +241,14 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
 
             peerConnection.addEventListener('connectionstatechange', async event => {
                 printPeerConnectionStateInfo(event, '[MASTER]', remoteClientId);
+
+                if (master.streamARN && event.target.connectionState === 'connected') {
+                    console.log('[MASTER] Successfully joined the storage session. Media is being recorded to', master.streamARN);
+                }
             });
 
             // Send any ICE candidates to the other peer
-            peerConnection.addEventListener('icecandidate', ({ candidate }) => {
+            peerConnection.addEventListener('icecandidate', ({candidate}) => {
                 if (candidate) {
                     printSignalingLog('[MASTER] Generated ICE candidate for client', remoteClientId);
                     console.debug('ICE candidate:', candidate);
@@ -274,6 +310,8 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
         });
 
         master.signalingClient.on('close', () => {
+            master.websocketOpened = false;
+            master.runId++;
             console.log('[MASTER] Disconnected from signaling channel');
         });
 
@@ -288,9 +326,37 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
     }
 }
 
+function onPeerConnectionFailed() {
+    if (master.streamARN) {
+        console.warn('[MASTER] Lost connection to the storage session.');
+        master.connectionFailures.push(new Date().getTime());
+        if (shouldStopRetryingJoinStorageSession()) {
+            console.error(
+                '[MASTER] Stopping the application after',
+                maxConnectionFailuresWithinTenMinutesForRetries,
+                `failed attempts to connect to the storage session within a 10-minute interval [${master.connectionFailures.map(date => new Date(date)).join(', ')}]. Exiting the application.`,
+            );
+            onStop();
+            return;
+        }
+
+        console.warn('[MASTER] Reconnecting...');
+
+        master.sdpOfferReceived = false;
+        if (!master.websocketOpened) {
+            console.log('[MASTER] Websocket is closed. Reopening...');
+            master.signalingClient.open();
+        } else if (getFormValues().ingestMedia) {
+            connectToMediaServer(++master.runId);
+        }
+    }
+}
+
 function stopMaster() {
     try {
         console.log('[MASTER] Stopping master connection');
+        master.sdpOfferReceived = true;
+
         if (master.signalingClient) {
             master.signalingClient.close();
             master.signalingClient = null;
@@ -356,4 +422,88 @@ function sendMasterMessage(message) {
 
 function printSignalingLog(message, clientId) {
     console.log(`${message}${clientId ? ': ' + clientId : ' (no senderClientId provided)'}`);
+}
+
+/**
+ * Only applicable for WebRTC ingestion.
+ * <p>
+ * Calls JoinStorageSession API every {@link retryInterval} until an SDP offer is received over the signaling channel.
+ * Since JoinStorageSession is an asynchronous API, there is a chance that even though 200 OK is received,
+ * no message is sent on the websocket.
+ * <p>
+ * We will keep retrying JoinStorageSession until any of the items happens:
+ *  * SDP offer is received (success)
+ *  * Stop master button is clicked
+ *  * Non-retryable error is encountered (e.g. auth error)
+ *  * Websocket closes (times out after 10 minutes of inactivity). In this case, we reopen the Websocket and try again.
+ * @param runId The current run identifier. If {@link master.runId} is different, we stop retrying.
+ * @param kinesisVideoWebrtcStorageClient Kinesis Video Streams WebRTC Storage client.
+ * @param channelARN The ARN of the signaling channel. It must have MediaStorage ENABLED.
+ * @returns {Promise<boolean>} true if successfully joined, and sdp offer was received. false if not; this includes
+ * when the {@link master.runId} is incremented during a retry attempt.
+ */
+async function callJoinStorageSessionUntilSDPOfferReceived(runId, kinesisVideoWebrtcStorageClient, channelARN) {
+    let firstTime = true; // Used for log messages
+    let shouldRetryCallingJoinStorageSession = true;
+    while (shouldRetryCallingJoinStorageSession && !master.sdpOfferReceived && master.runId === runId && master.websocketOpened) {
+        if (!firstTime) {
+            console.warn(`Did not receive SDP offer from Media Service. Retrying... (${++master.currentJoinStorageSessionRetries})`);
+        }
+        firstTime = false;
+        try {
+            // The AWS SDK for JS will perform limited retries on this API call.
+            await kinesisVideoWebrtcStorageClient
+                .joinStorageSession({
+                    channelArn: channelARN,
+                })
+                .promise();
+        } catch (e) {
+            console.error(e);
+            // We should only retry on ClientLimitExceededException, or internal failure. All other
+            // cases e.g. IllegalArgumentException we should not retry.
+            shouldRetryCallingJoinStorageSession =
+                e.code === 'ClientLimitExceededException' || e.code === 'NetworkingError' || e.code === 'TimeoutError' || e.statusCode === 500;
+        }
+        await new Promise(resolve => setTimeout(resolve, calculateJoinStorageSessionDelayMilliseconds()));
+    }
+    return shouldRetryCallingJoinStorageSession && master.runId === runId && master.websocketOpened;
+}
+
+async function connectToMediaServer(masterRunId) {
+    console.log('[MASTER] Joining storage session...');
+    const success = await callJoinStorageSessionUntilSDPOfferReceived(masterRunId, master.storageClient, master.channelARN);
+    if (success) {
+        console.log('[MASTER] Join storage session API call(s) completed.');
+    } else if (masterRunId === master.runId) {
+        console.error('[MASTER] Error joining storage session');
+    } else if (!master.websocketOpened && !master.sdpOfferReceived) {
+        // TODO: ideally, we send a ping message. But, that's unavailable in browsers.
+        console.log('[MASTER] Websocket is closed. Reopening...');
+        master.signalingClient.open();
+    }
+}
+
+/**
+ * Check if we should stop retrying join storage session.
+ * @returns {boolean} true if we exhausted the retries within a ten-minute window. false if we can continue retrying.
+ */
+function shouldStopRetryingJoinStorageSession() {
+    const tenMinutesAgoEpochMillis = new Date().getTime() - millisecondsInTenMinutes;
+
+    let front = master.connectionFailures[0];
+    while (front && front < tenMinutesAgoEpochMillis) {
+        master.connectionFailures.shift();
+        front = master.connectionFailures[0];
+    }
+
+    return master.connectionFailures.length >= maxConnectionFailuresWithinTenMinutesForRetries;
+}
+
+/**
+ * The delay between joinStorageSession retries (in milliseconds) is
+ * retryIntervalForJoinStorageSession + min(rand(0, 1) * 200 * (currentRetryNumber)^2, 10_000)
+ * @returns {number} How long to wait between joinStorageSession retries, in milliseconds
+ */
+function calculateJoinStorageSessionDelayMilliseconds() {
+    return retryIntervalForJoinStorageSession + Math.min(Math.random() * Math.pow(200, master.currentJoinStorageSessionRetries - 1), 10_000);
 }

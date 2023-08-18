@@ -22,7 +22,7 @@
     <p>This is the KVS Signaling Channel WebRTC test page. Use this page to connect to a signaling channel as either the MASTER or as a VIEWER.</p>
 
     <div class="row loader"></div>
-    <flex id="main" class="d-none">
+    <div id="main" class="d-none">
         <form id="form" onsubmit="return false">
             <h4>KVS Endpoint</h4>
             <div class="form-group has-validation" style="position: relative;">
@@ -67,7 +67,7 @@
                 <input type="text" class="form-control" id="clientId" placeholder="Client id">
             </div>
             <h4>Tracks</h4>
-            <p><small>Control which media types are transmitted to the remote client.</small></p>
+            <p><small>Control which media types are transmitted to the remote client. Both audio and video must be sent for WebRTC Ingestion and Storage.</small></p>
             <div class="form-group">
                 <div class="form-check form-check-inline">
                     <input class="form-check-input" type="checkbox" id="sendVideo" value="video" checked>
@@ -86,12 +86,32 @@
                     "><sup>&#9432;</sup></span>
                 </div>
             </div>
-            <h4>WebRTC Storage</h4>
-            <div class="form-group form-check">
-                <input class="form-check-input" type="checkbox" id="ingestMedia" value="option1">
-                <label for="ingestMedia" class="form-check-label">Ingest media <small>(master only)</small></label>
-                <div id="webrtc-storage-invalid-feedback" class="invalid-feedback">Audio and video must be enabled for WebRTC Storage!</div>
+            <details id="webrtc-ingestion-and-storage-group"><summary class="h4">WebRTC Ingestion and Storage</summary>
+            <div>
+                <p><small>Configure which stream to ingest and store media to. Call update media storage configuration with an empty Stream name to disable this feature.</small></p>
+                <div class="form-group input-group">
+                    <input type="text" class="form-control" id="streamName" placeholder="Stream name">
+                    <div class="input-group-append">
+                        <button id="update-media-storage-configuration-button" type="submit" class="btn btn-primary" title="Ingest and Store media to a specific Kinesis Video Stream.">Update Media Storage Configuration</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <button id="describe-media-storage-configuration-button" class="btn btn-primary">Describe Media Storage Configuration</button>
+                </div>
+                <div class="form-group">
+                    <button id="listStorageChannels" class="btn btn-primary">List All Media Storage Channels</button>
+                    <p><small>List storage channels outputs the ARNs of all signaling channels configured for storage and their associated stream's ARN.</small></p>
+                </div>
+                <div class="form-group form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="ingest-media" value="audio" checked>
+                    <label for="sendAudio" class="form-check-label"><i>Ingestion and storage peer</i> joins automatically</label>
+                    <span data-delay="{ &quot;hide&quot;: 1500 }" data-position="auto" tabindex="0" class="text-info ml-1" data-toggle="tooltip" data-html="true" title="
+                    <p>If WebRTC Ingestion and Storage is configured, after connecting to Kinesis Video Signaling, this sample application will invoke the JoinStorageSession API to have the Kinesis video producing device join the WebRTC session as a viewer.</p>
+                    <a href=&quot;https://docs.aws.amazon.com/kinesisvideostreams/latest/dg/API_webrtc_JoinStorageSession.html&quot;>Additional information</a>
+                    "><sup>&#9432;</sup></span>
+                </div>
             </div>
+            </details>
             <h4>Video Resolution</h4>
             <p><small>Set the desired video resolution and aspect ratio.</small></p>
             <div class="form-group">
@@ -249,10 +269,15 @@
                     <button id="warn-button" class="btn btn-light" onClick="logLevelSelected(event)" data-level="WARN">WARN</button>
                     <button id="error-button" class="btn btn-light" onClick="logLevelSelected(event)" data-level="ERROR">ERROR</button>
                 </div>
-                <div>
+                <div class="d-inline-flex">
                     <button id="more-logs" class="btn btn-light" title="Show more logs">+</button>
                     <button id="less-logs" class="btn btn-light" title="Show less logs">-</button>
                     <button id="clear-logs" class="btn btn-light">Clear Logs</button>
+                    <div>
+                        <button id="copy-logs" class="btn btn-light" title="Copy logs">
+                            <span id="copy-tooltip" aria-live="assertive" class="text-info" role="tooltip" data-position="auto" title="Copied logs to clipboard!">📋</span>
+                        </button>
+                    </div>
                 </div>
             </div>
             <pre id="logs" class="card-body text-monospace preserve-whitespace"></pre>
@@ -266,6 +291,9 @@
 <script src="./master.js"></script>
 <script src="./viewer.js"></script>
 <script src="./createSignalingChannel.js"></script>
+<script src="./listStorageChannels.js"></script>
+<script src="./updateMediaStorageConfiguration.js"></script>
+<script src="./describeMediaStorageConfiguration.js"></script>
 <script src="./app.js"></script>
 
 </body>

@@ -126,6 +126,17 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
         const channelARN = describeSignalingChannelResponse.ChannelInfo.ChannelARN;
         console.log('[VIEWER] Channel ARN:', channelARN);
 
+        const mediaStorageConfiguration = await kinesisVideoClient
+            .describeMediaStorageConfiguration({
+                ChannelName: formValues.channelName,
+            })
+            .promise();
+
+        if (mediaStorageConfiguration.MediaStorageConfiguration.Status !== 'DISABLED') {
+            console.error('[VIEWER] Media storage and ingestion is ENABLED for this channel. Only the WebRTC Ingestion and Storage peer can join as a viewer.');
+            return;
+        }
+
         // Get signaling channel endpoints
         const getSignalingChannelEndpointResponse = await kinesisVideoClient
             .getSignalingChannelEndpoint({
@@ -206,9 +217,14 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
         };
         viewer.peerConnection = new RTCPeerConnection(configuration);
         if (formValues.openDataChannel) {
-            viewer.dataChannel = viewer.peerConnection.createDataChannel('kvsDataChannel');
+            const dataChannelObj = viewer.peerConnection.createDataChannel('kvsDataChannel');
+            viewer.dataChannel = dataChannelObj;
+            dataChannelObj.onopen = event => {
+                dataChannelObj.send("Opened data channel by viewer");
+            };
             // Callback for the data channel created by viewer
-            viewer.dataChannel.onmessage = onRemoteDataMessage;
+            dataChannelObj.onmessage = onRemoteDataMessage;
+
             viewer.peerConnection.ondatachannel = event => {
                 // Callback for the data channel created by master
                 event.channel.onmessage = onRemoteDataMessage;
