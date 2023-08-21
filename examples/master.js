@@ -74,23 +74,30 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
 
         const protocols = ['WSS', 'HTTPS'];
 
-        const describeMediaStorageConfigurationResponse = await kinesisVideoClient
-            .describeMediaStorageConfiguration({
-                ChannelARN: master.channelARN,
-            })
-            .promise();
-        const mediaStorageConfiguration = describeMediaStorageConfigurationResponse.MediaStorageConfiguration;
+        if (formValues.region?.toLowerCase() === 'us-west-2') {
+            console.log('[MASTER] Attempting to use media ingestion feature.');
+            const describeMediaStorageConfigurationResponse = await kinesisVideoClient
+                .describeMediaStorageConfiguration({
+                    ChannelARN: master.channelARN,
+                })
+                .promise();
+            const mediaStorageConfiguration = describeMediaStorageConfigurationResponse.MediaStorageConfiguration;
 
-        const mediaServiceMode = mediaStorageConfiguration.Status === 'ENABLED' || mediaStorageConfiguration.StreamARN !== null;
-        if (mediaServiceMode) {
-            if (!formValues.sendAudio || !formValues.sendVideo) {
-                console.error('[MASTER] Both Send Video and Send Audio checkboxes need to be checked to ingest and store media.');
-                return;
+            const mediaServiceMode = mediaStorageConfiguration.Status === 'ENABLED' || mediaStorageConfiguration.StreamARN !== null;
+            if (mediaServiceMode) {
+                if (!formValues.sendAudio || !formValues.sendVideo) {
+                    console.error('[MASTER] Both Send Video and Send Audio checkboxes need to be checked to ingest and store media.');
+                    return;
+                }
+                protocols.push('WEBRTC');
+                master.streamARN = mediaStorageConfiguration.StreamARN;
+                console.log(`[MASTER] Using media ingestion feature. Stream ARN: ${master.streamARN}`);
+            } else {
+                console.log('[MASTER] Not using media ingestion feature.');
+                master.streamARN = null;
             }
-            protocols.push('WEBRTC');
-            master.streamARN = mediaStorageConfiguration.StreamARN;
-            console.log(`[MASTER] Stream ARN: ${master.streamARN}`);
         } else {
+            console.log('[MASTER] Not using media ingestion feature.');
             master.streamARN = null;
         }
 
