@@ -126,15 +126,22 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
         const channelARN = describeSignalingChannelResponse.ChannelInfo.ChannelARN;
         console.log('[VIEWER] Channel ARN:', channelARN);
 
-        const mediaStorageConfiguration = await kinesisVideoClient
-            .describeMediaStorageConfiguration({
-                ChannelName: formValues.channelName,
-            })
-            .promise();
+        if (formValues.region?.toLowerCase() === 'us-west-2') {
+            console.log('[VIEWER] Using media ingestion feature');
+            const mediaStorageConfiguration = await kinesisVideoClient
+                .describeMediaStorageConfiguration({
+                    ChannelName: formValues.channelName,
+                })
+                .promise();
 
-        if (mediaStorageConfiguration.MediaStorageConfiguration.Status !== 'DISABLED') {
-            console.error('[VIEWER] Media storage and ingestion is ENABLED for this channel. Only the WebRTC Ingestion and Storage peer can join as a viewer.');
-            return;
+            if (mediaStorageConfiguration.MediaStorageConfiguration.Status !== 'DISABLED') {
+                console.error(
+                    '[VIEWER] Media storage and ingestion is ENABLED for this channel. Only the WebRTC Ingestion and Storage peer can join as a viewer.',
+                );
+                return;
+            }
+        } else {
+            console.log('[VIEWER] Not using media ingestion feature');
         }
 
         // Get signaling channel endpoints
