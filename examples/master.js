@@ -353,7 +353,7 @@ function onPeerConnectionFailed() {
         if (!master.websocketOpened) {
             console.log('[MASTER] Websocket is closed. Reopening...');
             master.signalingClient.open();
-        } else if (master.streamARN) {
+        } else {
             connectToMediaServer(++master.runId);
         }
     }
