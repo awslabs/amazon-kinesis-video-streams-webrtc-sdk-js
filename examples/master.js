@@ -74,7 +74,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
 
         const protocols = ['WSS', 'HTTPS'];
 
-        if (formValues.region?.toLowerCase() === 'us-west-2') {
+        if (formValues.region?.toLowerCase() === 'us-west-2' && formValues.ingestMedia) {
             console.log('[MASTER] Attempting to use media ingestion feature.');
             const describeMediaStorageConfigurationResponse = await kinesisVideoClient
                 .describeMediaStorageConfiguration({
@@ -353,7 +353,7 @@ function onPeerConnectionFailed() {
         if (!master.websocketOpened) {
             console.log('[MASTER] Websocket is closed. Reopening...');
             master.signalingClient.open();
-        } else if (getFormValues().ingestMedia) {
+        } else if (master.streamARN) {
             connectToMediaServer(++master.runId);
         }
     }
