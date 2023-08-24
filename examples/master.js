@@ -75,7 +75,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
         const protocols = ['WSS', 'HTTPS'];
 
         if (formValues.region?.toLowerCase() === 'us-west-2' && formValues.ingestMedia) {
-            console.log('[MASTER] Attempting to use media ingestion feature.');
+            console.log('[MASTER] Determining whether to use media ingestion feature.');
             const describeMediaStorageConfigurationResponse = await kinesisVideoClient
                 .describeMediaStorageConfiguration({
                     ChannelARN: master.channelARN,
@@ -217,7 +217,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
                     console.log('[MASTER] Waiting for media ingestion and storage viewer to join...');
                 }
             } else {
-                console.log('[MASTER] Media ingestion and storage is not enabled for this channel. Waiting for peers to join...');
+                console.log('[MASTER] Waiting for peers to join...');
             }
         });
 
