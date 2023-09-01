@@ -76,6 +76,7 @@ function getFormValues() {
         sendAudio: $('#sendAudio').is(':checked'),
         streamName: $('#streamName').val(),
         ingestMedia: $('#ingest-media').is(':checked'),
+        showJSSButton: $('#show-join-storage-session-button').is(':checked'),
         openDataChannel: $('#openDataChannel').is(':checked'),
         widescreen: $('#widescreen').is(':checked'),
         fullscreen: $('#fullscreen').is(':checked'),
@@ -135,6 +136,7 @@ function onStop() {
     }
 
     $('#form').removeClass('d-none');
+    $('#join-storage-session-button').addClass('d-none');
     ROLE = null;
 }
 
@@ -414,6 +416,7 @@ const fields = [
     { field: 'sendAudio', type: 'checkbox' },
     { field: 'streamName', type: 'text' },
     { field: 'ingest-media', type: 'checkbox' },
+    { field: 'show-join-storage-session-button', type: 'checkbox' },
     { field: 'widescreen', type: 'radio', name: 'resolution' },
     { field: 'fullscreen', type: 'radio', name: 'resolution' },
     { field: 'openDataChannel', type: 'checkbox' },
@@ -669,6 +672,11 @@ $('#create-stream-modal-create-stream-button').on('click', async function() {
         streamName: $('#create-stream-modal-stream-input').val(),
         retentionInHours: $('#create-stream-modal-retention-input').val(),
     });
+});
+
+$('#join-storage-session-button').on('click', async function() {
+    const formValues = getFormValues();
+    joinStorageSessionManually(formValues);
 });
 
 // Enable tooltips
