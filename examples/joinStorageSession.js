@@ -32,7 +32,7 @@ async function joinStorageSessionManually(formValues) {
                 ChannelARN: channelARN,
                 SingleMasterChannelEndpointConfiguration: {
                     Protocols: ['WEBRTC'],
-                    Role: KVSWebRTC.Role.VIEWER,
+                    Role: KVSWebRTC.Role.MASTER,
                 },
             })
             .promise();
