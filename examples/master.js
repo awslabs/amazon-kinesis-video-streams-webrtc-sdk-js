@@ -210,11 +210,10 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             const masterRunId = ++master.runId;
             master.websocketOpened = true;
             console.log('[MASTER] Connected to signaling service');
+            if (formValues.showJSSButton) {
+                $('#join-storage-session-button').removeClass('d-none');
+            }
             if (master.streamARN) {
-                if (formValues.showJSSButton) {
-                    $('#join-storage-session-button').removeClass('d-none');
-                }
-
                 if (formValues.ingestMedia) {
                     await connectToMediaServer(masterRunId);
                 } else {
