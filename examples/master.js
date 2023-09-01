@@ -237,22 +237,6 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             const peerConnection = new RTCPeerConnection(configuration);
             master.peerConnectionByClientId[remoteClientId] = peerConnection;
 
-            // If in WebRTC ingestion mode, retry if no connection was established within 5 seconds.
-            if (master.streamARN) {
-                setTimeout(function() {
-                    // We check that it's not failed because if the state transitioned to failed,
-                    // the state change callback would handle this already
-                    if (
-                        peerConnection.connectionState !== 'connected' &&
-                        peerConnection.connectionState !== 'failed' &&
-                        peerConnection.connectionState !== 'closed'
-                    ) {
-                        console.error('[MASTER] Connection failed to establish within 5 seconds. Retrying...');
-                        onPeerConnectionFailed(false);
-                    }
-                }, 5000);
-            }
-
             if (formValues.openDataChannel) {
                 peerConnection.ondatachannel = event => {
                     master.dataChannelByClientId[remoteClientId] = event.channel;
@@ -328,6 +312,22 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
                 master.signalingClient.sendSdpAnswer(peerConnection.localDescription, remoteClientId);
             }
             printSignalingLog('[MASTER] Generating ICE candidates for client', remoteClientId);
+
+            // If in WebRTC ingestion mode, retry if no connection was established within 5 seconds.
+            if (master.streamARN) {
+                setTimeout(function() {
+                    // We check that it's not failed because if the state transitioned to failed,
+                    // the state change callback would handle this already
+                    if (
+                        peerConnection.connectionState !== 'connected' &&
+                        peerConnection.connectionState !== 'failed' &&
+                        peerConnection.connectionState !== 'closed'
+                    ) {
+                        console.error('[MASTER] Connection failed to establish within 5 seconds. Retrying...');
+                        onPeerConnectionFailed(false);
+                    }
+                }, 5000);
+            }
         });
 
         master.signalingClient.on('iceCandidate', async (candidate, remoteClientId) => {
