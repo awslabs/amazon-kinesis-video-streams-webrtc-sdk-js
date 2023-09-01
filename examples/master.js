@@ -211,6 +211,10 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             master.websocketOpened = true;
             console.log('[MASTER] Connected to signaling service');
             if (master.streamARN) {
+                if (formValues.showJSSButton) {
+                    $('#join-storage-session-button').removeClass('d-none');
+                }
+
                 if (formValues.ingestMedia) {
                     await connectToMediaServer(masterRunId);
                 } else {
@@ -233,6 +237,22 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             }
             const peerConnection = new RTCPeerConnection(configuration);
             master.peerConnectionByClientId[remoteClientId] = peerConnection;
+
+            // If in WebRTC ingestion mode, retry if no connection was established within 5 seconds.
+            if (master.streamARN) {
+                setTimeout(function() {
+                    // We check that it's not failed because if the state transitioned to failed,
+                    // the state change callback would handle this already
+                    if (
+                        peerConnection.connectionState !== 'connected' &&
+                        peerConnection.connectionState !== 'failed' &&
+                        peerConnection.connectionState !== 'closed'
+                    ) {
+                        console.error('[MASTER] Connection failed to establish within 5 seconds. Retrying...');
+                        onPeerConnectionFailed(false);
+                    }
+                }, 5000);
+            }
 
             if (formValues.openDataChannel) {
                 peerConnection.ondatachannel = event => {
@@ -341,9 +361,11 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
     }
 }
 
-function onPeerConnectionFailed() {
+function onPeerConnectionFailed(printLostConnectionLog = true) {
     if (master.streamARN) {
-        console.warn('[MASTER] Lost connection to the storage session.');
+        if (printLostConnectionLog) {
+            console.warn('[MASTER] Lost connection to the storage session.');
+        }
         master.connectionFailures.push(new Date().getTime());
         if (shouldStopRetryingJoinStorageSession()) {
             console.error(
