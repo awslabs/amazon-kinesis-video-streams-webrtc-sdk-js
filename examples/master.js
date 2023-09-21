@@ -74,7 +74,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
 
         const protocols = ['WSS', 'HTTPS'];
 
-        if (formValues.region?.toLowerCase() === 'us-west-2' && formValues.ingestMedia) {
+        if (formValues.ingestMedia) {
             console.log('[MASTER] Determining whether to use media ingestion feature.');
             const describeMediaStorageConfigurationResponse = await kinesisVideoClient
                 .describeMediaStorageConfiguration({
