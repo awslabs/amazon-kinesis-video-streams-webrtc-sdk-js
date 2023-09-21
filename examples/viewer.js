@@ -126,7 +126,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
         const channelARN = describeSignalingChannelResponse.ChannelInfo.ChannelARN;
         console.log('[VIEWER] Channel ARN:', channelARN);
 
-        if (formValues.region?.toLowerCase() === 'us-west-2' && formValues.ingestMedia) {
+        if (formValues.ingestMedia) {
             console.log('[VIEWER] Determining whether this signaling channel is in media ingestion mode.');
             const mediaStorageConfiguration = await kinesisVideoClient
                 .describeMediaStorageConfiguration({
