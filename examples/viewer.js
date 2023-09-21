@@ -126,8 +126,8 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
         const channelARN = describeSignalingChannelResponse.ChannelInfo.ChannelARN;
         console.log('[VIEWER] Channel ARN:', channelARN);
 
-        if (formValues.region?.toLowerCase() === 'us-west-2' && formValues.ingestMedia) {
-            console.log('[VIEWER] Determining whether this signaling channel is in media ingestion mode.');
+        if (formValues.region?.toLowerCase() === 'us-west-2') {
+            console.log('[VIEWER] Using media ingestion feature');
             const mediaStorageConfiguration = await kinesisVideoClient
                 .describeMediaStorageConfiguration({
                     ChannelName: formValues.channelName,
@@ -318,7 +318,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
                 // When trickle ICE is disabled, send the offer now that all the ICE candidates have ben generated.
                 if (!formValues.useTrickleICE) {
                     console.log('[VIEWER] Sending SDP offer');
-                    console.debug('SDP offer:', peerConnection.localDescription);
+                    console.debug('SDP offer:', viewer.peerConnection.localDescription);
                     viewer.signalingClient.sendSdpOffer(viewer.peerConnection.localDescription);
                 }
             }
