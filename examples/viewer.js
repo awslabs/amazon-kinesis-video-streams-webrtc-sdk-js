@@ -318,7 +318,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
                 // When trickle ICE is disabled, send the offer now that all the ICE candidates have ben generated.
                 if (!formValues.useTrickleICE) {
                     console.log('[VIEWER] Sending SDP offer');
-                    console.debug('SDP offer:', peerConnection.localDescription);
+                    console.debug('SDP offer:', viewer.peerConnection.localDescription);
                     viewer.signalingClient.sendSdpOffer(viewer.peerConnection.localDescription);
                 }
             }
