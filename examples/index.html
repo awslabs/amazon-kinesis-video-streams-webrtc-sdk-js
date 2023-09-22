@@ -92,6 +92,37 @@
                 <div class="form-group input-group">
                     <input type="text" class="form-control" id="streamName" placeholder="Stream name">
                     <div class="input-group-append">
+                        <button id="create-stream-button" type="submit" class="btn btn-primary" title="Create a Kinesis Video Stream with this name." data-toggle="modal" data-target="#create-stream-modal">Create Stream</button>
+                        <div class="modal fade" id="create-stream-modal" tabindex="-1" role="dialog" aria-labelledby="create-stream-modal-label" aria-hidden="true">
+                            <div class="modal-dialog" role="document">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="create-stream-modal-label">Create a Kinesis Video Stream</h5>
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <form>
+                                            <div class="form-group">
+                                                <label for="create-stream-modal-stream-input" class="col-form-label">Stream Name:</label>
+                                                <input type="text" class="form-control" id="create-stream-modal-stream-input">
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="create-stream-modal-retention-input" class="col-form-label">Data retention (hours):</label>
+                                                <input class="form-control" id="create-stream-modal-retention-input" type="number" value="48"/>
+                                            </div>
+                                        </form>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                        <button type="button" class="btn btn-primary" id="create-stream-modal-create-stream-button" data-dismiss="modal">Create Stream</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="input-group-append">
                         <button id="update-media-storage-configuration-button" type="submit" class="btn btn-primary" title="Ingest and Store media to a specific Kinesis Video Stream.">Update Media Storage Configuration</button>
                     </div>
                 </div>
@@ -104,7 +135,7 @@
                 </div>
                 <div class="form-group form-check form-check-inline">
                     <input class="form-check-input" type="checkbox" id="ingest-media" value="audio">
-                    <label for="sendAudio" class="form-check-label"><i>Ingestion and storage peer</i> joins automatically</label>
+                    <label for="ingest-media" class="form-check-label"><i>Ingestion and storage peer</i> joins automatically</label>
                     <span data-delay="{ &quot;hide&quot;: 1500 }" data-position="auto" tabindex="0" class="text-info ml-1" data-toggle="tooltip" data-html="true" title="
                     <p>If WebRTC Ingestion and Storage is configured, after connecting to Kinesis Video Signaling, this sample application will invoke the JoinStorageSession API to have the Kinesis video producing device join the WebRTC session as a viewer.</p>
                     <a href=&quot;https://docs.aws.amazon.com/kinesisvideostreams/latest/dg/API_webrtc_JoinStorageSession.html&quot;>Additional information</a>
@@ -294,6 +325,7 @@
 <script src="./listStorageChannels.js"></script>
 <script src="./updateMediaStorageConfiguration.js"></script>
 <script src="./describeMediaStorageConfiguration.js"></script>
+<script src="./createStream.js"></script>
 <script src="./app.js"></script>
 
 </body>
