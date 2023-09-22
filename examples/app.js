@@ -493,6 +493,19 @@ $('#describe-media-storage-configuration-button').on('click', async function() {
     describeMediaStorageConfiguration(formValues);
 });
 
+$('#create-stream-modal').on('show.bs.modal', function() {
+    // Set the stream name in the modal to the stream name.
+    $('#create-stream-modal-stream-input').val($('#streamName').val());
+});
+
+$('#create-stream-modal-create-stream-button').on('click', async function() {
+    await createStream({
+        ...getFormValues(),
+        streamName: $('#create-stream-modal-stream-input').val(),
+        retentionInHours: $('#create-stream-modal-retention-input').val(),
+    });
+});
+
 // Enable tooltips
 $(document).ready(function() {
     $('[data-toggle="tooltip"]').tooltip();
