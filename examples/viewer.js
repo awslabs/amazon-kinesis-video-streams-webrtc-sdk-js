@@ -39,6 +39,7 @@ let timeArray = [];
 
 async function startViewer(localView, remoteView, formValues, onStatsReport, onRemoteDataMessage) {
     try {
+        const buttonPressedStart = Date.now();
         console.log('[VIEWER] Client id is:', formValues.clientId);
 
         viewer.localView = localView;
@@ -290,7 +291,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
             // Add the ICE candidate received from the MASTER to the peer connection
             console.log('[VIEWER] Received ICE candidate');
             console.debug('ICE candidate', candidate);
-            if (shouldAddIceCandidate(formValues, candidate)) {
+            if (shouldAcceptCandidate(formValues, candidate)) {
                 viewer.peerConnection.addIceCandidate(candidate);
             } else {
                 console.log('[VIEWER] Not adding candidate from peer.');
@@ -334,6 +335,10 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
 
         viewer.peerConnection.addEventListener('connectionstatechange', async event => {
             printPeerConnectionStateInfo(event, '[VIEWER]');
+
+            if (event.target.connectionState === 'connected') {
+                console.error(Date.now() - buttonPressedStart, 'ms');
+            }
         });
 
         // As remote tracks are received, add them to the remote view
