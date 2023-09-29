@@ -526,6 +526,69 @@ function shouldAcceptCandidate(formValues, candidate) {
     }
 }
 
+$('#natTraversalEnabled').on('click', () => {
+    $('#accept-host').prop('checked', true);
+    $('#send-host').prop('checked', true);
+    $('#accept-relay').prop('checked', true);
+    $('#send-relay').prop('checked', true);
+    $('#accept-srflx').prop('checked', true);
+    $('#send-srflx').prop('checked', true);
+    $('#accept-prflx').prop('checked', true);
+    $('#send-prflx').prop('checked', true);
+
+    saveAdvanced();
+});
+
+$('#forceSTUN').on('click', () => {
+    $('#accept-host').prop('checked', false);
+    $('#send-host').prop('checked', false);
+    $('#accept-relay').prop('checked', false);
+    $('#send-relay').prop('checked', false);
+    $('#accept-srflx').prop('checked', true);
+    $('#send-srflx').prop('checked', true);
+    $('#accept-prflx').prop('checked', false);
+    $('#send-prflx').prop('checked', false);
+
+    saveAdvanced();
+});
+
+$('#forceTURN').on('click', () => {
+    $('#accept-host').prop('checked', false);
+    $('#send-host').prop('checked', false);
+    $('#accept-relay').prop('checked', true);
+    $('#send-relay').prop('checked', true);
+    $('#accept-srflx').prop('checked', false);
+    $('#send-srflx').prop('checked', false);
+    $('#accept-prflx').prop('checked', false);
+    $('#send-prflx').prop('checked', false);
+
+    saveAdvanced();
+});
+
+$('#natTraversalDisabled').on('click', () => {
+    $('#accept-host').prop('checked', true);
+    $('#send-host').prop('checked', true);
+    $('#accept-relay').prop('checked', true);
+    $('#send-relay').prop('checked', true);
+    $('#accept-srflx').prop('checked', true);
+    $('#send-srflx').prop('checked', true);
+    $('#accept-prflx').prop('checked', true);
+    $('#send-prflx').prop('checked', true);
+
+    saveAdvanced();
+});
+
+function saveAdvanced() {
+    $('#accept-host').trigger('change');
+    $('#send-host').trigger('change');
+    $('#accept-relay').trigger('change');
+    $('#send-relay').trigger('change');
+    $('#accept-srflx').trigger('change');
+    $('#send-srflx').trigger('change');
+    $('#accept-prflx').trigger('change');
+    $('#send-prflx').trigger('change');
+}
+
 /**
  * Determines whether the ICE Candidate should be sent to the peer.
  * @param formValues Settings used.
