@@ -262,8 +262,12 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
 
                     // When trickle ICE is enabled, send the ICE candidates as they are generated.
                     if (formValues.useTrickleICE) {
-                        printSignalingLog('[MASTER] Sending ICE candidate to client', remoteClientId);
-                        master.signalingClient.sendIceCandidate(candidate, remoteClientId);
+                        if (shouldSendIceCandidate(formValues, candidate)) {
+                            printSignalingLog('[MASTER] Sending ICE candidate to client', remoteClientId);
+                            master.signalingClient.sendIceCandidate(candidate, remoteClientId);
+                        } else {
+                            console.log('[MASTER] Not sending ICE candidate to client', remoteClientId);
+                        }
                     }
                 } else {
                     printSignalingLog('[MASTER] All ICE candidates have been generated for client', remoteClientId);
@@ -311,9 +315,13 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             printSignalingLog('[MASTER] Received ICE candidate from client', remoteClientId);
             console.debug('[MASTER] ICE candidate:', candidate);
 
-            // Add the ICE candidate received from the client to the peer connection
-            const peerConnection = master.peerConnectionByClientId[remoteClientId];
-            peerConnection.addIceCandidate(candidate);
+            if (shouldAcceptCandidate(formValues, candidate)) {
+                // Add the ICE candidate received from the client to the peer connection
+                const peerConnection = master.peerConnectionByClientId[remoteClientId];
+                peerConnection.addIceCandidate(candidate);
+            } else {
+                console.log('[MASTER] Not adding candidate from peer.');
+            }
         });
 
         master.signalingClient.on('close', () => {
