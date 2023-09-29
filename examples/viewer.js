@@ -39,7 +39,6 @@ let timeArray = [];
 
 async function startViewer(localView, remoteView, formValues, onStatsReport, onRemoteDataMessage) {
     try {
-        const buttonPressedStart = Date.now();
         console.log('[VIEWER] Client id is:', formValues.clientId);
 
         viewer.localView = localView;
@@ -335,10 +334,6 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
 
         viewer.peerConnection.addEventListener('connectionstatechange', async event => {
             printPeerConnectionStateInfo(event, '[VIEWER]');
-
-            if (event.target.connectionState === 'connected') {
-                console.error(Date.now() - buttonPressedStart, 'ms');
-            }
         });
 
         // As remote tracks are received, add them to the remote view
