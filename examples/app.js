@@ -88,6 +88,18 @@ function getFormValues() {
         secretAccessKey: $('#secretAccessKey').val(),
         sessionToken: $('#sessionToken').val() || null,
         enableDQPmetrics: $('#enableDQPmetrics').is(':checked'),
+        sendHostCandidates: $('#send-host').is(':checked'),
+        acceptHostCandidates: $('#accept-host').is(':checked'),
+        sendRelayCandidates: $('#send-relay').is(':checked'),
+        acceptRelayCandidates: $('#accept-relay').is(':checked'),
+        sendSrflxCandidates: $('#send-srflx').is(':checked'),
+        acceptSrflxCandidates: $('#accept-srflx').is(':checked'),
+        sendPrflxCandidates: $('#send-prflx').is(':checked'),
+        acceptPrflxCandidates: $('#accept-prflx').is(':checked'),
+        sendTcpCandidates: $('#send-tcp').is(':checked'),
+        acceptTcpCandidates: $('#accept-tcp').is(':checked'),
+        sendUdpCandidates: $('#send-udp').is(':checked'),
+        acceptUdpCandidates: $('#accept-udp').is(':checked'),
     };
 }
 
@@ -410,7 +422,21 @@ const fields = [
     { field: 'forceSTUN', type: 'radio', name: 'natTraversal' },
     { field: 'forceTURN', type: 'radio', name: 'natTraversal' },
     { field: 'natTraversalDisabled', type: 'radio', name: 'natTraversal' },
+    { field: 'enableDQPmetrics', type: 'checkbox' },
+    { field: 'send-host', type: 'checkbox' },
+    { field: 'accept-host', type: 'checkbox' },
+    { field: 'send-relay', type: 'checkbox' },
+    { field: 'accept-relay', type: 'checkbox' },
+    { field: 'send-srflx', type: 'checkbox' },
+    { field: 'accept-srflx', type: 'checkbox' },
+    { field: 'send-prflx', type: 'checkbox' },
+    { field: 'accept-prflx', type: 'checkbox' },
+    { field: 'send-tcp', type: 'checkbox' },
+    { field: 'accept-tcp', type: 'checkbox' },
+    { field: 'send-udp', type: 'checkbox' },
+    { field: 'accept-udp', type: 'checkbox' },
 ];
+
 fields.forEach(({ field, type, name }) => {
     const id = '#' + field;
 
@@ -458,6 +484,88 @@ fields.forEach(({ field, type, name }) => {
         }
     });
 });
+
+/**
+ * Determines whether the ICE Candidate should be added.
+ * @param formValues Settings used.
+ * @param candidate {RTCIceCandidate} iceCandidate to check
+ * @returns true if the candidate should be added to the peerConnection.
+ */
+function shouldAcceptCandidate(formValues, candidate) {
+    const words = candidate.candidate.split(' ');
+
+    if (words.length < 7) {
+        console.error('Invalid ice candidate!', candidate);
+        return false;
+    }
+
+    // https://datatracker.ietf.org/doc/html/rfc5245#section-15.1
+    const transport = words[2];
+    const type = words[7];
+
+    if (!formValues.acceptUdpCandidates && transport === 'udp') {
+        return false;
+    }
+
+    if (!formValues.acceptTcpCandidates && transport === 'tcp') {
+        return false;
+    }
+
+    switch (type) {
+        case 'host':
+            return formValues.acceptHostCandidates;
+        case 'srflx':
+            return formValues.acceptSrflxCandidates;
+        case 'relay':
+            return formValues.acceptRelayCandidates;
+        case 'prflx':
+            return formValues.acceptPrflxCandidates;
+        default:
+            console.warn('ShouldAcceptICECandidate: Unknown candidate type:', candidate.type);
+            return false;
+    }
+}
+
+/**
+ * Determines whether the ICE Candidate should be sent to the peer.
+ * @param formValues Settings used.
+ * @param candidate {RTCIceCandidate} iceCandidate to check
+ * @returns true if the candidate should be sent to the peer.
+ */
+function shouldSendIceCandidate(formValues, candidate) {
+    const words = candidate.candidate.split(' ');
+
+    if (words.length < 7) {
+        console.error('Invalid ice candidate!', candidate);
+        return false;
+    }
+
+    // https://datatracker.ietf.org/doc/html/rfc5245#section-15.1
+    const transport = words[2];
+    const type = words[7];
+
+    if (!formValues.sendUdpCandidates && transport === 'udp') {
+        return false;
+    }
+
+    if (!formValues.sendTcpCandidates && transport === 'tcp') {
+        return false;
+    }
+
+    switch (type) {
+        case 'host':
+            return formValues.sendHostCandidates;
+        case 'srflx':
+            return formValues.sendSrflxCandidates;
+        case 'relay':
+            return formValues.sendRelayCandidates;
+        case 'prflx':
+            return formValues.sendPrflxCandidates;
+        default:
+            console.warn('ShouldSendICECandidate: Unknown candidate type:', candidate.type);
+            return false;
+    }
+}
 
 $('#copy-logs').on('click', async function() {
     const logsResult = [];
