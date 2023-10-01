@@ -137,7 +137,8 @@ export class SignalingClient extends EventEmitter {
             return;
         }
 
-        this.websocket = new WebSocket(signedURL);
+        /* istanbul ignore next */
+        this.websocket = new (global.WebSocket || require('ws'))(signedURL);
 
         this.websocket.addEventListener('open', this.onOpen);
         this.websocket.addEventListener('message', this.onMessage);
@@ -166,7 +167,7 @@ export class SignalingClient extends EventEmitter {
      * @param {string} [recipientClientId] - ID of the client to send the message to. Required for 'MASTER' role. Should not be present for 'VIEWER' role.
      */
     public sendSdpOffer(sdpOffer: RTCSessionDescription, recipientClientId?: string): void {
-        this.sendMessage(MessageType.SDP_OFFER, sdpOffer.toJSON(), recipientClientId);
+        this.sendMessage(MessageType.SDP_OFFER, sdpOffer, recipientClientId);
     }
 
     /**
@@ -177,7 +178,7 @@ export class SignalingClient extends EventEmitter {
      * @param {string} [recipientClientId] - ID of the client to send the message to. Required for 'MASTER' role. Should not be present for 'VIEWER' role.
      */
     public sendSdpAnswer(sdpAnswer: RTCSessionDescription, recipientClientId?: string): void {
-        this.sendMessage(MessageType.SDP_ANSWER, sdpAnswer.toJSON(), recipientClientId);
+        this.sendMessage(MessageType.SDP_ANSWER, sdpAnswer, recipientClientId);
     }
 
     /**
@@ -188,7 +189,7 @@ export class SignalingClient extends EventEmitter {
      * @param {string} [recipientClientId] - ID of the client to send the message to. Required for 'MASTER' role. Should not be present for 'VIEWER' role.
      */
     public sendIceCandidate(iceCandidate: RTCIceCandidate, recipientClientId?: string): void {
-        this.sendMessage(MessageType.ICE_CANDIDATE, iceCandidate.toJSON(), recipientClientId);
+        this.sendMessage(MessageType.ICE_CANDIDATE, iceCandidate, recipientClientId);
     }
 
     /**
@@ -266,14 +267,22 @@ export class SignalingClient extends EventEmitter {
      * Takes the given base64 encoded string and decodes it into a JSON object.
      */
     private static parseJSONObjectFromBase64String(base64EncodedString: string): object {
-        return JSON.parse(atob(base64EncodedString));
+        try {
+            return JSON.parse(atob(base64EncodedString));
+        } catch (e) {
+            return JSON.parse(Buffer.from(base64EncodedString, 'base64').toString());
+        }
     }
 
     /**
      * Takes the given JSON object and encodes it into a base64 string.
      */
     private static serializeJSONObjectAsBase64String(object: object): string {
-        return btoa(JSON.stringify(object));
+        try {
+            return btoa(JSON.stringify(object));
+        } catch (e) {
+            return Buffer.from(JSON.stringify(object)).toString('base64');
+        }
     }
 
     /**

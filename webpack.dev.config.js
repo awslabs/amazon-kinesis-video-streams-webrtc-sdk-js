@@ -1,5 +1,6 @@
 const path = require('path');
 const merge = require('webpack-merge');
+const webpack = require('webpack');
 
 module.exports = merge.smart(require('./webpack.config'), {
     mode: 'development',
@@ -11,7 +12,7 @@ module.exports = merge.smart(require('./webpack.config'), {
 
     devServer: {
         static: {
-          directory: path.join(__dirname, "examples")
+            directory: path.join(__dirname, 'examples'),
         },
         devMiddleware: {
             publicPath: '/',
