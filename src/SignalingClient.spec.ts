@@ -572,4 +572,30 @@ describe('SignalingClient', () => {
             });
         });
     });
+
+    describe('outsideBrowser', () => {
+        it('parseJSONObjectFromBase64String', done => {
+            global.atob = undefined;
+            const client = new SignalingClient(config as SignalingClientConfig);
+            client.once('sdpAnswer', (sdpAnswer, _) => {
+                expect(sdpAnswer).toEqual(SDP_ANSWER_OBJECT);
+                done();
+            });
+            client.once('open', () => {
+                MockWebSocket.instance.emit('message', { data: SDP_ANSWER_MASTER_MESSAGE });
+            });
+            client.open();
+        });
+
+        it('serializeJSONObjectAsBase64String', done => {
+            global.btoa = undefined;
+            const client = new SignalingClient(config as SignalingClientConfig);
+            client.open();
+            client.on('open', () => {
+                client.sendSdpOffer(SDP_OFFER);
+                expect(MockWebSocket.instance.send).toHaveBeenCalledWith(SDP_OFFER_VIEWER_STRING);
+                done();
+            });
+        });
+    });
 });
