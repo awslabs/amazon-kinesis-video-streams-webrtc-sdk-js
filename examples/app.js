@@ -492,16 +492,7 @@ fields.forEach(({ field, type, name }) => {
  * @returns true if the candidate should be added to the peerConnection.
  */
 function shouldAcceptCandidate(formValues, candidate) {
-    const words = candidate.candidate.split(' ');
-
-    if (words.length < 7) {
-        console.error('Invalid ice candidate!', candidate);
-        return false;
-    }
-
-    // https://datatracker.ietf.org/doc/html/rfc5245#section-15.1
-    const transport = words[2];
-    const type = words[7];
+    const { transport, type } = extractTransportAndType(candidate);
 
     if (!formValues.acceptUdpCandidates && transport === 'udp') {
         return false;
@@ -596,16 +587,7 @@ function saveAdvanced() {
  * @returns true if the candidate should be sent to the peer.
  */
 function shouldSendIceCandidate(formValues, candidate) {
-    const words = candidate.candidate.split(' ');
-
-    if (words.length < 7) {
-        console.error('Invalid ice candidate!', candidate);
-        return false;
-    }
-
-    // https://datatracker.ietf.org/doc/html/rfc5245#section-15.1
-    const transport = words[2];
-    const type = words[7];
+    const { transport, type } = extractTransportAndType(candidate);
 
     if (!formValues.sendUdpCandidates && transport === 'udp') {
         return false;
@@ -628,6 +610,18 @@ function shouldSendIceCandidate(formValues, candidate) {
             console.warn('ShouldSendICECandidate: Unknown candidate type:', candidate.type);
             return false;
     }
+}
+
+function extractTransportAndType(candidate) {
+    const words = candidate.candidate.split(' ');
+
+    if (words.length < 7) {
+        console.error('Invalid ice candidate!', candidate);
+        return false;
+    }
+
+    // https://datatracker.ietf.org/doc/html/rfc5245#section-15.1
+    return { transport: words[2], type: words[7] };
 }
 
 $('#copy-logs').on('click', async function() {
