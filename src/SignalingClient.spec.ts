@@ -577,7 +577,7 @@ describe('SignalingClient', () => {
         it('parseJSONObjectFromBase64String', done => {
             global.atob = undefined;
             const client = new SignalingClient(config as SignalingClientConfig);
-            client.once('sdpAnswer', (sdpAnswer, _) => {
+            client.once('sdpAnswer', sdpAnswer => {
                 expect(sdpAnswer).toEqual(SDP_ANSWER_OBJECT);
                 done();
             });
