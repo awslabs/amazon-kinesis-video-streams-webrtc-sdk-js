@@ -615,6 +615,10 @@ function shouldSendIceCandidate(formValues, candidate) {
     }
 }
 
+function randomString() {
+    return Date.now().toString();
+}
+
 function extractTransportAndType(candidate) {
     const words = candidate.candidate.split(' ');
 

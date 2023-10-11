@@ -33,6 +33,7 @@ enum MessageType {
     SDP_ANSWER = 'SDP_ANSWER',
     SDP_OFFER = 'SDP_OFFER',
     ICE_CANDIDATE = 'ICE_CANDIDATE',
+    STATUS_RESPONSE = 'STATUS_RESPONSE',
 }
 
 enum ReadyState {
@@ -46,6 +47,14 @@ interface WebSocketMessage {
     messageType: MessageType;
     messagePayload: string;
     senderClientId?: string;
+    statusResponse?: StatusResponse;
+}
+
+interface StatusResponse {
+    correlationId: 'string';
+    errorType: 'string';
+    statusCode: 'string';
+    description: 'string';
 }
 
 /**
@@ -165,9 +174,11 @@ export class SignalingClient extends EventEmitter {
      * Typically, only the 'VIEWER' role should send an SDP offer.
      * @param {RTCSessionDescription} sdpOffer - SDP offer to send.
      * @param {string} [recipientClientId] - ID of the client to send the message to. Required for 'MASTER' role. Should not be present for 'VIEWER' role.
+     * @param {string} [correlationId] - Unique ID for this message. If this is present and there is an error,
+     * Signaling will send a StatusResponse message describing the error. If this is not present, no error will be returned.
      */
-    public sendSdpOffer(sdpOffer: RTCSessionDescription, recipientClientId?: string): void {
-        this.sendMessage(MessageType.SDP_OFFER, sdpOffer, recipientClientId);
+    public sendSdpOffer(sdpOffer: RTCSessionDescription, recipientClientId?: string, correlationId?: string): void {
+        this.sendMessage(MessageType.SDP_OFFER, sdpOffer, recipientClientId, correlationId);
     }
 
     /**
@@ -176,9 +187,11 @@ export class SignalingClient extends EventEmitter {
      * Typically, only the 'MASTER' role should send an SDP answer.
      * @param {RTCSessionDescription} sdpAnswer - SDP answer to send.
      * @param {string} [recipientClientId] - ID of the client to send the message to. Required for 'MASTER' role. Should not be present for 'VIEWER' role.
+     * @param {string} [correlationId] - Unique ID for this message. If this is present and there is an error,
+     * Signaling will send a StatusResponse message describing the error. If this is not present, no error will be returned.
      */
-    public sendSdpAnswer(sdpAnswer: RTCSessionDescription, recipientClientId?: string): void {
-        this.sendMessage(MessageType.SDP_ANSWER, sdpAnswer, recipientClientId);
+    public sendSdpAnswer(sdpAnswer: RTCSessionDescription, recipientClientId?: string, correlationId?: string): void {
+        this.sendMessage(MessageType.SDP_ANSWER, sdpAnswer, recipientClientId, correlationId);
     }
 
     /**
@@ -187,26 +200,30 @@ export class SignalingClient extends EventEmitter {
      * Typically, both the 'VIEWER' role and 'MASTER' role should send ICE candidates.
      * @param {RTCIceCandidate} iceCandidate - ICE candidate to send.
      * @param {string} [recipientClientId] - ID of the client to send the message to. Required for 'MASTER' role. Should not be present for 'VIEWER' role.
+     * @param {string} [correlationId] - Unique ID for this message. If this is present and there is an error,
+     * Signaling will send a StatusResponse message describing the error. If this is not present, no error will be returned.
      */
-    public sendIceCandidate(iceCandidate: RTCIceCandidate, recipientClientId?: string): void {
-        this.sendMessage(MessageType.ICE_CANDIDATE, iceCandidate, recipientClientId);
+    public sendIceCandidate(iceCandidate: RTCIceCandidate, recipientClientId?: string, correlationId?: string): void {
+        this.sendMessage(MessageType.ICE_CANDIDATE, iceCandidate, recipientClientId, correlationId);
     }
 
     /**
      * Validates the WebSocket connection is open and that the recipient client id is present if sending as the 'MASTER'. Encodes the given message payload
      * and sends the message to the signaling service.
      */
-    private sendMessage(action: MessageType, messagePayload: object, recipientClientId?: string): void {
+    private sendMessage(action: MessageType, messagePayload: object, recipientClientId?: string, correlationId?: string): void {
         if (this.readyState !== ReadyState.OPEN) {
             throw new Error('Could not send message because the connection to the signaling service is not open.');
         }
         this.validateRecipientClientId(recipientClientId);
+        this.validateCorrelationId(correlationId);
 
         this.websocket.send(
             JSON.stringify({
                 action,
                 messagePayload: SignalingClient.serializeJSONObjectAsBase64String(messagePayload),
                 recipientClientId: recipientClientId || undefined,
+                correlationId: correlationId || undefined,
             }),
         );
     }
@@ -241,13 +258,22 @@ export class SignalingClient extends EventEmitter {
         let parsedMessagePayload: object;
         try {
             parsedEventData = JSON.parse(event.data) as WebSocketMessage;
-            parsedMessagePayload = SignalingClient.parseJSONObjectFromBase64String(parsedEventData.messagePayload);
         } catch (e) {
             // For forwards compatibility we ignore messages that are not able to be parsed.
             // TODO: Consider how to make it easier for users to be aware of dropped messages.
             return;
         }
-        const { messageType, senderClientId } = parsedEventData;
+        try {
+            parsedMessagePayload = SignalingClient.parseJSONObjectFromBase64String(parsedEventData.messagePayload);
+        } catch (e) {
+            // TODO: Consider how to make it easier for users to be aware of dropped messages.
+        }
+        const { messageType, senderClientId, statusResponse } = parsedEventData;
+        if (!parsedMessagePayload && !statusResponse) {
+            // TODO: Consider how to make it easier for users to be aware of dropped messages.
+            return;
+        }
+
         switch (messageType) {
             case MessageType.SDP_OFFER:
                 this.emit('sdpOffer', parsedMessagePayload, senderClientId);
@@ -259,6 +285,9 @@ export class SignalingClient extends EventEmitter {
                 return;
             case MessageType.ICE_CANDIDATE:
                 this.emitOrQueueIceCandidate(parsedMessagePayload, senderClientId);
+                return;
+            case MessageType.STATUS_RESPONSE:
+                this.emit('statusResponse', statusResponse, senderClientId);
                 return;
         }
     }
@@ -323,6 +352,15 @@ export class SignalingClient extends EventEmitter {
     private validateRecipientClientId(recipientClientId?: string): void {
         if (this.config.role === Role.VIEWER && recipientClientId) {
             throw new Error('Unexpected recipient client id. As the VIEWER, messages must not be sent with a recipient client id.');
+        }
+    }
+
+    /**
+     * Throws an error if the recipient client id is null and the current role is 'MASTER' as all messages sent as 'MASTER' should have a recipient client id.
+     */
+    private validateCorrelationId(correlationId?: string): void {
+        if (correlationId && !/^[a-zA-Z0-9_.-]{1,256}$/.test(correlationId)) {
+            throw new Error('Correlation id does not fit the constraint!');
         }
     }
 
