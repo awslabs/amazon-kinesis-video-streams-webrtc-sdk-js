@@ -87,7 +87,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             if (mediaServiceMode) {
                 if (!formValues.sendAudio || !formValues.sendVideo) {
                     console.error('[MASTER] Both Send Video and Send Audio checkboxes need to be checked to ingest and store media.');
-                    // return;
+                    return;
                 }
                 protocols.push('WEBRTC');
                 master.streamARN = mediaStorageConfiguration.StreamARN;
