@@ -87,7 +87,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             if (mediaServiceMode) {
                 if (!formValues.sendAudio || !formValues.sendVideo) {
                     console.error('[MASTER] Both Send Video and Send Audio checkboxes need to be checked to ingest and store media.');
-                    return;
+                    // return;
                 }
                 protocols.push('WEBRTC');
                 master.streamARN = mediaStorageConfiguration.StreamARN;
@@ -278,8 +278,9 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
                     // When trickle ICE is disabled, send the answer now that all the ICE candidates have ben generated.
                     if (!formValues.useTrickleICE) {
                         printSignalingLog('[MASTER] Sending SDP answer to client', remoteClientId);
-                        console.debug('SDP answer:', peerConnection.localDescription);
-                        master.signalingClient.sendSdpAnswer(peerConnection.localDescription, remoteClientId);
+                        const correlationId = randomString();
+                        console.debug('SDP answer:', peerConnection.localDescription, 'correlationId:', correlationId);
+                        master.signalingClient.sendSdpAnswer(peerConnection.localDescription, remoteClientId, correlationId);
                     }
                 }
             });
@@ -308,8 +309,9 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             // When trickle ICE is enabled, send the answer now and then send ICE candidates as they are generated. Otherwise wait on the ICE candidates.
             if (formValues.useTrickleICE) {
                 printSignalingLog('[MASTER] Sending SDP answer to client', remoteClientId);
-                console.debug('SDP answer:', peerConnection.localDescription);
-                master.signalingClient.sendSdpAnswer(peerConnection.localDescription, remoteClientId);
+                const correlationId = randomString();
+                console.debug('SDP answer:', peerConnection.localDescription, 'correlationId:', correlationId);
+                master.signalingClient.sendSdpAnswer(peerConnection.localDescription, remoteClientId, correlationId);
             }
             printSignalingLog('[MASTER] Generating ICE candidates for client', remoteClientId);
 
@@ -340,6 +342,15 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
                 peerConnection.addIceCandidate(candidate);
             } else {
                 console.log('[MASTER] Not adding candidate from peer.');
+            }
+        });
+
+        master.signalingClient.on('statusResponse', (statusResponse, senderClientId) => {
+            console.error('[MASTER] Received response from Signaling:', statusResponse, senderClientId || '(no senderClientId provided)');
+
+            if (master.streamARN) {
+                console.error('[MASTER] Encountered a fatal error. Stopping the application.');
+                onStop();
             }
         });
 
