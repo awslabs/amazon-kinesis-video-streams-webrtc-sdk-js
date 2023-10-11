@@ -59,6 +59,14 @@ const ICE_CANDIDATE_VIEWER_MESSAGE =
 const ICE_CANDIDATE_MASTER_MESSAGE =
     '{"messageType":"ICE_CANDIDATE","messagePayload":"eyJjYW5kaWRhdGUiOiJ1cGQgMTAuMTExLjM0Ljg4Iiwic2RwTWlkIjoiMSIsInNkcE1MaW5lSW5kZXgiOjF9"}';
 
+const CORRELATION_ID = '1697058567743';
+const STATUS_RESPONSE_MESSAGE =
+    '{"messageType": "STATUS_RESPONSE","statusResponse":{"correlationId": "' +
+    CORRELATION_ID +
+    '","errorType": "InvalidArgumentException","statusCode": "400","success": false}}';
+
+const UNKNOWN_MESSAGE = '{"message": "Endpoint request timed out", "connectionId":"Jzo5lcQFtjvCJcq=", "requestId":"Jzo5vMzgNjZFb9Q="}';
+
 class MockWebSocket extends EventEmitter {
     static instance: MockWebSocket;
 
@@ -350,6 +358,15 @@ describe('SignalingClient', () => {
             });
         });
 
+        it('should throw an error if the correlationId is invalid', done => {
+            const client = new SignalingClient(config as SignalingClientConfig);
+            client.open();
+            client.on('open', () => {
+                expect(() => client.sendSdpAnswer(SDP_ANSWER, null, '?????')).toThrowError();
+                done();
+            });
+        });
+
         it('should send the message as the master', done => {
             config.role = Role.MASTER;
             delete config.clientId;
@@ -429,6 +446,7 @@ describe('SignalingClient', () => {
             });
             client.on('open', () => {
                 MockWebSocket.instance.emit('message', { data: 'not valid JSON' });
+                MockWebSocket.instance.emit('message', { data: UNKNOWN_MESSAGE });
                 MockWebSocket.instance.emit('message', { data: SDP_OFFER_MASTER_MESSAGE });
             });
             client.open();
@@ -567,6 +585,23 @@ describe('SignalingClient', () => {
                 client.on('open', () => {
                     MockWebSocket.instance.emit('message', { data: SDP_ANSWER_VIEWER_MESSAGE });
                     MockWebSocket.instance.emit('message', { data: ICE_CANDIDATE_VIEWER_MESSAGE });
+                });
+                client.open();
+            });
+        });
+
+        describe('statusResponse', () => {
+            it('should parse statusResponse message from signaling', done => {
+                config.role = Role.MASTER;
+                delete config.clientId;
+                const client = new SignalingClient(config as SignalingClientConfig);
+                client.once('statusResponse', (statusResponse, senderClientId) => {
+                    expect(senderClientId).toBeUndefined();
+                    expect(statusResponse.correlationId).toEqual(CORRELATION_ID);
+                    done();
+                });
+                client.on('open', () => {
+                    MockWebSocket.instance.emit('message', { data: STATUS_RESPONSE_MESSAGE });
                 });
                 client.open();
             });
