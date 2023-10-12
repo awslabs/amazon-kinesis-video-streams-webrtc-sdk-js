@@ -285,6 +285,19 @@ Emitted when a new SDP answer is received over the channel. Typically only a vie
 
 Emitted when a new ICE candidate is received over the channel.
 
+#### Event: `'statusResponse'`
+* `statusResponse` {statusResponse} The [status response](https://docs.aws.amazon.com/kinesisvideostreams-webrtc-dg/latest/devguide/kvswebrtc-websocket-apis-7.html) received from the signaling service.
+
+Emitted when a statusResponse is received over the channel.
+
+* `statusResponse` {object}
+    * `correlationId` {string} `correlationId` of the message for which the status is meant.
+    * `success` {boolean} Whether this `statusResponse` is a success or failure. (Currently, these responses are only sent on failures.)
+    * `errorType` {optional string} A name to uniquely identify the error.
+    * `statusCode` {optional string} HTTP status code corresponding to the nature of the response.
+    * `description` {optional string} A string description explaining the status.
+
+
 #### Event: `'close'`
 Emitted when the connection to the signaling service is closed. Even if there is an error, as long as the connection is closed, this event will be emitted.
 
@@ -305,17 +318,20 @@ Opens a connection to the signaling service. An error will be thrown if there is
 #### Method: `close()`
 Closes the active connection to the signaling service. Nothing will happen if there is no open connection.
 
-#### Method: `sendSdpOffer(sdpOffer, [recipientClientId])`
+#### Method: `sendSdpOffer(sdpOffer, [recipientClientId, correlationId])`
 * `sdpOffer` {[RTCSessionDescription](https://developer.mozilla.org/en-US/docs/Web/API/RTCSessionDescription)} SDP offer to send to the recipient client.
 * `recipientClientId` {string} The id of the client to send the SDP offer to. If no id is provided, it will be sent to the master.
+* `correlationId` {string} A unique identifier for this message. If there was an error with this message, Signaling will send a failure StatusResponse with the same correlationId.
 
-#### Method: `sendSdpAnswer(sdpAnswer, [recipientClientId])`
+#### Method: `sendSdpAnswer(sdpAnswer, [recipientClientId, correlationId])`
 * `sdpAnswer` {[RTCSessionDescription](https://developer.mozilla.org/en-US/docs/Web/API/RTCSessionDescription)} SDP answer to send to the recipient client.
 * `recipientClientId` {string} The id of the client to send the SDP answer to. If no id is provided, it will be sent to the master.
+* `correlationId` {string} A unique identifier for this message. If there was an error with this message, Signaling will send a failure StatusResponse with the same correlationId.
 
-#### Method: `sendIceCandidate(iceCandidate, [recipientClientId])`
+#### Method: `sendIceCandidate(iceCandidate, [recipientClientId, correlationId])`
 * `iceCandidate` {[RTCIceCandidate](https://developer.mozilla.org/en-US/docs/Web/API/RTCIceCandidate)} ICE candidate to send to the recipient client.
 * `recipientClientId` {string} The id of the client to send the ICE candidate to. If no id is provided, it will be sent to the master.
+* `correlationId` {string} A unique identifier for this message. If there was an error with this message, Signaling will send a failure StatusResponse with the same correlationId.
 
 ### Interface: `RequestSigner`
 Interface for signing HTTP and WebSocket requests.

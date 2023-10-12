@@ -345,8 +345,11 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             }
         });
 
-        master.signalingClient.on('statusResponse', (statusResponse, senderClientId) => {
-            console.error('[MASTER] Received response from Signaling:', statusResponse, senderClientId || '(no senderClientId provided)');
+        master.signalingClient.on('statusResponse', statusResponse => {
+            if (!statusResponse.success) {
+                return;
+            }
+            console.error('[MASTER] Received response from Signaling:', statusResponse);
 
             if (master.streamARN) {
                 console.error('[MASTER] Encountered a fatal error. Stopping the application.');

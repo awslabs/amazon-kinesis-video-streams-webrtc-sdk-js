@@ -45,16 +45,17 @@ enum ReadyState {
 
 interface WebSocketMessage {
     messageType: MessageType;
-    messagePayload: string;
+    messagePayload?: string;
     senderClientId?: string;
     statusResponse?: StatusResponse;
 }
 
-interface StatusResponse {
+export interface StatusResponse {
     correlationId: 'string';
-    errorType: 'string';
-    statusCode: 'string';
-    description: 'string';
+    success: 'boolean';
+    errorType?: 'string';
+    statusCode?: 'string';
+    description?: 'string';
 }
 
 /**
@@ -287,7 +288,7 @@ export class SignalingClient extends EventEmitter {
                 this.emitOrQueueIceCandidate(parsedMessagePayload, senderClientId);
                 return;
             case MessageType.STATUS_RESPONSE:
-                this.emit('statusResponse', statusResponse, senderClientId);
+                this.emit('statusResponse', statusResponse);
                 return;
         }
     }
