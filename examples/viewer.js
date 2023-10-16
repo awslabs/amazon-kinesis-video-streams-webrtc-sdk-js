@@ -227,14 +227,33 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
             const dataChannelObj = viewer.peerConnection.createDataChannel('kvsDataChannel');
             viewer.dataChannel = dataChannelObj;
             dataChannelObj.onopen = event => {
-                dataChannelObj.send("Opened data channel by viewer");
+                message = {
+                    "content": "Opened data channel by viewer",
+                    "t1": Date.now(),
+                    "t2": "",
+                    "t3": "",
+                    "t4": "",
+                    "t5": ""
+                }
+                dataChannelObj.send(JSON.stringify(message));
             };
             // Callback for the data channel created by viewer
-            dataChannelObj.onmessage = onRemoteDataMessage;
+            var updatedOnRemoteDataMessage = (message) => {
+                console.log(message.data);
+                var dataChannelMessage = JSON.parse(message.data);
+                if (dataChannelMessage.t3 == '') {
+                    dataChannelMessage.t3 = Date.now();
+                } else if (dataChannelMessage.t5 == '') {
+                    dataChannelMessage.t5 = Date.now();
+                }
+                dataChannelMessage.content = "MESSAGE FROM JS VIEWER";
+                dataChannelObj.send(JSON.stringify(dataChannelMessage));
+            };
+            dataChannelObj.onmessage = updatedOnRemoteDataMessage;
 
             viewer.peerConnection.ondatachannel = event => {
                 // Callback for the data channel created by master
-                event.channel.onmessage = onRemoteDataMessage;
+                event.channel.onmessage = updatedOnRemoteDataMessage;
             };
         }
 
