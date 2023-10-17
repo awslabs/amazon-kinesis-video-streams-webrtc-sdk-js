@@ -57,7 +57,9 @@ interface WebSocketMessage {
  */
 export class SignalingClient extends EventEmitter {
     private static DEFAULT_CLIENT_ID = 'MASTER';
-
+    private reconnectDelay: number = 2000; // 2 seconds, can be adjusted
+    private reconnected: false;
+    private reconnection: false;
     private websocket: WebSocket = null;
     private readyState = ReadyState.CLOSED;
     private readonly requestSigner: RequestSigner;
@@ -86,7 +88,7 @@ export class SignalingClient extends EventEmitter {
         validateValueNonNil(config.region, 'region');
         validateValueNonNil(config.channelEndpoint, 'channelEndpoint');
 
-        this.config = { ...config }; // Copy config to new object for immutability.
+        this.config = {...config}; // Copy config to new object for immutability.
 
         if (config.requestSigner) {
             this.requestSigner = config.requestSigner;
@@ -150,10 +152,12 @@ export class SignalingClient extends EventEmitter {
      * connection has been closed.
      */
     public close(): void {
+        console.log("Closing the websocket");
         if (this.websocket !== null) {
             this.readyState = ReadyState.CLOSING;
             this.websocket.close();
         } else if (this.readyState !== ReadyState.CLOSED) {
+            console.log("Somehow invoked close");
             this.onClose();
         }
     }
@@ -166,6 +170,7 @@ export class SignalingClient extends EventEmitter {
      * @param {string} [recipientClientId] - ID of the client to send the message to. Required for 'MASTER' role. Should not be present for 'VIEWER' role.
      */
     public sendSdpOffer(sdpOffer: RTCSessionDescription, recipientClientId?: string): void {
+        console.log("Sending SDP offer");
         this.sendMessage(MessageType.SDP_OFFER, sdpOffer.toJSON(), recipientClientId);
     }
 
@@ -196,6 +201,7 @@ export class SignalingClient extends EventEmitter {
      * and sends the message to the signaling service.
      */
     private sendMessage(action: MessageType, messagePayload: object, recipientClientId?: string): void {
+        console.log("Ready state: " + this.readyState);
         if (this.readyState !== ReadyState.OPEN) {
             throw new Error('Could not send message because the connection to the signaling service is not open.');
         }
@@ -229,7 +235,16 @@ export class SignalingClient extends EventEmitter {
      */
     private onOpen(): void {
         this.readyState = ReadyState.OPEN;
-        this.emit('open');
+        if(this.reconnection) {
+            this.reconnected = true;
+        }
+        if (!this.reconnected) {
+            console.log("First time connection");
+            this.emit('open');
+        } else {
+            console.log("Reconnection established");
+            this.emit('reconnected');
+        }
     }
 
     /**
@@ -246,7 +261,7 @@ export class SignalingClient extends EventEmitter {
             // TODO: Consider how to make it easier for users to be aware of dropped messages.
             return;
         }
-        const { messageType, senderClientId } = parsedEventData;
+        const {messageType, senderClientId} = parsedEventData;
         switch (messageType) {
             case MessageType.SDP_OFFER:
                 this.emit('sdpOffer', parsedMessagePayload, senderClientId);
@@ -321,6 +336,7 @@ export class SignalingClient extends EventEmitter {
      * 'error' event handler. Forwards the error onto listeners.
      */
     private onError(error: Error | Event): void {
+        console.log("On error invoked");
         this.emit('error', error);
     }
 
@@ -329,7 +345,36 @@ export class SignalingClient extends EventEmitter {
      */
     private onClose(): void {
         this.readyState = ReadyState.CLOSED;
+        console.log("On close invoked");
         this.cleanupWebSocket();
         this.emit('close');
+        // Initiate reconnect after the specified delay
+        setTimeout(() => {
+            this.reconnect();
+        }, this.reconnectDelay);
+    }
+
+    private reconnect(attempt = 0): void {
+        if (this.readyState === ReadyState.CLOSED) {
+            this.reconnection = true;
+            console.log("Attempting to reconnect...");
+            this.open();
+
+            // If reconnect fails
+            setTimeout(() => {
+                if (this.readyState !== ReadyState.OPEN) {
+                    const maxAttempts = 5; // or whatever you consider reasonable
+                    if (attempt < maxAttempts) {
+                        console.log("Failed attempt 1");
+                        this.reconnect(attempt + 1);
+                    } else {
+                        console.error("Max reconnect attempts reached");
+                    }
+                } else {
+                    console.log("Reconnected");
+                    this.reconnected = true;
+                }
+            }, this.reconnectDelay * (attempt + 1)); // increasing delay
+        }
     }
 }

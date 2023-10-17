@@ -37,6 +37,35 @@ let videoBitRateArray = [];
 let audioRateArray = [];
 let timeArray = [];
 
+async function initiateIceRestart(viewer, formValues, logPrefix, remoteClientId) {
+    try {
+        if (formValues.useTrickleICE) {
+            console.log("Trickle ICE enabled");
+        }
+        // await viewer.signalingClient.close();
+        // await new Promise((resolve) => {
+        //     viewer.signalingClient.once('reconnected', async () => { // Assuming `.once` is a method that listens for an event once.
+                console.log("Negotiating again");
+                viewer.peerConnection.addEventListener("negotiationneeded", async (ev) => {
+                    await viewer.peerConnection.setLocalDescription(
+                        await viewer.peerConnection.createOffer({
+                            offerToReceiveAudio: true,
+                            offerToReceiveVideo: true,
+                            iceRestart: true
+                        }),
+                    );
+                    viewer.signalingClient.sendSdpOffer(viewer.peerConnection.localDescription);
+                });
+                // resolve();  // Resolve the promise once the listener's code is set up
+            // });
+        // });
+
+    } catch (error) {
+        console.error("Error initiating ICE restart:", error);
+    }
+    console.log("Done");
+}
+
 async function startViewer(localView, remoteView, formValues, onStatsReport, onRemoteDataMessage) {
     try {
         console.log('[VIEWER] Client id is:', formValues.clientId);
@@ -341,6 +370,15 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
             if (formValues.enableDQPmetrics && connectionTime === 0) {
                 initialDate = new Date();
                 connectionTime = calcDiffTimestamp2Sec(initialDate.getTime(), viewerButtonPressed.getTime());
+            }
+        });
+
+        viewer.peerConnection.addEventListener('iceconnectionstatechange', async event => {
+            console.log('[VIEWER] ICE connection state:',  viewer.peerConnection.iceConnectionState);
+            if(viewer.peerConnection.iceConnectionState == 'disconnected') {
+                console.log('ICE Agent restarting');
+                initiateIceRestart(viewer, formValues);
+                viewer.peerConnection.restartIce();
             }
         });
 
