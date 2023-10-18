@@ -150,6 +150,8 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
                     timeout: retryIntervalForJoinStorageSession,
                 },
             });
+        } else {
+            master.streamARN = null;
         }
 
         // Get ICE server configuration
