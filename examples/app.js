@@ -125,6 +125,8 @@ function onStop() {
     if (ROLE === 'master') {
         stopMaster();
         $('#master').addClass('d-none');
+        $('#master .remote-view').removeClass('d-none');
+        $('#master .remote').removeClass('d-none');
     } else {
         stopViewer();
         $('#viewer').addClass('d-none');
