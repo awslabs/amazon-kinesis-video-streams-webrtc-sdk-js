@@ -151,7 +151,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
                 },
             });
         } else {
-            master.streamARN = null;
+            master.storageClient = null;
         }
 
         // Get ICE server configuration
