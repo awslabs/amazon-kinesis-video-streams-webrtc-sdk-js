@@ -87,7 +87,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             if (mediaServiceMode) {
                 if (!formValues.sendAudio || !formValues.sendVideo) {
                     console.error('[MASTER] Both Send Video and Send Audio checkboxes need to be checked to ingest and store media.');
-                    return;
+                    // return;
                 }
                 protocols.push('WEBRTC');
                 master.streamARN = mediaStorageConfiguration.StreamARN;
@@ -346,7 +346,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
         });
 
         master.signalingClient.on('statusResponse', statusResponse => {
-            if (!statusResponse.success) {
+            if (statusResponse.success) {
                 return;
             }
             console.error('[MASTER] Received response from Signaling:', statusResponse);
@@ -371,6 +371,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
         master.signalingClient.open();
     } catch (e) {
         console.error('[MASTER] Encountered error starting:', e);
+        onStop();
     }
 }
 
