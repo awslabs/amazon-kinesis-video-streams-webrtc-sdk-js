@@ -92,6 +92,13 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
                 protocols.push('WEBRTC');
                 master.streamARN = mediaStorageConfiguration.StreamARN;
                 console.log(`[MASTER] Using media ingestion feature. Stream ARN: ${master.streamARN}`);
+
+                $('#master .remote').addClass('d-none');
+                if (formValues.openDataChannel) {
+                    console.warn('[MASTER] DataChannel is not enabled for WebRTC ingestion. Overriding value to false.');
+                    formValues.openDataChannel = false;
+                    $('.datachannel').addClass('d-none');
+                }
             } else {
                 console.log('[MASTER] Not using media ingestion feature.');
                 master.streamARN = null;
