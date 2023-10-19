@@ -357,7 +357,7 @@ export class SignalingClient extends EventEmitter {
     }
 
     /**
-     * Throws an error if the recipient client id is null and the current role is 'MASTER' as all messages sent as 'MASTER' should have a recipient client id.
+     * Throws an error if the correlationId does not fit the constraints mentioned in {@link https://docs.aws.amazon.com/kinesisvideostreams-webrtc-dg/latest/devguide/kvswebrtc-websocket-apis4.html the documentation}.
      */
     private validateCorrelationId(correlationId?: string): void {
         if (correlationId && !/^[a-zA-Z0-9_.-]{1,256}$/.test(correlationId)) {
