@@ -85,6 +85,14 @@ function getFormValues() {
         forceTURN: $('#forceTURN').is(':checked'),
         accessKeyId: $('#accessKeyId').val(),
         endpoint: $('#endpoint').val() || null,
+
+        signedEndpoint: $('#signedEndpoint').val() || null,
+        turnEndpoint1: $('#turnEndpoint1').val() || null,
+        turnEndpoint2: $('#turnEndpoint2').val() || null,
+        turnEndpoint3: $('#turnEndpoint3').val() || null,
+        turnUsername: $('#turnUsername').val() || null,
+        turnPassword: $('#turnPassword').val() || null,
+
         secretAccessKey: $('#secretAccessKey').val(),
         sessionToken: $('#sessionToken').val() || null,
         enableDQPmetrics: $('#enableDQPmetrics').is(':checked'),

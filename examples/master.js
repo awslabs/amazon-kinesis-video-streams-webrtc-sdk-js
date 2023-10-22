@@ -51,114 +51,131 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
         master.remoteView = remoteView;
 
         // Create KVS client
-        const kinesisVideoClient = new AWS.KinesisVideo({
-            region: formValues.region,
-            accessKeyId: formValues.accessKeyId,
-            secretAccessKey: formValues.secretAccessKey,
-            sessionToken: formValues.sessionToken,
-            endpoint: formValues.endpoint,
-            correctClockSkew: true,
-        });
-        master.kinesisVideoClient = kinesisVideoClient;
-
-        // Get signaling channel ARN
-        const describeSignalingChannelResponse = await kinesisVideoClient
-            .describeSignalingChannel({
-                ChannelName: formValues.channelName,
-            })
-            .promise();
-        const channelARN = describeSignalingChannelResponse.ChannelInfo.ChannelARN;
-        console.log('[MASTER] Channel ARN:', channelARN);
-
-        master.channelARN = channelARN;
-
-        const protocols = ['WSS', 'HTTPS'];
-
-        if (formValues.ingestMedia) {
-            console.log('[MASTER] Determining whether to use media ingestion feature.');
-            const describeMediaStorageConfigurationResponse = await kinesisVideoClient
-                .describeMediaStorageConfiguration({
-                    ChannelARN: master.channelARN,
-                })
-                .promise();
-            const mediaStorageConfiguration = describeMediaStorageConfigurationResponse.MediaStorageConfiguration;
-
-            const mediaServiceMode = mediaStorageConfiguration.Status === 'ENABLED' || mediaStorageConfiguration.StreamARN !== null;
-            if (mediaServiceMode) {
-                if (!formValues.sendAudio || !formValues.sendVideo) {
-                    console.error('[MASTER] Both Send Video and Send Audio checkboxes need to be checked to ingest and store media.');
-                    return;
-                }
-                protocols.push('WEBRTC');
-                master.streamARN = mediaStorageConfiguration.StreamARN;
-                console.log(`[MASTER] Using media ingestion feature. Stream ARN: ${master.streamARN}`);
-            } else {
-                console.log('[MASTER] Not using media ingestion feature.');
-                master.streamARN = null;
-            }
-        } else {
-            console.log('[MASTER] Not using media ingestion feature.');
-            master.streamARN = null;
-        }
-
-        // Get signaling channel endpoints
-        const getSignalingChannelEndpointResponse = await kinesisVideoClient
-            .getSignalingChannelEndpoint({
-                ChannelARN: channelARN,
-                SingleMasterChannelEndpointConfiguration: {
-                    Protocols: protocols,
-                    Role: KVSWebRTC.Role.MASTER,
-                },
-            })
-            .promise();
-        const endpointsByProtocol = getSignalingChannelEndpointResponse.ResourceEndpointList.reduce((endpoints, endpoint) => {
-            endpoints[endpoint.Protocol] = endpoint.ResourceEndpoint;
-            return endpoints;
-        }, {});
-        console.log('[MASTER] Endpoints:', endpointsByProtocol);
-
-        // Create Signaling Client
-        master.signalingClient = new KVSWebRTC.SignalingClient({
-            channelARN,
-            channelEndpoint: endpointsByProtocol.WSS,
-            role: KVSWebRTC.Role.MASTER,
-            region: formValues.region,
-            credentials: {
-                accessKeyId: formValues.accessKeyId,
-                secretAccessKey: formValues.secretAccessKey,
-                sessionToken: formValues.sessionToken,
-            },
-            systemClockOffset: kinesisVideoClient.config.systemClockOffset,
-        });
-
-        if (master.streamARN) {
-            master.storageClient = new AWS.KinesisVideoWebRTCStorage({
+        const getIceServerConfigResponse = null;
+        
+        if (!formValues.signedEndpoint) {     
+            const kinesisVideoClient = new AWS.KinesisVideo({
                 region: formValues.region,
                 accessKeyId: formValues.accessKeyId,
                 secretAccessKey: formValues.secretAccessKey,
                 sessionToken: formValues.sessionToken,
-                endpoint: endpointsByProtocol.WEBRTC,
-                maxRetries: 0,
-                httpOptions: {
-                    timeout: retryIntervalForJoinStorageSession,
+                endpoint: formValues.endpoint,
+                correctClockSkew: true,
+            });
+            master.kinesisVideoClient = kinesisVideoClient;
+
+            // Get signaling channel ARN
+            const describeSignalingChannelResponse = await kinesisVideoClient
+                .describeSignalingChannel({
+                    ChannelName: formValues.channelName,
+                })
+                .promise();
+            const channelARN = describeSignalingChannelResponse.ChannelInfo.ChannelARN;
+            console.log('[MASTER] Channel ARN:', channelARN);
+
+            master.channelARN = channelARN;
+
+            const protocols = ['WSS', 'HTTPS'];
+
+            if (formValues.ingestMedia) {
+                console.log('[MASTER] Determining whether to use media ingestion feature.');
+                const describeMediaStorageConfigurationResponse = await kinesisVideoClient
+                    .describeMediaStorageConfiguration({
+                        ChannelARN: master.channelARN,
+                    })
+                    .promise();
+                const mediaStorageConfiguration = describeMediaStorageConfigurationResponse.MediaStorageConfiguration;
+
+                const mediaServiceMode = mediaStorageConfiguration.Status === 'ENABLED' || mediaStorageConfiguration.StreamARN !== null;
+                if (mediaServiceMode) {
+                    if (!formValues.sendAudio || !formValues.sendVideo) {
+                        console.error('[MASTER] Both Send Video and Send Audio checkboxes need to be checked to ingest and store media.');
+                        return;
+                    }
+                    protocols.push('WEBRTC');
+                    master.streamARN = mediaStorageConfiguration.StreamARN;
+                    console.log(`[MASTER] Using media ingestion feature. Stream ARN: ${master.streamARN}`);
+                } else {
+                    console.log('[MASTER] Not using media ingestion feature.');
+                    master.streamARN = null;
+                }
+            } else {
+                console.log('[MASTER] Not using media ingestion feature.');
+                master.streamARN = null;
+            }
+
+            // Get signaling channel endpoints
+            const getSignalingChannelEndpointResponse = await kinesisVideoClient
+                .getSignalingChannelEndpoint({
+                    ChannelARN: channelARN,
+                    SingleMasterChannelEndpointConfiguration: {
+                        Protocols: protocols,
+                        Role: KVSWebRTC.Role.MASTER,
+                    },
+                })
+                .promise();
+            const endpointsByProtocol = getSignalingChannelEndpointResponse.ResourceEndpointList.reduce((endpoints, endpoint) => {
+                endpoints[endpoint.Protocol] = endpoint.ResourceEndpoint;
+                return endpoints;
+            }, {});
+            console.log('[MASTER] Endpoints:', endpointsByProtocol);
+
+            // Create Signaling Client
+   
+            master.signalingClient = new KVSWebRTC.SignalingClient({
+                channelARN,
+                channelEndpoint: endpointsByProtocol.WSS,
+                role: KVSWebRTC.Role.MASTER,
+                region: formValues.region,
+                credentials: {
+                    accessKeyId: formValues.accessKeyId,
+                    secretAccessKey: formValues.secretAccessKey,
+                    sessionToken: formValues.sessionToken,
                 },
+                systemClockOffset: kinesisVideoClient.config.systemClockOffset,
+            });
+
+            if (master.streamARN) {
+                master.storageClient = new AWS.KinesisVideoWebRTCStorage({
+                    region: formValues.region,
+                    accessKeyId: formValues.accessKeyId,
+                    secretAccessKey: formValues.secretAccessKey,
+                    sessionToken: formValues.sessionToken,
+                    endpoint: endpointsByProtocol.WEBRTC,
+                    maxRetries: 0,
+                    httpOptions: {
+                        timeout: retryIntervalForJoinStorageSession,
+                    },
+                });
+            }
+
+            // Get ICE server configuration
+            const kinesisVideoSignalingChannelsClient = new AWS.KinesisVideoSignalingChannels({
+                region: formValues.region,
+                accessKeyId: formValues.accessKeyId,
+                secretAccessKey: formValues.secretAccessKey,
+                sessionToken: formValues.sessionToken,
+                endpoint: endpointsByProtocol.HTTPS,
+                correctClockSkew: true,
+            });
+            getIceServerConfigResponse = await kinesisVideoSignalingChannelsClient
+                .getIceServerConfig({
+                    ChannelARN: channelARN,
+                })
+                .promise();
+        }
+        else {
+            master.signalingClient = new KVSWebRTC.SignalingClient({
+                /** Use the customSigner to return the signed url, so we can ignore aws credentials
+                and regions, channelARN and channelEndpoint can be any text */
+                requestSigner: new CustomSigner(formValues.signedEndpoint), 
+                region: formValues.region,
+                role: KVSWebRTC.Role.MASTER,
+                channelARN: 'arn:aws:kinesisvideo:us-east-1:11111:channel/invalid-243234095/1685670732560',
+                channelEndpoint: 'default endpoint (any text) as endpoint is already part of signedurl',
+                // systemClockOffset: kinesisVideoClient.config.systemClockOffset,
             });
         }
-
-        // Get ICE server configuration
-        const kinesisVideoSignalingChannelsClient = new AWS.KinesisVideoSignalingChannels({
-            region: formValues.region,
-            accessKeyId: formValues.accessKeyId,
-            secretAccessKey: formValues.secretAccessKey,
-            sessionToken: formValues.sessionToken,
-            endpoint: endpointsByProtocol.HTTPS,
-            correctClockSkew: true,
-        });
-        const getIceServerConfigResponse = await kinesisVideoSignalingChannelsClient
-            .getIceServerConfig({
-                ChannelARN: channelARN,
-            })
-            .promise();
         const iceServers = [];
         // Don't add stun if user selects TURN only or NAT traversal disabled
         if (!formValues.natTraversalDisabled && !formValues.forceTURN) {
@@ -176,6 +193,14 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             );
         }
         console.log('[MASTER] ICE servers:', iceServers);
+
+        iceServers = [                                                                                                
+            {
+                urls: [formValues.turnEndpoint1, formValues.turnEndpoint2, formValues.turnEndpoint3],
+                username: formValues.turnUsername,
+                credential: formValues.turnPassword
+            }
+        ];
 
         const configuration = {
             iceServers,

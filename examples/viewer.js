@@ -107,106 +107,145 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
             });
         }
 
-        // Create KVS client
-        const kinesisVideoClient = new AWS.KinesisVideo({
-            region: formValues.region,
-            accessKeyId: formValues.accessKeyId,
-            secretAccessKey: formValues.secretAccessKey,
-            sessionToken: formValues.sessionToken,
-            endpoint: formValues.endpoint,
-            correctClockSkew: true,
-        });
-
-        // Get signaling channel ARN
-        const describeSignalingChannelResponse = await kinesisVideoClient
-            .describeSignalingChannel({
-                ChannelName: formValues.channelName,
-            })
-            .promise();
-        const channelARN = describeSignalingChannelResponse.ChannelInfo.ChannelARN;
-        console.log('[VIEWER] Channel ARN:', channelARN);
-
-        if (formValues.ingestMedia) {
-            console.log('[VIEWER] Determining whether this signaling channel is in media ingestion mode.');
-            const mediaStorageConfiguration = await kinesisVideoClient
-                .describeMediaStorageConfiguration({
-                    ChannelName: formValues.channelName,
-                })
-                .promise();
-
-            if (mediaStorageConfiguration.MediaStorageConfiguration.Status !== 'DISABLED') {
-                console.error(
-                    '[VIEWER] Media storage and ingestion is ENABLED for this channel. Only the WebRTC Ingestion and Storage peer can join as a viewer.',
-                );
-                return;
+        const ERROR_CODE = {
+            OK: 0,
+            NO_WEBCAM: 1,
+            NOT_MASTER: 2,
+            VIEWER_NOT_FOUND: 3,
+            LOCAL_STREAM_NOT_FOUND: 4,
+            NOT_FOUND_ANY: 5,
+            ERROR: 6,
+            UNKNOWN_ERROR: 7
+          };
+        
+        class CustomSigner {
+            constructor (_url) {
+                this.url = _url;
             }
-        } else {
-            console.log('[VIEWER] Not using media ingestion feature');
+            
+            getSignedURL () {
+                return this.url;
+            }
         }
 
-        // Get signaling channel endpoints
-        const getSignalingChannelEndpointResponse = await kinesisVideoClient
-            .getSignalingChannelEndpoint({
-                ChannelARN: channelARN,
-                SingleMasterChannelEndpointConfiguration: {
-                    Protocols: ['WSS', 'HTTPS'],
-                    Role: KVSWebRTC.Role.VIEWER,
-                },
-            })
-            .promise();
-        const endpointsByProtocol = getSignalingChannelEndpointResponse.ResourceEndpointList.reduce((endpoints, endpoint) => {
-            endpoints[endpoint.Protocol] = endpoint.ResourceEndpoint;
-            return endpoints;
-        }, {});
-        console.log('[VIEWER] Endpoints:', endpointsByProtocol);
-
-        const kinesisVideoSignalingChannelsClient = new AWS.KinesisVideoSignalingChannels({
-            region: formValues.region,
-            accessKeyId: formValues.accessKeyId,
-            secretAccessKey: formValues.secretAccessKey,
-            sessionToken: formValues.sessionToken,
-            endpoint: endpointsByProtocol.HTTPS,
-            correctClockSkew: true,
-        });
-
-        // Get ICE server configuration
-        const getIceServerConfigResponse = await kinesisVideoSignalingChannelsClient
-            .getIceServerConfig({
-                ChannelARN: channelARN,
-            })
-            .promise();
         const iceServers = [];
-        // Don't add stun if user selects TURN only or NAT traversal disabled
-        if (!formValues.natTraversalDisabled && !formValues.forceTURN) {
-            iceServers.push({ urls: `stun:stun.kinesisvideo.${formValues.region}.amazonaws.com:443` });
-        }
 
-        // Don't add turn if user selects STUN only or NAT traversal disabled
-        if (!formValues.natTraversalDisabled && !formValues.forceSTUN) {
-            getIceServerConfigResponse.IceServerList.forEach(iceServer =>
-                iceServers.push({
-                    urls: iceServer.Uris,
-                    username: iceServer.Username,
-                    credential: iceServer.Password,
-                }),
-            );
-        }
-        console.log('[VIEWER] ICE servers:', iceServers);
 
         // Create Signaling Client
-        viewer.signalingClient = new KVSWebRTC.SignalingClient({
-            channelARN,
-            channelEndpoint: endpointsByProtocol.WSS,
-            clientId: formValues.clientId,
-            role: KVSWebRTC.Role.VIEWER,
-            region: formValues.region,
-            credentials: {
+        if (!formValues.signedEndpoint) {
+
+            // Create KVS client
+            const kinesisVideoClient = new AWS.KinesisVideo({
+                region: formValues.region,
                 accessKeyId: formValues.accessKeyId,
                 secretAccessKey: formValues.secretAccessKey,
                 sessionToken: formValues.sessionToken,
-            },
-            systemClockOffset: kinesisVideoClient.config.systemClockOffset,
-        });
+                endpoint: formValues.endpoint,
+                correctClockSkew: true,
+            });
+
+            // Get signaling channel ARN
+            const describeSignalingChannelResponse = await kinesisVideoClient
+                .describeSignalingChannel({
+                    ChannelName: formValues.channelName,
+                })
+                .promise();
+            const channelARN = describeSignalingChannelResponse.ChannelInfo.ChannelARN;
+            console.log('[VIEWER] Channel ARN:', channelARN);
+
+            if (formValues.ingestMedia) {
+                console.log('[VIEWER] Determining whether this signaling channel is in media ingestion mode.');
+                const mediaStorageConfiguration = await kinesisVideoClient
+                    .describeMediaStorageConfiguration({
+                        ChannelName: formValues.channelName,
+                    })
+                    .promise();
+
+                if (mediaStorageConfiguration.MediaStorageConfiguration.Status !== 'DISABLED') {
+                    console.error(
+                        '[VIEWER] Media storage and ingestion is ENABLED for this channel. Only the WebRTC Ingestion and Storage peer can join as a viewer.',
+                    );
+                    return;
+                }
+            } else {
+                console.log('[VIEWER] Not using media ingestion feature');
+            }
+
+            // Get signaling channel endpoints
+            const getSignalingChannelEndpointResponse = await kinesisVideoClient
+                .getSignalingChannelEndpoint({
+                    ChannelARN: channelARN,
+                    SingleMasterChannelEndpointConfiguration: {
+                        Protocols: ['WSS', 'HTTPS'],
+                        Role: KVSWebRTC.Role.VIEWER,
+                    },
+                })
+                .promise();
+            const endpointsByProtocol = getSignalingChannelEndpointResponse.ResourceEndpointList.reduce((endpoints, endpoint) => {
+                endpoints[endpoint.Protocol] = endpoint.ResourceEndpoint;
+                return endpoints;
+            }, {});
+            console.log('[VIEWER] Endpoints:', endpointsByProtocol);
+
+            const kinesisVideoSignalingChannelsClient = new AWS.KinesisVideoSignalingChannels({
+                region: formValues.region,
+                accessKeyId: formValues.accessKeyId,
+                secretAccessKey: formValues.secretAccessKey,
+                sessionToken: formValues.sessionToken,
+                endpoint: endpointsByProtocol.HTTPS,
+                correctClockSkew: true,
+            });
+
+            // Get ICE server configuration
+            const getIceServerConfigResponse = await kinesisVideoSignalingChannelsClient
+                .getIceServerConfig({
+                    ChannelARN: channelARN,
+                })
+                .promise();
+            
+            // Don't add stun if user selects TURN only or NAT traversal disabled
+            if (!formValues.natTraversalDisabled && !formValues.forceTURN) {
+                iceServers.push({ urls: `stun:stun.kinesisvideo.${formValues.region}.amazonaws.com:443` });
+            }
+
+            // Don't add turn if user selects STUN only or NAT traversal disabled
+            if (!formValues.natTraversalDisabled && !formValues.forceSTUN) {
+                getIceServerConfigResponse.IceServerList.forEach(iceServer =>
+                    iceServers.push({
+                        urls: iceServer.Uris,
+                        username: iceServer.Username,
+                        credential: iceServer.Password,
+                    }),
+                );
+            }
+            console.log('[VIEWER] ICE servers:', iceServers);
+        
+            viewer.signalingClient = new KVSWebRTC.SignalingClient({
+                channelARN,
+                channelEndpoint: endpointsByProtocol.WSS,
+                clientId: formValues.clientId,
+                role: KVSWebRTC.Role.VIEWER,
+                region: formValues.region,
+                credentials: {
+                    accessKeyId: formValues.accessKeyId,
+                    secretAccessKey: formValues.secretAccessKey,
+                    sessionToken: formValues.sessionToken,
+                },
+                systemClockOffset: kinesisVideoClient.config.systemClockOffset,
+            });
+        }
+        else {
+            viewer.signalingClient = new KVSWebRTC.SignalingClient({
+                /** Use the customSigner to return the signed url, so we can ignore aws credentials
+                and regions, channelARN and channelEndpoint can be any text */
+                requestSigner: new CustomSigner(formValues.signedEndpoint), 
+                region: formValues.region,
+                role: KVSWebRTC.Role.VIEWER,
+                clientId: formValues.clientId,
+                channelARN: 'default channel, (any text) as channelARN is already part of signedurl',
+                channelEndpoint: 'default endpoint (any text) as endpoint is already part of signedurl'
+            });
+        }
 
         const resolution = formValues.widescreen
             ? {
@@ -218,6 +257,14 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
             video: formValues.sendVideo ? resolution : false,
             audio: formValues.sendAudio,
         };
+
+        iceServers = [                                  
+            {                                                 
+                urls: [formValues.turnEndpoint1, formValues.turnEndpoint2, formValues.turnEndpoint3],
+                username: formValues.turnUsername,            
+                credential: formValues.turnPassword           
+            }                                                 
+        ]              
         const configuration = {
             iceServers,
             iceTransportPolicy: formValues.forceTURN ? 'relay' : 'all',
