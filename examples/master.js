@@ -51,8 +51,9 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
         master.remoteView = remoteView;
 
         // Create KVS client
-        const getIceServerConfigResponse = null;
-        
+        getIceServerConfigResponse = null;
+        iceServers = [];
+
         if (!formValues.signedEndpoint) {     
             const kinesisVideoClient = new AWS.KinesisVideo({
                 region: formValues.region,
@@ -163,8 +164,30 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
                     ChannelARN: channelARN,
                 })
                 .promise();
+
+            // Don't add turn if user selects STUN only or NAT traversal disabled
+            if (!formValues.natTraversalDisabled && !formValues.forceSTUN) {
+                getIceServerConfigResponse.IceServerList.forEach(iceServer =>
+                    iceServers.push({
+                        urls: iceServer.Uris,
+                        username: iceServer.Username,
+                        credential: iceServer.Password,
+                    }),
+                );
+            }                
         }
         else {
+
+            class CustomSigner {
+                constructor (_url) {
+                    this.url = _url;
+                }
+                
+                getSignedURL () {
+                    return this.url;
+                }
+            }
+
             master.signalingClient = new KVSWebRTC.SignalingClient({
                 /** Use the customSigner to return the signed url, so we can ignore aws credentials
                 and regions, channelARN and channelEndpoint can be any text */
@@ -176,22 +199,12 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
                 // systemClockOffset: kinesisVideoClient.config.systemClockOffset,
             });
         }
-        const iceServers = [];
+
         // Don't add stun if user selects TURN only or NAT traversal disabled
         if (!formValues.natTraversalDisabled && !formValues.forceTURN) {
             iceServers.push({urls: `stun:stun.kinesisvideo.${formValues.region}.amazonaws.com:443`});
         }
 
-        // Don't add turn if user selects STUN only or NAT traversal disabled
-        if (!formValues.natTraversalDisabled && !formValues.forceSTUN) {
-            getIceServerConfigResponse.IceServerList.forEach(iceServer =>
-                iceServers.push({
-                    urls: iceServer.Uris,
-                    username: iceServer.Username,
-                    credential: iceServer.Password,
-                }),
-            );
-        }
         console.log('[MASTER] ICE servers:', iceServers);
 
         iceServers = [                                                                                                

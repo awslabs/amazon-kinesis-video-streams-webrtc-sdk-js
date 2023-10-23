@@ -128,7 +128,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
             }
         }
 
-        const iceServers = [];
+        iceServers = [];
 
 
         // Create Signaling Client
@@ -245,6 +245,14 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
                 channelARN: 'default channel, (any text) as channelARN is already part of signedurl',
                 channelEndpoint: 'default endpoint (any text) as endpoint is already part of signedurl'
             });
+
+            iceServers = [                                  
+                {                                                 
+                    urls: [formValues.turnEndpoint1, formValues.turnEndpoint2, formValues.turnEndpoint3],
+                    username: formValues.turnUsername,            
+                    credential: formValues.turnPassword           
+                }                                                 
+            ]      
         }
 
         const resolution = formValues.widescreen
@@ -258,13 +266,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
             audio: formValues.sendAudio,
         };
 
-        iceServers = [                                  
-            {                                                 
-                urls: [formValues.turnEndpoint1, formValues.turnEndpoint2, formValues.turnEndpoint3],
-                username: formValues.turnUsername,            
-                credential: formValues.turnPassword           
-            }                                                 
-        ]              
+        
         const configuration = {
             iceServers,
             iceTransportPolicy: formValues.forceTURN ? 'relay' : 'all',
