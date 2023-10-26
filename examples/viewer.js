@@ -41,6 +41,8 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
     try {
         console.log('[VIEWER] Client id is:', formValues.clientId);
 
+        var startTime = 0;
+
         viewer.localView = localView;
         viewer.remoteView = remoteView;
 
@@ -223,6 +225,33 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
             iceTransportPolicy: formValues.forceTURN ? 'relay' : 'all',
         };
         viewer.peerConnection = new RTCPeerConnection(configuration);
+
+        viewer.peerConnection.onicegatheringstatechange = (event) => {
+            if (viewer.peerConnection.iceGatheringState === 'gathering') {
+                startTime = Date.now();
+                console.log(startTime);
+            }
+        };
+
+
+        viewer.peerConnection.oniceconnectionstatechange = (event) => {
+
+            if (viewer.peerConnection.iceConnectionState === 'connected') {
+                viewer.peerConnection.getStats().then(stats => {
+                    stats.forEach(report => {
+                        if (report.type === "candidate-pair") {
+                            activeCandidatePair = report;
+                            const localCandidate = stats.get(report.localCandidateId);
+                            const remoteCandidate = stats.get(report.remoteCandidateId);
+                            console.log("Local:", localCandidate.id, localCandidate.address, localCandidate.port, localCandidate.candidateType, localCandidate.protocol, "Remote:", remoteCandidate.id, remoteCandidate.address, remoteCandidate.port, remoteCandidate.candidateType, remoteCandidate.protocol);
+                        } else if (report.type === "transport") {
+                            console.log("Selected:", report.selectedCandidatePairId);
+                        }
+                    });
+                });
+            }
+        };
+
         if (formValues.openDataChannel) {
             const dataChannelObj = viewer.peerConnection.createDataChannel('kvsDataChannel');
             viewer.dataChannel = dataChannelObj;
