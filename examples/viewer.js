@@ -37,39 +37,45 @@ let videoBitRateArray = [];
 let audioRateArray = [];
 let timeArray = [];
 
-async function initiateIceRestart(viewer, formValues, logPrefix, remoteClientId) {
+async function initiateIceRestart(viewer, clientId, retryCount = 0) {
+    let maxRetryCount = 5;
+    viewer.receivedAnswer = false;
     try {
-        if (formValues.useTrickleICE) {
-            console.log("Trickle ICE enabled");
-        }
-        // await viewer.signalingClient.close();
-        // await new Promise((resolve) => {
-        //     viewer.signalingClient.once('reconnected', async () => { // Assuming `.once` is a method that listens for an event once.
-                console.log("Negotiating again");
-                viewer.peerConnection.addEventListener("negotiationneeded", async (ev) => {
-                    await viewer.peerConnection.setLocalDescription(
-                        await viewer.peerConnection.createOffer({
-                            offerToReceiveAudio: true,
-                            offerToReceiveVideo: true,
-                            iceRestart: true
-                        }),
-                    );
-                    viewer.signalingClient.sendSdpOffer(viewer.peerConnection.localDescription);
-                });
-                // resolve();  // Resolve the promise once the listener's code is set up
-            // });
-        // });
-
+        console.log('[VIEWER] Encountered negotiation needed event for client ID', clientId);
+        await viewer.peerConnection.setLocalDescription(
+            await viewer.peerConnection.createOffer({
+                offerToReceiveAudio: true,
+                offerToReceiveVideo: true,
+                iceRestart: true // Important because this generates the new uFrag/pwd for local ice candidates
+            }),
+        );
+        viewer.signalingClient.sendSdpOffer(viewer.peerConnection.localDescription);
+        setTimeout(() => {
+            console.log("Received answer? ", viewer.receivedAnswer, 'Count received: ', retryCount);
+            if (!viewer.receivedAnswer) {
+                if(retryCount < maxRetryCount) {
+                    console.log('[VIEWER] No answer received for client ID', clientId, '. Retrying offer send...');
+                    initiateIceRestart(viewer, clientId, retryCount + 1);
+                } else {
+                    console.log('[VIEWER] Max retry attempts reached...connection failed');
+                }
+            } else {
+                console.log('[VIEWER] Successfully exchanged offer and answer for client ID', clientId);
+                retryCount = 0;
+            }
+        }, 10000); // 30 seconds
+        console.log('[VIEWER] SDP offer sent for client ID', clientId, 'as part of restart', 'retry count[', retryCount, ']');
     } catch (error) {
-        console.error("Error initiating ICE restart:", error);
+        console.error('[VIEWER] Error initiating ICE restart:', error);
     }
-    console.log("Done");
 }
 
 async function startViewer(localView, remoteView, formValues, onStatsReport, onRemoteDataMessage) {
     try {
         console.log('[VIEWER] Client id is:', formValues.clientId);
-
+        const initialTimeout = 60 * 1000; // 60 seconds
+        let attempts = 0;
+        const maxAttempts = 5;
         viewer.localView = localView;
         viewer.remoteView = remoteView;
 
@@ -273,6 +279,18 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
             viewer.peerConnectionStatsInterval = setInterval(() => viewer.peerConnection.getStats().then(stats => calcStats(stats, formValues.clientId)), 1000);
         }
 
+        viewer.signalingClient.on('reconnect', async () => {
+            console.log("Reconnected....")
+            await viewer.peerConnection.setLocalDescription(
+                await viewer.peerConnection.createOffer({
+                    offerToReceiveAudio: true,
+                    offerToReceiveVideo: true,
+                }),
+            );
+            console.log("Resending SDP offer");
+            viewer.signalingClient.sendSdpOffer(viewer.peerConnection.localDescription);
+        });
+
         viewer.signalingClient.on('open', async () => {
             console.log('[VIEWER] Connected to signaling service');
 
@@ -281,6 +299,12 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
             // Otherwise, the browser will throw an error saying that either video or audio has to be enabled.
             if (formValues.sendVideo || formValues.sendAudio) {
                 try {
+                    if (viewer.localStream) {
+                        viewer.localStream.getTracks().forEach(track => {
+                            track.stop();
+                        });
+                        viewer.localStream = null;
+                    }
                     viewer.localStream = await navigator.mediaDevices.getUserMedia(constraints);
                     viewer.localStream.getTracks().forEach(track => viewer.peerConnection.addTrack(track, viewer.localStream));
                     localView.srcObject = viewer.localStream;
@@ -310,6 +334,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
 
         viewer.signalingClient.on('sdpAnswer', async answer => {
             // Add the SDP answer to the peer connection
+            viewer.receivedAnswer = true;
             console.log('[VIEWER] Received SDP answer');
             console.debug('SDP answer:', answer);
             await viewer.peerConnection.setRemoteDescription(answer);
@@ -374,10 +399,10 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
         });
 
         viewer.peerConnection.addEventListener('iceconnectionstatechange', async event => {
-            console.log('[VIEWER] ICE connection state:',  viewer.peerConnection.iceConnectionState);
+            console.log('[VIEWER] ICE connection state for client ID',  formValues.clientId, ':', viewer.peerConnection.iceConnectionState);
             if(viewer.peerConnection.iceConnectionState == 'disconnected') {
-                console.log('ICE Agent restarting');
-                initiateIceRestart(viewer, formValues);
+                console.log('[VIEWER] Detected ICE agent disconnection for client ID', formValues.clientId);
+                initiateIceRestart(viewer, formValues.clientId);
                 viewer.peerConnection.restartIce();
             }
         });

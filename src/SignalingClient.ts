@@ -58,8 +58,7 @@ interface WebSocketMessage {
 export class SignalingClient extends EventEmitter {
     private static DEFAULT_CLIENT_ID = 'MASTER';
     private reconnectDelay: number = 2000; // 2 seconds, can be adjusted
-    private reconnected: false;
-    private reconnection: false;
+    private reconnection: boolean;
     private websocket: WebSocket = null;
     private readyState = ReadyState.CLOSED;
     private readonly requestSigner: RequestSigner;
@@ -235,15 +234,12 @@ export class SignalingClient extends EventEmitter {
      */
     private onOpen(): void {
         this.readyState = ReadyState.OPEN;
+        console.log("Reconnection value: ", this.reconnection);
         if(this.reconnection) {
-            this.reconnected = true;
-        }
-        if (!this.reconnected) {
-            console.log("First time connection");
-            this.emit('open');
+            console.log("Successfully opened a new WS");
+            this.emit('reconnect')
         } else {
-            console.log("Reconnection established");
-            this.emit('reconnected');
+            this.emit('open');
         }
     }
 
@@ -356,8 +352,8 @@ export class SignalingClient extends EventEmitter {
 
     private reconnect(attempt = 0): void {
         if (this.readyState === ReadyState.CLOSED) {
-            this.reconnection = true;
             console.log("Attempting to reconnect...");
+            this.reconnection = true;
             this.open();
 
             // If reconnect fails
@@ -372,7 +368,6 @@ export class SignalingClient extends EventEmitter {
                     }
                 } else {
                     console.log("Reconnected");
-                    this.reconnected = true;
                 }
             }, this.reconnectDelay * (attempt + 1)); // increasing delay
         }
