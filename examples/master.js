@@ -198,6 +198,15 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
                 channelEndpoint: 'default endpoint (any text) as endpoint is already part of signedurl',
                 // systemClockOffset: kinesisVideoClient.config.systemClockOffset,
             });
+
+
+            iceServers = [                                                                                                
+                {
+                    urls: [formValues.turnEndpoint1, formValues.turnEndpoint2, formValues.turnEndpoint3],
+                    username: formValues.turnUsername,
+                    credential: formValues.turnPassword
+                }
+            ];
         }
 
         // Don't add stun if user selects TURN only or NAT traversal disabled
@@ -207,13 +216,6 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
 
         console.log('[MASTER] ICE servers:', iceServers);
 
-        iceServers = [                                                                                                
-            {
-                urls: [formValues.turnEndpoint1, formValues.turnEndpoint2, formValues.turnEndpoint3],
-                username: formValues.turnUsername,
-                credential: formValues.turnPassword
-            }
-        ];
 
         const configuration = {
             iceServers,
