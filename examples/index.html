@@ -32,9 +32,38 @@
                 <div id="region-invalid-feedback" class="invalid-feedback"></div>
             </div>
             <div class="form-group">
+                <label for="signedEndpoint">Signed Endpoint <small>(Gear Guard API)</small></label>
+                <input type="text" class="form-control" id="signedEndpoint" placeholder="Endpoint">
+            </div>
+            <div class="form-group">
                 <label for="endpoint">Endpoint <small>(optional)</small></label>
                 <input type="text" class="form-control" id="endpoint" placeholder="Endpoint">
             </div>
+
+            <h4>TURN Server details</h4>
+            <!-- TURN SERVER CREDENTIALS -->
+            <div class="form-group" style="position: relative; display: block;">
+                <label for="turnEndpoint1">TURN1 <small>(Mandatory for VPN)</small></label>
+                <input type="text" class="form-control" id="turnEndpoint1" placeholder="Endpoint">
+            </div>
+            <div class="form-group" style="position: relative;">
+                <label for="turnEndpoint2">TURN2 <small>(Mandatory for VPN)</small></label>
+                <input type="text" class="form-control" id="turnEndpoint2" placeholder="Endpoint">
+            </div>
+            <div class="form-group" style="position: relative;">
+                <label for="turnEndpoint3">TURN3 <small>(Mandatory for VPN)</small></label>
+                <input type="text" class="form-control" id="turnEndpoint3" placeholder="Endpoint">
+            </div>
+            <div class="form-group has-validation" style="position: relative;">
+                <label for="turnUsername">Username <small>(Mandatory for VPN)</small></label>
+                <input type="text" class="form-control" id="turnUsername" placeholder="Endpoint">
+            </div>
+            <div class="form-group has-validation" style="position: relative;">
+                <label for="turnPassword">Password <small>(Mandatory for VPN)</small></label>
+                <input type="text" class="form-control" id="turnPassword" placeholder="Endpoint">
+            </div>   
+
+            
             <h4>AWS Credentials</h4>
             <div class="form-group">
                 <label for="accessKeyId">Access Key ID</label>
