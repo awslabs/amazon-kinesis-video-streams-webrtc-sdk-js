@@ -36,12 +36,18 @@ let droppedFramePerArray = [];
 let videoBitRateArray = [];
 let audioRateArray = [];
 let timeArray = [];
+let signalingStartTime = 0;
+let signalingDuration = 0;
+let sendOfferTime = 0;
+let offerAnswerDuration = 0;
+let iceCandidateGatheringStartTime = 0;
+let iceCandidateGatheringDuration = 0;
+let peerConnectionEstablishmentStartTime = 0;
+let peerConnectionEstablishmentDuration = 0;
 
 async function startViewer(localView, remoteView, formValues, onStatsReport, onRemoteDataMessage) {
     try {
         console.log('[VIEWER] Client id is:', formValues.clientId);
-
-        var startTime = 0;
 
         viewer.localView = localView;
         viewer.remoteView = remoteView;
@@ -209,6 +215,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
             },
             systemClockOffset: kinesisVideoClient.config.systemClockOffset,
         });
+        signalingStartTime = Date.now();
 
         const resolution = formValues.widescreen
             ? {
@@ -228,24 +235,32 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
 
         viewer.peerConnection.onicegatheringstatechange = (event) => {
             if (viewer.peerConnection.iceGatheringState === 'gathering') {
-                startTime = Date.now();
-                console.log(startTime);
+                iceCandidateGatheringStartTime = Date.now();
+            } else if (viewer.peerConnection.iceGatheringState === 'complete') {
+                iceCandidateGatheringDuration = Date.now() - iceCandidateGatheringStartTime;
             }
         };
 
+        viewer.peerConnection.onconnectionstatechange = (event) => {
+            if (viewer.peerConnection.connectionState === 'new' || viewer.peerConnection.connectionState === 'connecting') {
+                peerConnectionEstablishmentStartTime = Date.now();
+            }
+            if (viewer.peerConnection.connectionState === 'connected') {
+                peerConnectionEstablishmentDuration = Date.now() - peerConnectionEstablishmentStartTime;
+            }
+        };
 
         viewer.peerConnection.oniceconnectionstatechange = (event) => {
-
             if (viewer.peerConnection.iceConnectionState === 'connected') {
                 viewer.peerConnection.getStats().then(stats => {
                     stats.forEach(report => {
                         if (report.type === "candidate-pair") {
                             activeCandidatePair = report;
-                            const localCandidate = stats.get(report.localCandidateId);
-                            const remoteCandidate = stats.get(report.remoteCandidateId);
-                            console.log("Local:", localCandidate.id, localCandidate.address, localCandidate.port, localCandidate.candidateType, localCandidate.protocol, "Remote:", remoteCandidate.id, remoteCandidate.address, remoteCandidate.port, remoteCandidate.candidateType, remoteCandidate.protocol);
+                            // const localCandidate = stats.get(report.localCandidateId);
+                            // const remoteCandidate = stats.get(report.remoteCandidateId);
+                            // console.log("Local:", localCandidate.id, localCandidate.address, localCandidate.port, localCandidate.candidateType, localCandidate.protocol, "Remote:", remoteCandidate.id, remoteCandidate.address, remoteCandidate.port, remoteCandidate.candidateType, remoteCandidate.protocol);
                         } else if (report.type === "transport") {
-                            console.log("Selected:", report.selectedCandidatePairId);
+                            // console.log("Selected:", report.selectedCandidatePairId);
                         }
                     });
                 });
@@ -323,6 +338,8 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
                 console.log('[VIEWER] Sending SDP offer');
                 console.debug('SDP offer:', viewer.peerConnection.localDescription);
                 viewer.signalingClient.sendSdpOffer(viewer.peerConnection.localDescription);
+                signalingDuration = Date.now() - signalingStartTime;
+                sendOfferTime = Date.now();
             }
             console.log('[VIEWER] Generating ICE candidates');
         });
@@ -331,6 +348,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
             // Add the SDP answer to the peer connection
             console.log('[VIEWER] Received SDP answer');
             console.debug('SDP answer:', answer);
+            offerAnswerDuration = Date.now() - sendOfferTime;
             await viewer.peerConnection.setRemoteDescription(answer);
         });
 
@@ -650,8 +668,12 @@ function calcStats(stats, clientId) {
                     '<table><tr><th>DQP TEST COMPLETE - RESULTS:</th></tr>' +
                     '<tr><td>Test Run Time:</td><td>' + DQPtestLength + ' sec</td></tr>' +
                     '<tr><td>Client ID: </td><td>' + clientId + '</td></tr>' +
-                    '<tr><td>Time to P2P connection: </td><td>' + connectionTime + ' sec</td></tr>' +
-                    '<tr><td>Time to decoded frames: </td><td>' + calcDiffTimestamp2Sec(statStartTime, viewerButtonPressed.getTime()) + ' sec</td></tr>' +
+                    '<tr><td>Signaling duration: </td><td>' + signalingDuration + ' ms</td></tr>' +
+                    '<tr><td>Offer Answer duration: </td><td>' + offerAnswerDuration + ' ms</td></tr>' +
+                    '<tr><td>Ice candidate gathering duration: </td><td>' + iceCandidateGatheringDuration + ' ms</td></tr>' +
+                    '<tr><td>Ice connection establishment duration: </td><td>' + peerConnectionEstablishmentDuration + ' ms</td></tr>' +
+                    '<tr><td>Time to P2P connection: </td><td>' + connectionTime * 1000 + ' ms</td></tr>' +
+                    '<tr><td>Time to decoded frames: </td><td>' + calcDiffTimestamp2Sec(statStartTime, viewerButtonPressed.getTime()) * 1000 + ' ms</td></tr>' +
                     '<tr><td>Peer Connection: </td><td>' + connectionString + '</td></tr>' +
                     '<tr><td>Avg RTT: </td><td>' + testAvgRTT.toFixed(3) + ' sec</td></tr>' +
                     '<tr><td>Video Resolution: </td><td>' + videoWidth + ' x ' + videoHeight + '</td></tr>' +
