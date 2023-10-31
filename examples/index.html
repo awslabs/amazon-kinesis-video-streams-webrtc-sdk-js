@@ -172,6 +172,27 @@
                 "><sup>&#9432;</sup></span>
                 </div>
             </div>
+            <h4>Amazon KVS failure recovery</h4>
+            <div class="form-group">
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="allowIceRestart" value="allowIceRestart">
+                    <label for="allowIceRestart" class="form-check-label">Enable ICE restart <small>(Viewer only)</small></label>
+                    <span data-delay="{ &quot;hide&quot;: 1500 }" data-position="auto" tabindex="0" class="text-info ml-1" data-toggle="tooltip" data-html="true" title="
+                    <p>Retries sending offer if ICE transitions to disconnected/failed state. Retry happens a maximum of 3 times if answer is not received within message TTL duration</p>
+                    <a href=&quot;https://docs.aws.amazon.com/kinesisvideostreams/latest/dg/API_SingleMasterConfiguration.html#KinesisVideo-Type-SingleMasterConfiguration-MessageTtlSeconds&quot;>Message TTL information</a>
+                "><sup>&#9432;</sup></span>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="allowSignalingReconnect" value="allowSignalingReconnect">
+                    <label for="allowSignalingReconnect" class="form-check-label">Allow signaling reconnection in the event of disconnection <small>(Viewer only)</small></label>
+                    <span data-delay="{ &quot;hide&quot;: 1500 }" data-position="auto" tabindex="0" class="text-info ml-1" data-toggle="tooltip" data-html="true" title="
+                    <p>Sends offer again post reconnect in situations of network interruption. Retry happens a maximum of 3 times if answer is not received within message TTL duration</p>
+                    <a href=&quot;https://docs.aws.amazon.com/kinesisvideostreams/latest/dg/API_SingleMasterConfiguration.html#KinesisVideo-Type-SingleMasterConfiguration-MessageTtlSeconds&quot;>Message TTL information</a>
+                "><sup>&#9432;</sup></span>
+                </div>
+            </div>
             <hr>
             <div>
                 <button id="master-button" type="submit" class="btn btn-primary">Start Master</button>

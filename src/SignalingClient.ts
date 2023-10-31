@@ -57,7 +57,7 @@ interface WebSocketMessage {
  */
 export class SignalingClient extends EventEmitter {
     private static DEFAULT_CLIENT_ID = 'MASTER';
-    private reconnectDelay: number = 2000; // 2 seconds, can be adjusted
+    private reconnectDelay = 1 * 1000;
     private reconnection: boolean;
     private websocket: WebSocket = null;
     private readyState = ReadyState.CLOSED;
@@ -113,7 +113,6 @@ export class SignalingClient extends EventEmitter {
             throw new Error('Client is already open, opening, or closing');
         }
         this.readyState = ReadyState.CONNECTING;
-
         // The process of opening the connection is asynchronous via promises, but the interaction model is to handle asynchronous actions via events.
         // Therefore, we just kick off the asynchronous process and then return and let it fire events.
         this.asyncOpen()
@@ -156,8 +155,37 @@ export class SignalingClient extends EventEmitter {
             this.readyState = ReadyState.CLOSING;
             this.websocket.close();
         } else if (this.readyState !== ReadyState.CLOSED) {
-            console.log("Somehow invoked close");
             this.onClose();
+        }
+    }
+
+    public reconnect(maxAttempt = 3): void {
+        this.reconnection = true;
+        if (this.readyState === ReadyState.CLOSED) {
+            this.attemptReconnect(maxAttempt);
+        } else {
+            console.log('Invalid state to invoke reconnect from');
+        }
+    }
+
+    private attemptReconnect(maxAttempts: number, attempt = 0): void {
+        if (this.readyState === ReadyState.CLOSED) {
+            this.open();
+            // If reconnect fails
+            setTimeout(() => {
+                if (this.readyState !== ReadyState.OPEN) {
+                    if (attempt < maxAttempts) {
+                        console.log("Failed reconnect attempt ", attempt);
+                        this.attemptReconnect(maxAttempts, attempt + 1);
+                    } else {
+                        console.error("Max reconnect attempts reached, bailing out");
+                    }
+                } else {
+                    console.log("Reconnected to WS");
+                }
+            }, this.reconnectDelay * (attempt + 1)); // increasing delay
+        } else {
+            console.log('Invalid state to invoke reconnect from');
         }
     }
 
@@ -200,7 +228,6 @@ export class SignalingClient extends EventEmitter {
      * and sends the message to the signaling service.
      */
     private sendMessage(action: MessageType, messagePayload: object, recipientClientId?: string): void {
-        console.log("Ready state: " + this.readyState);
         if (this.readyState !== ReadyState.OPEN) {
             throw new Error('Could not send message because the connection to the signaling service is not open.');
         }
@@ -234,11 +261,11 @@ export class SignalingClient extends EventEmitter {
      */
     private onOpen(): void {
         this.readyState = ReadyState.OPEN;
-        console.log("Reconnection value: ", this.reconnection);
         if(this.reconnection) {
-            console.log("Successfully opened a new WS");
+            console.log("Successfully reconnected to a new WS");
             this.emit('reconnect')
         } else {
+            console.log("Successfully opened a WS");
             this.emit('open');
         }
     }
@@ -339,37 +366,29 @@ export class SignalingClient extends EventEmitter {
     /**
      * 'close' event handler. Forwards the error onto listeners and cleans up the connection.
      */
-    private onClose(): void {
+    private onClose(event?: CloseEvent): void {
         this.readyState = ReadyState.CLOSED;
         console.log("On close invoked");
-        this.cleanupWebSocket();
-        this.emit('close');
-        // Initiate reconnect after the specified delay
-        setTimeout(() => {
-            this.reconnect();
-        }, this.reconnectDelay);
-    }
-
-    private reconnect(attempt = 0): void {
-        if (this.readyState === ReadyState.CLOSED) {
-            console.log("Attempting to reconnect...");
-            this.reconnection = true;
-            this.open();
-
-            // If reconnect fails
-            setTimeout(() => {
-                if (this.readyState !== ReadyState.OPEN) {
-                    const maxAttempts = 5; // or whatever you consider reasonable
-                    if (attempt < maxAttempts) {
-                        console.log("Failed attempt 1");
-                        this.reconnect(attempt + 1);
-                    } else {
-                        console.error("Max reconnect attempts reached");
-                    }
-                } else {
-                    console.log("Reconnected");
-                }
-            }, this.reconnectDelay * (attempt + 1)); // increasing delay
+        switch (event.code) {
+            // Going away
+            case 1001:
+            // Abnormal closure
+            case 1006:
+            // Service Restart
+            case 1012:
+            // Try Again Later
+            case 1013:
+            // TLS Handshake
+            case 1015:
+                console.log("Allowing reconnect if option enabled on test page for code", event.code);
+                this.cleanupWebSocket();
+                this.emit('closewithretry');
+                break;
+            default:
+                console.log("No reconnect will be attempted. Just exiting with code", event.code);
+                this.cleanupWebSocket();
+                this.emit('close');
+                break;
         }
     }
 }

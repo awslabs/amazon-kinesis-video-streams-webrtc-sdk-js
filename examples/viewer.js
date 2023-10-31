@@ -38,35 +38,45 @@ let audioRateArray = [];
 let timeArray = [];
 
 async function initiateIceRestart(viewer, clientId, retryCount = 0) {
-    let maxRetryCount = 5;
+    let maxRetryCount = 3;
+    let timeoutId = 0;
     viewer.receivedAnswer = false;
-    try {
-        console.log('[VIEWER] Encountered negotiation needed event for client ID', clientId);
-        await viewer.peerConnection.setLocalDescription(
-            await viewer.peerConnection.createOffer({
-                offerToReceiveAudio: true,
-                offerToReceiveVideo: true,
-                iceRestart: true // Important because this generates the new uFrag/pwd for local ice candidates
-            }),
-        );
-        viewer.signalingClient.sendSdpOffer(viewer.peerConnection.localDescription);
-        setTimeout(() => {
-            console.log("Received answer? ", viewer.receivedAnswer, 'Count received: ', retryCount);
-            if (!viewer.receivedAnswer) {
-                if(retryCount < maxRetryCount) {
-                    console.log('[VIEWER] No answer received for client ID', clientId, '. Retrying offer send...');
-                    initiateIceRestart(viewer, clientId, retryCount + 1);
+    if(!viewer.reconnecting) {
+        try {
+            console.log('[VIEWER] Encountered negotiation needed event for client ID', clientId);
+            await viewer.peerConnection.setLocalDescription(
+                await viewer.peerConnection.createOffer({
+                    offerToReceiveAudio: true,
+                    offerToReceiveVideo: true,
+                    iceRestart: true // Important because this generates the new uFrag/pwd for local ice candidates
+                }),
+            );
+            viewer.signalingClient.sendSdpOffer(viewer.peerConnection.localDescription);
+            timeoutId = setTimeout(() => {
+                console.log("Received answer? ", viewer.receivedAnswer, 'Count received: ', retryCount);
+                if (!viewer.receivedAnswer) {
+                    if(retryCount < maxRetryCount) {
+                        console.log('[VIEWER] No answer received for client ID', clientId, '. Retrying offer send...');
+                        initiateIceRestart(viewer, clientId, retryCount + 1);
+                    } else {
+                        console.log('[VIEWER] Max retry attempts reached...connection failed');
+                        // Reset if there is a disconnect / failure again
+                        viewer.alreadyRestarted = false;
+                    }
                 } else {
-                    console.log('[VIEWER] Max retry attempts reached...connection failed');
+                    console.log('[VIEWER] Successfully exchanged offer and answer for client ID', clientId);
+                    retryCount = 0;
+                    // Reset if there is a disconnect / failure again
+                    viewer.alreadyRestarted = false;
                 }
-            } else {
-                console.log('[VIEWER] Successfully exchanged offer and answer for client ID', clientId);
-                retryCount = 0;
-            }
-        }, 10000); // 30 seconds
-        console.log('[VIEWER] SDP offer sent for client ID', clientId, 'as part of restart', 'retry count[', retryCount, ']');
-    } catch (error) {
-        console.error('[VIEWER] Error initiating ICE restart:', error);
+            }, (viewer.messageTtlSeconds + 5) * 1000); // messageTtlRange is 5 seconds to 120 seconds: https://docs.aws.amazon.com/kinesisvideostreams/latest/dg/API_SingleMasterConfiguration.html#KinesisVideo-Type-SingleMasterConfiguration-MessageTtlSeconds
+            console.log('[VIEWER] SDP offer sent for client ID', clientId, 'as part of restart', 'retry count[', retryCount, ']');
+        } catch (error) {
+            console.error('[VIEWER] Error initiating ICE restart:', error);
+        }
+    } else {
+        clearTimeout(timeoutId);
+        console.log('[VIEWER] Reconnection signal received. Not sending offer here');
     }
 }
 
@@ -78,6 +88,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
         const maxAttempts = 5;
         viewer.localView = localView;
         viewer.remoteView = remoteView;
+        viewer.alreadyRestarted = false;
 
         if (formValues.enableDQPmetrics) {
             viewerButtonPressed = new Date();
@@ -151,6 +162,8 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
             endpoint: formValues.endpoint,
             correctClockSkew: true,
         });
+        viewer.allowIceRestart = formValues.allowIceRestart;
+        viewer.allowSignalingReconnect = formValues.allowSignalingReconnect;
 
         // Get signaling channel ARN
         const describeSignalingChannelResponse = await kinesisVideoClient
@@ -158,7 +171,8 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
                 ChannelName: formValues.channelName,
             })
             .promise();
-        const channelARN = describeSignalingChannelResponse.ChannelInfo.ChannelARN;
+        const channelARN = describeSignalingChannelResponse.ChannelInfo.ChannelARN
+        viewer.messageTtlSeconds = describeSignalingChannelResponse.ChannelInfo.SingleMasterConfiguration.MessageTtlSeconds
         console.log('[VIEWER] Channel ARN:', channelARN);
 
         if (formValues.ingestMedia) {
@@ -280,15 +294,34 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
         }
 
         viewer.signalingClient.on('reconnect', async () => {
-            console.log("Reconnected....")
+            console.log('[VIEWER] Reconnecting to the signaling server, network change encountered....')
+            viewer.reconnecting = true;
+            viewer.receivedAnswer = false;
+            let maxRetryCount = 3;
+            let retryCount = 0;
             await viewer.peerConnection.setLocalDescription(
                 await viewer.peerConnection.createOffer({
                     offerToReceiveAudio: true,
                     offerToReceiveVideo: true,
                 }),
             );
-            console.log("Resending SDP offer");
+            console.log('[VIEWER] Setting up peer connection again');
             viewer.signalingClient.sendSdpOffer(viewer.peerConnection.localDescription);
+            timeoutId = setTimeout(() => {
+                console.log("Received answer in reconnect? ", viewer.receivedAnswer, 'Count received: ', retryCount);
+                if (!viewer.receivedAnswer) {
+                    if(retryCount < maxRetryCount) {
+                        console.log('[VIEWER] Did not receive answer within time during reconnect for', formValues.clientId, '. Retrying offer send...');
+                        viewer.signalingClient.sendSdpOffer(viewer.peerConnection.localDescription);
+                        retryCount++;
+                    } else {
+                        console.log('[VIEWER] Max retry attempts reached trying to reconnect...connection failed');
+                    }
+                } else {
+                    console.log('[VIEWER] Successfully reconnected with SDP exchange for', formValues.clientId);
+                    retryCount = 0;
+                }
+            }, (viewer.messageTtlSeconds + 5) * 1000); // messageTtlRange is 5 seconds to 120 seconds
         });
 
         viewer.signalingClient.on('open', async () => {
@@ -347,6 +380,17 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
             viewer.peerConnection.addIceCandidate(candidate);
         });
 
+        viewer.signalingClient.on('closewithretry', () => {
+            console.log('[VIEWER] Disconnected from signaling channel');
+            if(viewer.allowSignalingReconnect) {
+                console.log('[VIEWER] Attempting to reconnect');
+                viewer.signalingClient.reconnect();
+                // Need to reset since we want to trigger reconnect only once. The internal logic
+                // takes care of retries
+                viewer.allowSignalingReconnect = false;
+            }
+        });
+
         viewer.signalingClient.on('close', () => {
             console.log('[VIEWER] Disconnected from signaling channel');
         });
@@ -400,10 +444,17 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
 
         viewer.peerConnection.addEventListener('iceconnectionstatechange', async event => {
             console.log('[VIEWER] ICE connection state for client ID',  formValues.clientId, ':', viewer.peerConnection.iceConnectionState);
-            if(viewer.peerConnection.iceConnectionState == 'disconnected') {
-                console.log('[VIEWER] Detected ICE agent disconnection for client ID', formValues.clientId);
-                initiateIceRestart(viewer, formValues.clientId);
-                viewer.peerConnection.restartIce();
+            if(viewer.peerConnection.iceConnectionState == 'disconnected' || viewer.peerConnection.iceConnectionState == 'failed') {
+                if(!viewer.alreadyRestarted) {
+                    if(viewer.allowIceRestart) {
+                        viewer.alreadyRestarted = true;
+                        console.log('[VIEWER] Config allows ICE restart for client ID', formValues.clientId);
+                        initiateIceRestart(viewer, formValues.clientId);
+                        viewer.peerConnection.restartIce();
+                    } else {
+                        console.log('[VIEWER] ICE restart based recovery not enabled for client ID', formValues.clientId);
+                    }
+                }
             }
         });
 

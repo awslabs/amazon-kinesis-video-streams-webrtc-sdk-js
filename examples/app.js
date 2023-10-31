@@ -88,6 +88,10 @@ function getFormValues() {
         secretAccessKey: $('#secretAccessKey').val(),
         sessionToken: $('#sessionToken').val() || null,
         enableDQPmetrics: $('#enableDQPmetrics').is(':checked'),
+        allowIceRestart: $('#allowIceRestart').is(':checked'),
+        allowSignalingReconnect: $('#allowSignalingReconnect').is(':checked')
+
+
     };
 }
 
@@ -410,6 +414,8 @@ const fields = [
     { field: 'forceSTUN', type: 'radio', name: 'natTraversal' },
     { field: 'forceTURN', type: 'radio', name: 'natTraversal' },
     { field: 'natTraversalDisabled', type: 'radio', name: 'natTraversal' },
+    { field: 'allowIceRestart', type: 'checkbox' },
+    { field: 'allowSignalingReconnect', type: 'checkbox' }
 ];
 fields.forEach(({ field, type, name }) => {
     const id = '#' + field;
