@@ -290,7 +290,11 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
             // Add the ICE candidate received from the MASTER to the peer connection
             console.log('[VIEWER] Received ICE candidate');
             console.debug('ICE candidate', candidate);
-            viewer.peerConnection.addIceCandidate(candidate);
+            if (shouldAcceptCandidate(formValues, candidate)) {
+                viewer.peerConnection.addIceCandidate(candidate);
+            } else {
+                console.log('[VIEWER] Not adding candidate from peer.');
+            }
         });
 
         viewer.signalingClient.on('close', () => {
@@ -309,8 +313,12 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
 
                 // When trickle ICE is enabled, send the ICE candidates as they are generated.
                 if (formValues.useTrickleICE) {
-                    console.log('[VIEWER] Sending ICE candidate');
-                    viewer.signalingClient.sendIceCandidate(candidate);
+                    if (shouldSendIceCandidate(formValues, candidate)) {
+                        console.log('[VIEWER] Sending ICE candidate');
+                        viewer.signalingClient.sendIceCandidate(candidate);
+                    } else {
+                        console.log('[VIEWER] Not sending ICE candidate');
+                    }
                 }
             } else {
                 console.log('[VIEWER] All ICE candidates have been generated');

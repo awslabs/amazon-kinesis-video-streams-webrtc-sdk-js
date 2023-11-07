@@ -92,6 +92,13 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
                 protocols.push('WEBRTC');
                 master.streamARN = mediaStorageConfiguration.StreamARN;
                 console.log(`[MASTER] Using media ingestion feature. Stream ARN: ${master.streamARN}`);
+
+                $('#master .remote').addClass('d-none');
+                if (formValues.openDataChannel) {
+                    console.warn('[MASTER] DataChannel is not enabled for WebRTC ingestion. Overriding value to false.');
+                    formValues.openDataChannel = false;
+                    $('.datachannel').addClass('d-none');
+                }
             } else {
                 console.log('[MASTER] Not using media ingestion feature.');
                 master.streamARN = null;
@@ -143,6 +150,8 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
                     timeout: retryIntervalForJoinStorageSession,
                 },
             });
+        } else {
+            master.storageClient = null;
         }
 
         // Get ICE server configuration
@@ -210,6 +219,9 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             const masterRunId = ++master.runId;
             master.websocketOpened = true;
             console.log('[MASTER] Connected to signaling service');
+            if (formValues.showJSSButton) {
+                $('#join-storage-session-button').removeClass('d-none');
+            }
             if (master.streamARN) {
                 if (formValues.ingestMedia) {
                     await connectToMediaServer(masterRunId);
@@ -262,8 +274,12 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
 
                     // When trickle ICE is enabled, send the ICE candidates as they are generated.
                     if (formValues.useTrickleICE) {
-                        printSignalingLog('[MASTER] Sending ICE candidate to client', remoteClientId);
-                        master.signalingClient.sendIceCandidate(candidate, remoteClientId);
+                        if (shouldSendIceCandidate(formValues, candidate)) {
+                            printSignalingLog('[MASTER] Sending ICE candidate to client', remoteClientId);
+                            master.signalingClient.sendIceCandidate(candidate, remoteClientId);
+                        } else {
+                            console.log('[MASTER] Not sending ICE candidate to client', remoteClientId);
+                        }
                     }
                 } else {
                     printSignalingLog('[MASTER] All ICE candidates have been generated for client', remoteClientId);
@@ -271,8 +287,9 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
                     // When trickle ICE is disabled, send the answer now that all the ICE candidates have ben generated.
                     if (!formValues.useTrickleICE) {
                         printSignalingLog('[MASTER] Sending SDP answer to client', remoteClientId);
-                        console.debug('SDP answer:', peerConnection.localDescription);
-                        master.signalingClient.sendSdpAnswer(peerConnection.localDescription, remoteClientId);
+                        const correlationId = randomString();
+                        console.debug('SDP answer:', peerConnection.localDescription, 'correlationId:', correlationId);
+                        master.signalingClient.sendSdpAnswer(peerConnection.localDescription, remoteClientId, correlationId);
                     }
                 }
             });
@@ -301,19 +318,52 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             // When trickle ICE is enabled, send the answer now and then send ICE candidates as they are generated. Otherwise wait on the ICE candidates.
             if (formValues.useTrickleICE) {
                 printSignalingLog('[MASTER] Sending SDP answer to client', remoteClientId);
-                console.debug('SDP answer:', peerConnection.localDescription);
-                master.signalingClient.sendSdpAnswer(peerConnection.localDescription, remoteClientId);
+                const correlationId = randomString();
+                console.debug('SDP answer:', peerConnection.localDescription, 'correlationId:', correlationId);
+                master.signalingClient.sendSdpAnswer(peerConnection.localDescription, remoteClientId, correlationId);
             }
             printSignalingLog('[MASTER] Generating ICE candidates for client', remoteClientId);
+
+            // If in WebRTC ingestion mode, retry if no connection was established within 5 seconds.
+            if (master.streamARN) {
+                setTimeout(function() {
+                    // We check that it's not failed because if the state transitioned to failed,
+                    // the state change callback would handle this already
+                    if (
+                        peerConnection.connectionState !== 'connected' &&
+                        peerConnection.connectionState !== 'failed' &&
+                        peerConnection.connectionState !== 'closed'
+                    ) {
+                        console.error('[MASTER] Connection failed to establish within 5 seconds. Retrying...');
+                        onPeerConnectionFailed(false);
+                    }
+                }, 5000);
+            }
         });
 
         master.signalingClient.on('iceCandidate', async (candidate, remoteClientId) => {
             printSignalingLog('[MASTER] Received ICE candidate from client', remoteClientId);
             console.debug('[MASTER] ICE candidate:', candidate);
 
-            // Add the ICE candidate received from the client to the peer connection
-            const peerConnection = master.peerConnectionByClientId[remoteClientId];
-            peerConnection.addIceCandidate(candidate);
+            if (shouldAcceptCandidate(formValues, candidate)) {
+                // Add the ICE candidate received from the client to the peer connection
+                const peerConnection = master.peerConnectionByClientId[remoteClientId];
+                peerConnection.addIceCandidate(candidate);
+            } else {
+                console.log('[MASTER] Not adding candidate from peer.');
+            }
+        });
+
+        master.signalingClient.on('statusResponse', statusResponse => {
+            if (statusResponse.success) {
+                return;
+            }
+            console.error('[MASTER] Received response from Signaling:', statusResponse);
+
+            if (master.streamARN) {
+                console.error('[MASTER] Encountered a fatal error. Stopping the application.');
+                onStop();
+            }
         });
 
         master.signalingClient.on('close', () => {
@@ -330,12 +380,15 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
         master.signalingClient.open();
     } catch (e) {
         console.error('[MASTER] Encountered error starting:', e);
+        onStop();
     }
 }
 
-function onPeerConnectionFailed() {
+function onPeerConnectionFailed(printLostConnectionLog = true) {
     if (master.streamARN) {
-        console.warn('[MASTER] Lost connection to the storage session.');
+        if (printLostConnectionLog) {
+            console.warn('[MASTER] Lost connection to the storage session.');
+        }
         master.connectionFailures.push(new Date().getTime());
         if (shouldStopRetryingJoinStorageSession()) {
             console.error(
