@@ -38,48 +38,78 @@ let audioRateArray = [];
 let timeArray = [];
 let signalingStartTime = 0;
 
-let viewerMetrics = {
-    signaling: {
-        signalingStartTime: '',
-        signalingEndTime: '',
-        sendOfferTime: '',
-        receiveAnswerTime: ''
-    }, 
-    iceGathering: {
-        candidateGatheringStartTime: '',
-        candidateGatheringEndTime: ''
-    }, 
-    peerConnection: {
-        peerConnectionStartTime: '',
-        peerConnectionConnectedTime: ''
-    },
-    video: {
-        firstFrameAvailableTime: ''
-    },
-    dataChannel: {
-        sendMessageToMasterTime: '',
-        receiveMessageFromMasterTime: ''
-    }
-};
+let metrics = {
+    viewer: {
+        signaling: {
+            signalingStartTime: '',
+            signalingEndTime: '',
+    
+            sendOfferTime: '',
+            receiveAnswerTime: '',
 
-let masterMetrics = {
-    signaling: {
-        signalingStartTime: '',
-        signalingEndTime: '',
-        offerReceiptTime: '',
-        sendAnswerTime: ''
+            describeChannelStartTime: '',
+            describeChannelEndTime: '',
+    
+            getSignalingChannelEndpointStartTime: '',
+            getSignalingChannelEndpointEndTime: '',
+    
+            getIceServerConfigStartTime: '',
+            getIceServerConfigEndTime: '',
+        }, 
+        iceGathering: {
+            candidateGatheringStartTime: '',
+            candidateGatheringEndTime: ''
+        }, 
+        peerConnection: {
+            peerConnectionStartTime: '',
+            peerConnectionConnectedTime: ''
+        },
+        video: {
+            firstFrameAvailableTime: ''
+        },
+        dataChannel: {
+            sendMessageToMasterTime: '',
+            receiveMessageFromMasterTime: ''
+        }
     },
-    iceGathering: {
-        candidateGatheringStartTime: '',
-        candidateGatheringEndTime: ''
-    },
-    peerConnection: {
-        peerConnectionStartTime: '',
-        peerConnectionEndTime: ''
-    },
-    dataChannel: {
-        sendMessageToViewerTime: '',
-        receiveMessageFromViewerTime: ''
+    master: {
+        signaling: {
+            signalingStartTime: '',
+            signalingEndTime: '',
+
+            offerReceiptTime: '',
+            sendAnswerTime: '',
+
+            describeChannelStartTime: '',
+            describeChannelEndTime: '',
+    
+            getSignalingChannelEndpointStartTime: '',
+            getSignalingChannelEndpointEndTime: '',
+    
+            getIceServerConfigStartTime: '',
+            getIceServerConfigEndTime: '',
+
+            getTokenStartTime: '',
+            getTokenEndTime: '',
+
+            createChannelStartTime: '',
+            createChannelEndTime: '',
+            
+            connectStartTime: '',
+            connectEndTime: ''
+        },
+        iceGathering: {
+            candidateGatheringStartTime: '',
+            candidateGatheringEndTime: ''
+        },
+        peerConnection: {
+            peerConnectionStartTime: '',
+            peerConnectionEndTime: ''
+        },
+        dataChannel: {
+            sendMessageToViewerTime: '',
+            receiveMessageFromViewerTime: ''
+        }
     }
 };
 
@@ -95,6 +125,12 @@ let dataChannelLatencyCalcMessage = {
 const tooltip = {
     master: {
         signaling: 'Time taken to establish a signaling connection on the master-side',
+        signalingDescribeSignalingChannel: 'Time taken for the API call to desribeSignalingChannel on the master',
+        signalingGetEndpoint: 'Time taken for the API call to getSignalingChannelEndpoint on the master',
+        signalingIceServerConfig: 'Time taken for the API call to getIceServerConfig on the master',
+        signalingGetToken: 'Time taken for the getToken call on the master',
+        signalingCreateChannel: 'Time taken createChannel API call on the master',
+        signalingConnect: 'Time taken for the signaling connect on the master',
         sdpExchange: 'Time taken to respond to an offer from the viewer with an answer',
         iceGathering: 'Time taken to gather all ice candidates on the master',
         pcEstablishment: 'Time taken to establish the peer connection on the master',
@@ -103,6 +139,9 @@ const tooltip = {
     },
     viewer: {
         signaling: 'Time taken to establish a signaling connection on the viewer-side',
+        signalingDescribeSignalingChannel: 'Time taken for the API call to desribeSignalingChannel on the viewer',
+        signalingGetEndpoint: 'Time taken for the API call to getSignalingChannelEndpoint on the viewer',
+        signalingIceServerConfig: 'Time taken for the API call to getIceServerConfig on the viewer',
         sdpExchange: 'Time taken to send an offer and receive a response',
         iceGathering: 'Time taken to gather all ice candidates on the viewer',
         pcEstablishment: 'Time taken to establish the peer connection on the viewer',
@@ -121,7 +160,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
         viewer.remoteView = remoteView;
 
         viewer.remoteView.addEventListener('loadeddata', () => {
-            viewerMetrics.video.firstFrameAvailableTime = new Date();
+            metrics.viewer.video.firstFrameAvailableTime = new Date();
         });
 
         if (formValues.enableDQPmetrics) {
@@ -187,7 +226,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
             });
         }
 
-        viewerMetrics.signaling.signalingStartTime = new Date();
+        metrics.viewer.signaling.signalingStartTime = new Date();
         
         // Create KVS client
         const kinesisVideoClient = new AWS.KinesisVideo({
@@ -200,21 +239,31 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
         });
 
         // Get signaling channel ARN
+        metrics.viewer.signaling.describeChannelStartTime = new Date();
+
         const describeSignalingChannelResponse = await kinesisVideoClient
             .describeSignalingChannel({
                 ChannelName: formValues.channelName,
             })
             .promise();
+
+        metrics.viewer.signaling.describeChannelEndTime = new Date();
+
         const channelARN = describeSignalingChannelResponse.ChannelInfo.ChannelARN;
         console.log('[VIEWER] Channel ARN:', channelARN);
 
         if (formValues.ingestMedia) {
             console.log('[VIEWER] Determining whether this signaling channel is in media ingestion mode.');
+            
+            metrics.viewer.signaling.describeMediaStorageConfigurationStartTime = new Date();
+
             const mediaStorageConfiguration = await kinesisVideoClient
                 .describeMediaStorageConfiguration({
                     ChannelName: formValues.channelName,
                 })
                 .promise();
+
+            metrics.viewer.signaling.describeMediaStorageConfigurationEndTime = new Date();
 
             if (mediaStorageConfiguration.MediaStorageConfiguration.Status !== 'DISABLED') {
                 console.error(
@@ -227,6 +276,9 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
         }
 
         // Get signaling channel endpoints
+
+        metrics.viewer.signaling.getSignalingChannelEndpointStartTime = new Date();
+
         const getSignalingChannelEndpointResponse = await kinesisVideoClient
             .getSignalingChannelEndpoint({
                 ChannelARN: channelARN,
@@ -236,6 +288,9 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
                 },
             })
             .promise();
+        
+        metrics.viewer.signaling.getSignalingChannelEndpointEndTime = new Date();
+
         const endpointsByProtocol = getSignalingChannelEndpointResponse.ResourceEndpointList.reduce((endpoints, endpoint) => {
             endpoints[endpoint.Protocol] = endpoint.ResourceEndpoint;
             return endpoints;
@@ -252,11 +307,17 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
         });
 
         // Get ICE server configuration
+
+        metrics.viewer.signaling.getIceServerConfigStartTime = new Date();
+
         const getIceServerConfigResponse = await kinesisVideoSignalingChannelsClient
             .getIceServerConfig({
                 ChannelARN: channelARN,
             })
             .promise();
+        
+        metrics.viewer.signaling.getIceServerConfigEndTime = new Date();
+        
         const iceServers = [];
         // Don't add stun if user selects TURN only or NAT traversal disabled
         if (!formValues.natTraversalDisabled && !formValues.forceTURN) {
@@ -308,18 +369,18 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
 
         viewer.peerConnection.onicegatheringstatechange = (event) => {
             if (viewer.peerConnection.iceGatheringState === 'gathering') {
-                viewerMetrics.iceGathering.candidateGatheringStartTime = new Date();
+                metrics.viewer.iceGathering.candidateGatheringStartTime = new Date();
             } else if (viewer.peerConnection.iceGatheringState === 'complete') {
-                viewerMetrics.iceGathering.candidateGatheringEndTime = new Date();
+                metrics.viewer.iceGathering.candidateGatheringEndTime = new Date();
             }
         };
 
         viewer.peerConnection.onconnectionstatechange = (event) => {
             if (viewer.peerConnection.connectionState === 'new' || viewer.peerConnection.connectionState === 'connecting') {
-                viewerMetrics.peerConnection.peerConnectionStartTime = new Date();
+                metrics.viewer.peerConnection.peerConnectionStartTime = new Date();
             }
             if (viewer.peerConnection.connectionState === 'connected') {
-                viewerMetrics.peerConnection.peerConnectionConnectedTime = new Date();
+                metrics.viewer.peerConnection.peerConnectionConnectedTime = new Date();
             }
         };
 
@@ -356,20 +417,20 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
                         dataChannelMessage.t3 = Date.now();
                     } else if (dataChannelMessage.t5 == '') {
                         dataChannelMessage.t5 = Date.now();
-                        masterMetrics.dataChannel.sendMessageToViewerTime = Number(dataChannelMessage.t2);
-                        masterMetrics.dataChannel.receiveMessageFromViewerTime = Number(dataChannelMessage.t4);
+                        metrics.master.dataChannel.sendMessageToViewerTime = Number(dataChannelMessage.t2);
+                        metrics.master.dataChannel.receiveMessageFromViewerTime = Number(dataChannelMessage.t4);
 
-                        viewerMetrics.dataChannel.sendMessageToMasterTime = Number(dataChannelMessage.t1);
-                        viewerMetrics.dataChannel.receiveMessageFromMasterTime = Number(dataChannelMessage.t3);
+                        metrics.viewer.dataChannel.sendMessageToMasterTime = Number(dataChannelMessage.t1);
+                        metrics.viewer.dataChannel.receiveMessageFromMasterTime = Number(dataChannelMessage.t3);
                     }
                     dataChannelMessage.content = 'Message from JS viewer';
                     dataChannelObj.send(JSON.stringify(dataChannelMessage));
                 } else if (dataChannelMessage.hasOwnProperty('peerConnectionStartTime')) {
-                    masterMetrics.peerConnection = dataChannelMessage;
+                    metrics.master.peerConnection = dataChannelMessage;
                 } else if (dataChannelMessage.hasOwnProperty('signalingStartTime')) {
-                    masterMetrics.signaling = dataChannelMessage;
+                    metrics.master.signaling = dataChannelMessage;
                 } else if (dataChannelMessage.hasOwnProperty('candidateGatheringStartTime')) {
-                    masterMetrics.iceGathering = dataChannelMessage;
+                    metrics.master.iceGathering = dataChannelMessage;
                 }
             };
             dataChannelObj.onmessage = updatedOnRemoteDataMessage;
@@ -417,8 +478,8 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
                 console.log('[VIEWER] Sending SDP offer');
                 console.debug('SDP offer:', viewer.peerConnection.localDescription);
                 viewer.signalingClient.sendSdpOffer(viewer.peerConnection.localDescription);
-                viewerMetrics.signaling.signalingEndTime = new Date();
-                viewerMetrics.signaling.sendOfferTime = new Date();
+                metrics.viewer.signaling.signalingEndTime = new Date();
+                metrics.viewer.signaling.sendOfferTime = new Date();
             }
             console.log('[VIEWER] Generating ICE candidates');
         });
@@ -427,7 +488,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
             // Add the SDP answer to the peer connection
             console.log('[VIEWER] Received SDP answer');
             console.debug('SDP answer:', answer);
-            viewerMetrics.signaling.receiveAnswerTime = new Date();
+            metrics.viewer.signaling.receiveAnswerTime = new Date();
             await viewer.peerConnection.setRemoteDescription(answer);
         });
 
@@ -806,7 +867,7 @@ function drawChart() {
     var container = document.getElementById('timeline-chart');
     var chart = new google.visualization.Timeline(container);
     var dataTable = new google.visualization.DataTable();
-    var diffInMillis = masterMetrics.signaling.signalingStartTime - new Date(0).getTime(); // to start the x-axis timescale at 0
+    var diffInMillis = metrics.master.signaling.signalingStartTime - new Date(0).getTime(); // to start the x-axis timescale at 0
 
     dataTable.addColumn({ type: 'string', id: 'Term' });
     dataTable.addColumn({ type: 'string', id: 'Bar label' });
@@ -816,44 +877,71 @@ function drawChart() {
 
     dataTable.addRows([
         
-            [ 'signaling-viewer', null, getTooltipContent(tooltip.viewer.signaling, viewerMetrics.signaling.signalingStartTime, viewerMetrics.signaling.signalingEndTime), 
-            new Date((viewerMetrics.signaling.signalingStartTime).getTime() - diffInMillis), new Date((viewerMetrics.signaling.signalingEndTime).getTime() - diffInMillis) ],
-        
-            ['signaling-master', null, getTooltipContent(tooltip.master.signaling, masterMetrics.signaling.signalingStartTime, masterMetrics.signaling.signalingEndTime), 
-            new Date(masterMetrics.signaling.signalingStartTime - diffInMillis), new Date(masterMetrics.signaling.signalingEndTime - diffInMillis) ],
-        
-            [ 'sdp-exchange-viewer', null, getTooltipContent(tooltip.viewer.sdpExchange, viewerMetrics.signaling.sendOfferTime, viewerMetrics.signaling.receiveAnswerTime),
-            new Date((viewerMetrics.signaling.sendOfferTime).getTime() - diffInMillis), new Date((viewerMetrics.signaling.receiveAnswerTime).getTime() - diffInMillis) ],
-        
-            [ 'sdp-exchange-master', null, getTooltipContent(tooltip.master.sdpExchange, masterMetrics.signaling.offerReceiptTime, masterMetrics.signaling.sendAnswerTime), 
-            new Date(masterMetrics.signaling.offerReceiptTime - diffInMillis), new Date(masterMetrics.signaling.sendAnswerTime - diffInMillis) ],
-        
-            [ 'ice-gathering-viewer', null, getTooltipContent(tooltip.viewer.iceGathering, viewerMetrics.iceGathering.candidateGatheringStartTime, viewerMetrics.iceGathering.candidateGatheringEndTime), 
-            new Date((viewerMetrics.iceGathering.candidateGatheringStartTime).getTime() - diffInMillis), new Date((viewerMetrics.iceGathering.candidateGatheringEndTime).getTime() - diffInMillis) ],
-        
-            [ 'ice-gathering-master', null, getTooltipContent(tooltip.master.iceGathering, masterMetrics.iceGathering.candidateGatheringStartTime, masterMetrics.iceGathering.candidateGatheringEndTime), 
-            new Date(masterMetrics.iceGathering.candidateGatheringStartTime - diffInMillis), new Date(masterMetrics.iceGathering.candidateGatheringEndTime - diffInMillis) ],
-        
-            [ 'pc-establishment-viewer', null, getTooltipContent(tooltip.viewer.pcEstablishment, viewerMetrics.peerConnection.peerConnectionStartTime, viewerMetrics.peerConnection.peerConnectionConnectedTime), 
-            new Date((viewerMetrics.peerConnection.peerConnectionStartTime).getTime() - diffInMillis), new Date((viewerMetrics.peerConnection.peerConnectionConnectedTime).getTime() - diffInMillis) ], 
-        
-            [ 'pc-establishment-master', null, getTooltipContent(tooltip.master.pcEstablishment, masterMetrics.peerConnection.peerConnectionStartTime, masterMetrics.peerConnection.peerConnectionEndTime),
-            new Date(masterMetrics.peerConnection.peerConnectionStartTime - diffInMillis), new Date(masterMetrics.peerConnection.peerConnectionEndTime - diffInMillis) ], 
+            [ 'signaling-viewer', null, getTooltipContent(tooltip.viewer.signaling, metrics.viewer.signaling.signalingStartTime, metrics.viewer.signaling.signalingEndTime), 
+            new Date((metrics.viewer.signaling.signalingStartTime).getTime() - diffInMillis), new Date((metrics.viewer.signaling.signalingEndTime).getTime() - diffInMillis) ],
 
-            [ 'datachannel-viewer', null, getTooltipContent(tooltip.viewer.dataChannel, viewerMetrics.dataChannel.sendMessageToMasterTime, viewerMetrics.dataChannel.receiveMessageFromMasterTime), 
-            new Date(viewerMetrics.dataChannel.sendMessageToMasterTime - diffInMillis), new Date(viewerMetrics.dataChannel.receiveMessageFromMasterTime - diffInMillis) ], 
+            [ 'signaling-viewer-describe-channel', null, getTooltipContent(tooltip.viewer.signalingDescribeSignalingChannel, metrics.viewer.signaling.describeChannelStartTime, metrics.viewer.signaling.describeChannelEndTime), 
+            new Date((metrics.viewer.signaling.describeChannelStartTime).getTime() - diffInMillis), new Date((metrics.viewer.signaling.describeChannelEndTime).getTime() - diffInMillis) ],
+
+            [ 'signaling-viewer-get-signaling-channel-endpoint', null, getTooltipContent(tooltip.viewer.signalingGetEndpoint, metrics.viewer.signaling.getSignalingChannelEndpointStartTime, metrics.viewer.signaling.getSignalingChannelEndpointEndTime), 
+            new Date((metrics.viewer.signaling.getSignalingChannelEndpointStartTime).getTime() - diffInMillis), new Date((metrics.viewer.signaling.getSignalingChannelEndpointEndTime).getTime() - diffInMillis) ],
+
+            [ 'signaling-viewer-get-ice-server-config', null, getTooltipContent(tooltip.viewer.signalingIceServerConfig, metrics.viewer.signaling.getIceServerConfigStartTime, metrics.viewer.signaling.getIceServerConfigEndTime), 
+            new Date((metrics.viewer.signaling.getIceServerConfigStartTime).getTime() - diffInMillis), new Date((metrics.viewer.signaling.getIceServerConfigEndTime).getTime() - diffInMillis) ],
+
+            [ 'signaling-master', null, getTooltipContent(tooltip.master.signaling, metrics.master.signaling.signalingStartTime, metrics.master.signaling.signalingEndTime), 
+            new Date(metrics.master.signaling.signalingStartTime - diffInMillis), new Date(metrics.master.signaling.signalingEndTime - diffInMillis) ],
+
+            [ 'signaling-master-describe-channel', null, getTooltipContent(tooltip.master.signalingDescribeSignalingChannel, metrics.master.signaling.describeChannelStartTime, metrics.master.signaling.describeChannelEndTime), 
+            new Date(metrics.master.signaling.describeChannelStartTime - diffInMillis), new Date(metrics.master.signaling.describeChannelEndTime - diffInMillis) ],
+
+            [ 'signaling-master-get-signaling-channel-endpoint', null, getTooltipContent(tooltip.master.signalingGetEndpoint, metrics.master.signaling.getSignalingChannelEndpointStartTime, metrics.master.signaling.getSignalingChannelEndpointEndTime), 
+            new Date(metrics.master.signaling.getSignalingChannelEndpointStartTime - diffInMillis), new Date(metrics.master.signaling.getSignalingChannelEndpointEndTime - diffInMillis) ],
+
+            [ 'signaling-master-get-ice-server-config', null, getTooltipContent(tooltip.master.signalingIceServerConfig, metrics.master.signaling.getIceServerConfigStartTime, metrics.master.signaling.getIceServerConfigEndTime), 
+            new Date(metrics.master.signaling.getIceServerConfigStartTime - diffInMillis), new Date(metrics.master.signaling.getIceServerConfigEndTime - diffInMillis) ],
+
+            [ 'signaling-master-get-token', null, getTooltipContent(tooltip.master.signalingGetToken, metrics.master.signaling.getTokenStartTime, metrics.master.signaling.getTokenEndTime), 
+            new Date(metrics.master.signaling.getTokenStartTime - diffInMillis), new Date(metrics.master.signaling.getTokenEndTime - diffInMillis) ],
+
+            // [ 'signaling-master-create-channel', null, getTooltipContent(tooltip.master.signalingCreateChannel, metrics.master.signaling.createChannelStartTime, metrics.master.signaling.createChannelEndTime), 
+            // new Date(metrics.master.signaling.createChannelStartTime - diffInMillis), new Date(metrics.master.signaling.createChannelEndTime - diffInMillis) ],
+
+            [ 'signaling-master-connect', null, getTooltipContent(tooltip.master.signalingConnect, metrics.master.signaling.connectStartTime, metrics.master.signaling.connectEndTime), 
+            new Date(metrics.master.signaling.connectStartTime - diffInMillis), new Date(metrics.master.signaling.connectEndTime - diffInMillis) ],
         
-            [ 'datachannel-master', null, getTooltipContent(tooltip.master.dataChannel, masterMetrics.dataChannel.sendMessageToViewerTime, masterMetrics.dataChannel.receiveMessageFromViewerTime),
-            new Date(masterMetrics.dataChannel.sendMessageToViewerTime - diffInMillis), new Date(masterMetrics.dataChannel.receiveMessageFromViewerTime - diffInMillis) ], 
+            [ 'sdp-exchange-viewer', null, getTooltipContent(tooltip.viewer.sdpExchange, metrics.viewer.signaling.sendOfferTime, metrics.viewer.signaling.receiveAnswerTime),
+            new Date((metrics.viewer.signaling.sendOfferTime).getTime() - diffInMillis), new Date((metrics.viewer.signaling.receiveAnswerTime).getTime() - diffInMillis) ],
         
-            [ 'ttff-after-pc-viewer', null, getTooltipContent(tooltip.viewer.ttffAfterPeerConnection, viewerMetrics.peerConnection.peerConnectionConnectedTime, viewerMetrics.video.firstFrameAvailableTime), 
-            new Date((viewerMetrics.peerConnection.peerConnectionConnectedTime).getTime() - diffInMillis), new Date((viewerMetrics.video.firstFrameAvailableTime).getTime() - diffInMillis) ], 
+            [ 'sdp-exchange-master', null, getTooltipContent(tooltip.master.sdpExchange, metrics.master.signaling.offerReceiptTime, metrics.master.signaling.sendAnswerTime), 
+            new Date(metrics.master.signaling.offerReceiptTime - diffInMillis), new Date(metrics.master.signaling.sendAnswerTime - diffInMillis) ],
         
-            [ 'ttff-after-pc-master', null, getTooltipContent(tooltip.master.ttffAfterPeerConnection, masterMetrics.peerConnection.peerConnectionEndTime, viewerMetrics.video.firstFrameAvailableTime), 
-            new Date(masterMetrics.peerConnection.peerConnectionEndTime - diffInMillis), new Date((viewerMetrics.video.firstFrameAvailableTime).getTime() - diffInMillis) ], 
+            [ 'ice-gathering-viewer', null, getTooltipContent(tooltip.viewer.iceGathering, metrics.viewer.iceGathering.candidateGatheringStartTime, metrics.viewer.iceGathering.candidateGatheringEndTime), 
+            new Date((metrics.viewer.iceGathering.candidateGatheringStartTime).getTime() - diffInMillis), new Date((metrics.viewer.iceGathering.candidateGatheringEndTime).getTime() - diffInMillis) ],
         
-            [ 'ttff', null, getTooltipContent(tooltip.viewer.ttff, viewerButtonPressed.getTime(), viewerMetrics.video.firstFrameAvailableTime), 
-            new Date(viewerButtonPressed.getTime() - diffInMillis), new Date((viewerMetrics.video.firstFrameAvailableTime).getTime() - diffInMillis)]]);
+            [ 'ice-gathering-master', null, getTooltipContent(tooltip.master.iceGathering, metrics.master.iceGathering.candidateGatheringStartTime, metrics.master.iceGathering.candidateGatheringEndTime), 
+            new Date(metrics.master.iceGathering.candidateGatheringStartTime - diffInMillis), new Date(metrics.master.iceGathering.candidateGatheringEndTime - diffInMillis) ],
+        
+            [ 'pc-establishment-viewer', null, getTooltipContent(tooltip.viewer.pcEstablishment, metrics.viewer.peerConnection.peerConnectionStartTime, metrics.viewer.peerConnection.peerConnectionConnectedTime), 
+            new Date((metrics.viewer.peerConnection.peerConnectionStartTime).getTime() - diffInMillis), new Date((metrics.viewer.peerConnection.peerConnectionConnectedTime).getTime() - diffInMillis) ], 
+        
+            [ 'pc-establishment-master', null, getTooltipContent(tooltip.master.pcEstablishment, metrics.master.peerConnection.peerConnectionStartTime, metrics.master.peerConnection.peerConnectionEndTime),
+            new Date(metrics.master.peerConnection.peerConnectionStartTime - diffInMillis), new Date(metrics.master.peerConnection.peerConnectionEndTime - diffInMillis) ], 
+
+            [ 'datachannel-viewer', null, getTooltipContent(tooltip.viewer.dataChannel, metrics.viewer.dataChannel.sendMessageToMasterTime, metrics.viewer.dataChannel.receiveMessageFromMasterTime), 
+            new Date(metrics.viewer.dataChannel.sendMessageToMasterTime - diffInMillis), new Date(metrics.viewer.dataChannel.receiveMessageFromMasterTime - diffInMillis) ], 
+        
+            [ 'datachannel-master', null, getTooltipContent(tooltip.master.dataChannel, metrics.master.dataChannel.sendMessageToViewerTime, metrics.master.dataChannel.receiveMessageFromViewerTime),
+            new Date(metrics.master.dataChannel.sendMessageToViewerTime - diffInMillis), new Date(metrics.master.dataChannel.receiveMessageFromViewerTime - diffInMillis) ], 
+        
+            [ 'ttff-after-pc-viewer', null, getTooltipContent(tooltip.viewer.ttffAfterPeerConnection, metrics.viewer.peerConnection.peerConnectionConnectedTime, metrics.viewer.video.firstFrameAvailableTime), 
+            new Date((metrics.viewer.peerConnection.peerConnectionConnectedTime).getTime() - diffInMillis), new Date((metrics.viewer.video.firstFrameAvailableTime).getTime() - diffInMillis) ], 
+        
+            [ 'ttff-after-pc-master', null, getTooltipContent(tooltip.master.ttffAfterPeerConnection, metrics.master.peerConnection.peerConnectionEndTime, metrics.viewer.video.firstFrameAvailableTime), 
+            new Date(metrics.master.peerConnection.peerConnectionEndTime - diffInMillis), new Date((metrics.viewer.video.firstFrameAvailableTime).getTime() - diffInMillis) ], 
+        
+            [ 'ttff', null, getTooltipContent(tooltip.viewer.ttff, viewerButtonPressed.getTime(), metrics.viewer.video.firstFrameAvailableTime), 
+            new Date(viewerButtonPressed.getTime() - diffInMillis), new Date((metrics.viewer.video.firstFrameAvailableTime).getTime() - diffInMillis)]]);
 
     options = {
         tooltip: {
