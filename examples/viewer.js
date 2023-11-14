@@ -96,6 +96,13 @@ let metrics = {
             tooltip: 'Time taken for the API call to getIceServerConfig on the viewer',
             color: '#EF9A9A',
         },
+        connectAsViewer: {
+            name: 'signaling-connect-as-viewer',
+            startTime: '',
+            endTime: '',
+            tooltip: 'Time taken to open the websocket via connectAsViewer',
+            color: '#EF9A9A',
+        },
         iceGathering: {
             name: 'ice-gathering-viewer',
             startTime: '',
@@ -236,7 +243,7 @@ let dataChannelLatencyCalcMessage = {
     t5: ''
 }
 
-async function startViewer(localView, remoteView, formValues, onStatsReport, onRemoteDataMessage) {
+async function startViewer(localView, remoteView, formValues, onStatsReport, remoteMessage) {
     try {
         console.log('[VIEWER] Client id is:', formValues.clientId);
 
@@ -433,6 +440,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
         }
         console.log('[VIEWER] ICE servers:', iceServers);
 
+        metrics.viewer.connectAsViewer.startTime = Date.now();
         // Create Signaling Client
         viewer.signalingClient = new KVSWebRTC.SignalingClient({
             channelARN,
@@ -503,76 +511,87 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
             const dataChannelObj = viewer.peerConnection.createDataChannel('kvsDataChannel');
             viewer.dataChannel = dataChannelObj;
             dataChannelObj.onopen = () => {
-                dataChannelLatencyCalcMessage.t1 = Date.now();
-                dataChannelObj.send(JSON.stringify(dataChannelLatencyCalcMessage));
-            };
-            // Callback for the data channel created by viewer
-            let updatedOnRemoteDataMessage = (message) => {
-                let dataChannelMessage = JSON.parse(message.data);
-                if (dataChannelMessage.hasOwnProperty('t1')) {
-                    test = dataChannelMessage;
-                    if (dataChannelMessage.t3 == '') {
-                        dataChannelMessage.t3 = Date.now();
-                    } else if (dataChannelMessage.t5 == '') {
-                        dataChannelMessage.t5 = Date.now();
-                        metrics.master.dataChannel.startTime = Number(dataChannelMessage.t2);
-                        metrics.master.dataChannel.endTime = Number(dataChannelMessage.t4);
-
-                        metrics.viewer.dataChannel.startTime = Number(dataChannelMessage.t1);
-                        metrics.viewer.dataChannel.endTime = Number(dataChannelMessage.t3);
-                    }
-                    dataChannelMessage.content = 'Message from JS viewer';
-                    dataChannelObj.send(JSON.stringify(dataChannelMessage));
-                
-                } else if (dataChannelMessage.hasOwnProperty('peerConnectionStartTime')) {
-                    metrics.master.peerConnection.startTime = dataChannelMessage.peerConnectionStartTime;
-                    metrics.master.peerConnection.endTime = dataChannelMessage.peerConnectionEndTime;
-
-                    metrics.master.ttffAfterPc.startTime = metrics.master.peerConnection.endTime;
-                
-                } else if (dataChannelMessage.hasOwnProperty('signalingStartTime')) {
-                    metrics.master.signaling.startTime = dataChannelMessage.signalingStartTime;
-                    metrics.master.signaling.endTime = dataChannelMessage.signalingEndTime;
-
-                    if (metrics.viewer.video.startTime < metrics.master.signaling.startTime) {
-                        metrics.viewer.video.startTime = metrics.master.signaling.startTime;
-                    }
-
-                    metrics.master.waitTime.startTime = metrics.master.signaling.endTime;
-                    metrics.viewer.waitTime.endTime = metrics.master.signaling.startTime;
-
-                    metrics.master.offAnswerTime.startTime = dataChannelMessage.offerReceiptTime;
-                    metrics.master.offAnswerTime.endTime = dataChannelMessage.sendAnswerTime;
-
-                    metrics.master.describeChannel.startTime = dataChannelMessage.describeChannelStartTime;
-                    metrics.master.describeChannel.endTime = dataChannelMessage.describeChannelEndTime;
-
-                    metrics.master.channelEndpoint.startTime = dataChannelMessage.getSignalingChannelEndpointStartTime;
-                    metrics.master.channelEndpoint.endTime = dataChannelMessage.getSignalingChannelEndpointEndTime;
-
-                    metrics.master.iceServerConfig.startTime = dataChannelMessage.getIceServerConfigStartTime;
-                    metrics.master.iceServerConfig.endTime = dataChannelMessage.getIceServerConfigEndTime;
-
-                    metrics.master.getToken.startTime = dataChannelMessage.getTokenStartTime;
-                    metrics.master.getToken.endTime = dataChannelMessage.getTokenEndTime;
-
-                    metrics.master.createChannel.startTime = dataChannelMessage.createChannelStartTime;
-                    metrics.master.createChannel.endTime = dataChannelMessage.createChannelEndTime;
-
-                    metrics.master.connectAsMaster.startTime = dataChannelMessage.connectStartTime;
-                    metrics.master.connectAsMaster.endTime = dataChannelMessage.connectEndTime;
-
-
-                } else if (dataChannelMessage.hasOwnProperty('candidateGatheringStartTime')) {
-                    metrics.master.iceGathering.startTime = dataChannelMessage.candidateGatheringStartTime;
-                    metrics.master.iceGathering.endTime = dataChannelMessage.candidateGatheringEndTime;
+                if (formValues.enableDQPmetrics) {
+                    dataChannelLatencyCalcMessage.t1 = Date.now();
+                    dataChannelObj.send(JSON.stringify(dataChannelLatencyCalcMessage));
+                } else {
+                    dataChannelObj.send("Opened data channel by viewer");
                 }
             };
-            dataChannelObj.onmessage = updatedOnRemoteDataMessage;
+            // Callback for the data channel created by viewer
+            let onRemoteDataMessageViewer = (message) => {
+                
+                remoteMessage.append(`${message.data}\n\n`);
+                if (formValues.enableDQPmetrics) {
+                    try {
+                        let dataChannelMessage = JSON.parse(message.data);
+                        if (dataChannelMessage.hasOwnProperty('t1')) {
+                            test = dataChannelMessage;
+                            if (dataChannelMessage.t3 == '') {
+                                dataChannelMessage.t3 = Date.now();
+                            } else if (dataChannelMessage.t5 == '') {
+                                dataChannelMessage.t5 = Date.now();
+                                metrics.master.dataChannel.startTime = Number(dataChannelMessage.t2);
+                                metrics.master.dataChannel.endTime = Number(dataChannelMessage.t4);
+        
+                                metrics.viewer.dataChannel.startTime = Number(dataChannelMessage.t1);
+                                metrics.viewer.dataChannel.endTime = Number(dataChannelMessage.t3);
+                            }
+                            dataChannelMessage.content = 'Message from JS viewer';
+                            dataChannelObj.send(JSON.stringify(dataChannelMessage));
+                        
+                        } else if (dataChannelMessage.hasOwnProperty('peerConnectionStartTime')) {
+                            metrics.master.peerConnection.startTime = dataChannelMessage.peerConnectionStartTime;
+                            metrics.master.peerConnection.endTime = dataChannelMessage.peerConnectionEndTime;
+        
+                            metrics.master.ttffAfterPc.startTime = metrics.master.peerConnection.endTime;
+                        
+                        } else if (dataChannelMessage.hasOwnProperty('signalingStartTime')) {
+                            metrics.master.signaling.startTime = dataChannelMessage.signalingStartTime;
+                            metrics.master.signaling.endTime = dataChannelMessage.signalingEndTime;
+        
+                            if (metrics.viewer.video.startTime < metrics.master.signaling.startTime) {
+                                metrics.viewer.video.startTime = metrics.master.signaling.startTime;
+                            }
+        
+                            metrics.master.waitTime.startTime = metrics.master.signaling.endTime;
+                            metrics.viewer.waitTime.endTime = metrics.master.signaling.startTime;
+        
+                            metrics.master.offAnswerTime.startTime = dataChannelMessage.offerReceiptTime;
+                            metrics.master.offAnswerTime.endTime = dataChannelMessage.sendAnswerTime;
+        
+                            metrics.master.describeChannel.startTime = dataChannelMessage.describeChannelStartTime;
+                            metrics.master.describeChannel.endTime = dataChannelMessage.describeChannelEndTime;
+        
+                            metrics.master.channelEndpoint.startTime = dataChannelMessage.getSignalingChannelEndpointStartTime;
+                            metrics.master.channelEndpoint.endTime = dataChannelMessage.getSignalingChannelEndpointEndTime;
+        
+                            metrics.master.iceServerConfig.startTime = dataChannelMessage.getIceServerConfigStartTime;
+                            metrics.master.iceServerConfig.endTime = dataChannelMessage.getIceServerConfigEndTime;
+        
+                            metrics.master.getToken.startTime = dataChannelMessage.getTokenStartTime;
+                            metrics.master.getToken.endTime = dataChannelMessage.getTokenEndTime;
+        
+                            metrics.master.createChannel.startTime = dataChannelMessage.createChannelStartTime;
+                            metrics.master.createChannel.endTime = dataChannelMessage.createChannelEndTime;
+        
+                            metrics.master.connectAsMaster.startTime = dataChannelMessage.connectStartTime;
+                            metrics.master.connectAsMaster.endTime = dataChannelMessage.connectEndTime;
+                            
+                        } else if (dataChannelMessage.hasOwnProperty('candidateGatheringStartTime')) {
+                            metrics.master.iceGathering.startTime = dataChannelMessage.candidateGatheringStartTime;
+                            metrics.master.iceGathering.endTime = dataChannelMessage.candidateGatheringEndTime;
+                        } 
+                    } catch (e) {
+                        console.log("Sending a non-json message");
+                    }
+                }
+            };
+            dataChannelObj.onmessage = onRemoteDataMessageViewer;
 
             viewer.peerConnection.ondatachannel = event => {
                 // Callback for the data channel created by master
-                event.channel.onmessage = updatedOnRemoteDataMessage;
+                event.channel.onmessage = onRemoteDataMessageViewer;
             };
         }
 
@@ -584,7 +603,8 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
 
         viewer.signalingClient.on('open', async () => {
 
-            metrics.viewer.signaling.endTime = Date.now();
+            metrics.viewer.connectAsViewer.endTime = Date.now();
+            metrics.viewer.signaling.endTime = metrics.viewer.connectAsViewer.endTime;
             metrics.viewer.waitTime.startTime = metrics.viewer.signaling.endTime;
             
             console.log('[VIEWER] Connected to signaling service');
@@ -1008,19 +1028,18 @@ function getCalculatedEpoch(time, diffInMillis, minTime) {
 }
 
 function drawChart() {
-    let viewerOrder = ['signaling', 'describeChannel', 'describeMediaStorageConfiguration', 'channelEndpoint', 'iceServerConfig', 'setupMediaPlayer', 'waitTime',
+    let viewerOrder = ['signaling', 'describeChannel', 'describeMediaStorageConfiguration', 'channelEndpoint', 'iceServerConfig', 'connectAsViewer', 'setupMediaPlayer', 'waitTime',
                     'offAnswerTime', 'iceGathering', 'peerConnection', 'dataChannel', 'ttffAfterPc', 'video'];
     let masterOrder = ['signaling', 'describeChannel', 'channelEndpoint', 'iceServerConfig', 'getToken', 'createChannel', 'connectAsMaster', 'waitTime', 
                     'offAnswerTime', 'iceGathering', 'peerConnection', 'dataChannel', 'ttffAfterPc'];
     let container = document.getElementById('timeline-chart');
-    let containerHeight = 0;
     let rowHeight = 45;
+    let containerHeight = rowHeight;
     let chart = new google.visualization.Timeline(container);
     let dataTable = new google.visualization.DataTable();
     let minTime = metrics.master.signaling.startTime < metrics.viewer.signaling.startTime ? metrics.master.signaling.startTime : metrics.viewer.signaling.startTime;
     let diffInMillis = minTime - new Date(0).getTime(); // to start the x-axis timescale at 0
     let colors = [];
-    
 
     dataTable.addColumn({ type: 'string', id: 'Term' });
     dataTable.addColumn({ type: 'string', id: 'Bar label' });
@@ -1030,7 +1049,7 @@ function drawChart() {
 
     masterOrder.forEach((key) => {
         if (metrics.master[key] != null || metrics.master[key] != undefined) {
-        let startTime = getCalculatedEpoch(metrics.master[key].startTime, diffInMillis, minTime);
+            let startTime = getCalculatedEpoch(metrics.master[key].startTime, diffInMillis, minTime);
             let endTime = getCalculatedEpoch(metrics.master[key].endTime, diffInMillis, minTime);
             let duration = endTime - startTime;
 
@@ -1044,7 +1063,7 @@ function drawChart() {
 
     viewerOrder.forEach((key) => {
         if (metrics.viewer[key] != null || metrics.viewer[key] != undefined) {
-        let startTime = getCalculatedEpoch(metrics.viewer[key].startTime, diffInMillis, minTime);
+            let startTime = getCalculatedEpoch(metrics.viewer[key].startTime, diffInMillis, minTime);
             let endTime = getCalculatedEpoch(metrics.viewer[key].endTime, diffInMillis, minTime);
             let duration = endTime - startTime;
 

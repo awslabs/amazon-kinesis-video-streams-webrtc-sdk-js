@@ -222,9 +222,7 @@ $('#viewer-button').click(async () => {
 
     printFormValues(formValues);
 
-    startViewer(localView, remoteView, formValues, onStatsReport, event => {
-        remoteMessage.append(`${event.data}\n`);
-    });
+    startViewer(localView, remoteView, formValues, onStatsReport, remoteMessage);
 });
 
 $('#stop-viewer-button').click(onStop);
