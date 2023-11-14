@@ -498,11 +498,6 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
                     stats.forEach(report => {
                         if (report.type === 'candidate-pair') {
                             activeCandidatePair = report;
-                            // const localCandidate = stats.get(report.localCandidateId);
-                            // const remoteCandidate = stats.get(report.remoteCandidateId);
-                            // console.log('Local:', localCandidate.id, localCandidate.address, localCandidate.port, localCandidate.candidateType, localCandidate.protocol, 'Remote:', remoteCandidate.id, remoteCandidate.address, remoteCandidate.port, remoteCandidate.candidateType, remoteCandidate.protocol);
-                        } else if (report.type === 'transport') {
-                            // console.log('Selected:', report.selectedCandidatePairId);
                         }
                     });
                 });
@@ -983,8 +978,8 @@ function calcStats(stats, clientId) {
                     '<table><tr><th>DQP TEST COMPLETE - RESULTS:</th></tr>' +
                     '<tr><td>Test Run Time:</td><td>' + DQPtestLength + ' sec</td></tr>' +
                     '<tr><td>Client ID: </td><td>' + clientId + '</td></tr>' +
-                    '<tr><td>Time to first track: </td><td>' + connectionTime * 1000 + ' ms</td></tr>' +
-                    '<tr><td>Time to decoded frames: </td><td>' + calcDiffTimestamp2Sec(statStartTime, viewerButtonPressed) * 1000 + ' ms</td></tr>' +
+                    '<tr><td>Time to first track: </td><td>' + connectionTime + '</td></tr>' +
+                    '<tr><td>Time to decoded frames: </td><td>' + calcDiffTimestamp2Sec(statStartTime, viewerButtonPressed) + '</td></tr>' +
                     '<tr><td>Peer Connection: </td><td>' + connectionString + '</td></tr>' +
                     '<tr><td>Avg RTT: </td><td>' + testAvgRTT.toFixed(3) + ' sec</td></tr>' +
                     '<tr><td>Video Resolution: </td><td>' + videoWidth + ' x ' + videoHeight + '</td></tr>' +
