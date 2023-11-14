@@ -4,7 +4,8 @@
 const viewer = {};
 
 //globals for DQP metrics and test
-const DQPtestLength = 10; //test time in seconds
+const timelineChartTestLength = 20;
+const DQPtestLength = 120; //test time in seconds
 let viewerButtonPressed = Date.now();
 let initialDate = 0;
 let chart = {};
@@ -15,6 +16,7 @@ let vFDroppedPrev = 0;
 let aBytesPrev = 0;
 let connectionTime = 0;
 let statStartTime = 0;
+let timelineChartStartTime = 0;
 let statStartDate = 0;
 let rttSum = 0;
 let vjitterSum = 0;
@@ -940,6 +942,18 @@ function calcStats(stats, clientId) {
             const avgAbitrate = aBitrateSum / count;
             const avgAjitter = ajitterSum / count;
 
+            if (timelineChartStartTime === 0) {
+                timelineChartStartTime = currentTime;
+            }
+
+            let timelineChartRunTime = calcDiffTimestamp2Sec(currentTime, timelineChartStartTime);
+            timelineChartRunTime = Number.parseFloat(timelineChartRunTime).toFixed(0);
+
+            if (timelineChartRunTime > timelineChartTestLength) {
+                google.charts.load('current', {packages:['timeline']});
+                google.charts.setOnLoadCallback(drawChart);
+            }
+
             // Display test progress and results
             if (statRunTime <= DQPtestLength) {
                 // prettier-ignore
@@ -964,8 +978,6 @@ function calcStats(stats, clientId) {
                 timeArray.push(statRunTime);
                 chart.update();
             } else {
-                google.charts.load('current', {packages:['timeline']});
-                google.charts.setOnLoadCallback(drawChart);
                 // prettier-ignore
                 htmlString =
                     '<table><tr><th>DQP TEST COMPLETE - RESULTS:</th></tr>' +
