@@ -369,6 +369,15 @@ An enum with the following values:
 * `MASTER`
 * `VIEWER`
 
+## Analysis
+
+<details>
+  <summary>Metrics</summary>
+
+The DQP Metrics can be enabled in the sample application by checking a box before starting the viewer. This helps get a detailed breakdown of time-to-first-frame and all the processes and API calls on master and the viewer both. This is intended to be used with the KVS WebRTC C SDK running as the master and the JS SDK as the viewer. The WebRTC C SDK needs to be built with `cmake .. -DENABLE_SENDING_METRICS_TO_VIEWER=ON`. The master sends peer, ice-agent, signaling and data-channel metrics to the viewer which are plotted ~ 20 seconds after the viewer is started. Since the timeline plot is intended to understand the time-to-first-frame, the sample web page needs to be refreshed and the master needs to be restarted if a new / updated plot is needed.  
+
+</details>
+
 ## Compatibility
 
 The SDK is supported in the following browsers / environments:
