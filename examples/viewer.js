@@ -520,6 +520,13 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
                 
                 remoteMessage.append(`${message.data}\n\n`);
                 if (formValues.enableDQPmetrics) {
+
+                    // The datachannel first sends a message of the following format with t1 attached, 
+                    // to which the master responds back with the same message attaching t2. 
+                    // In response to this, the viewer sends the same message back with t3 and so on until t5. 
+                    // The viewer is responsible for attaching t1, t3, t5. The master is responsible for t2 and t4. 
+                    // (Master e2e time: t4 - t2, Viewer e2e time: t3 - t1)
+
                     try {
                         let dataChannelMessage = JSON.parse(message.data);
                         if (dataChannelMessage.hasOwnProperty('t1')) {
