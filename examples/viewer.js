@@ -524,9 +524,9 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
                         let dataChannelMessage = JSON.parse(message.data);
                         if (dataChannelMessage.hasOwnProperty('t1')) {
                             test = dataChannelMessage;
-                            if (dataChannelMessage.t3 == '') {
+                            if (dataChannelMessage.t3 === '') {
                                 dataChannelMessage.t3 = Date.now();
-                            } else if (dataChannelMessage.t5 == '') {
+                            } else if (dataChannelMessage.t5 === '') {
                                 dataChannelMessage.t5 = Date.now();
                                 metrics.master.dataChannel.startTime = Number(dataChannelMessage.t2);
                                 metrics.master.dataChannel.endTime = Number(dataChannelMessage.t4);
@@ -580,7 +580,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
                             metrics.master.iceGathering.endTime = dataChannelMessage.candidateGatheringEndTime;
                         } 
                     } catch (e) {
-                        console.log("Sending a non-json message");
+                        console.log("Receiving a non-json message");
                     }
                 }
             };
@@ -1035,16 +1035,16 @@ function getCalculatedEpoch(time, diffInMillis, minTime) {
 }
 
 function drawChart() {
-    let viewerOrder = ['signaling', 'describeChannel', 'describeMediaStorageConfiguration', 'channelEndpoint', 'iceServerConfig', 'connectAsViewer', 'setupMediaPlayer', 'waitTime',
+    const viewerOrder = ['signaling', 'describeChannel', 'describeMediaStorageConfiguration', 'channelEndpoint', 'iceServerConfig', 'connectAsViewer', 'setupMediaPlayer', 'waitTime',
                     'offAnswerTime', 'iceGathering', 'peerConnection', 'dataChannel', 'ttffAfterPc', 'video'];
-    let masterOrder = ['signaling', 'describeChannel', 'channelEndpoint', 'iceServerConfig', 'getToken', 'createChannel', 'connectAsMaster', 'waitTime', 
+    const masterOrder = ['signaling', 'describeChannel', 'channelEndpoint', 'iceServerConfig', 'getToken', 'createChannel', 'connectAsMaster', 'waitTime', 
                     'offAnswerTime', 'iceGathering', 'peerConnection', 'dataChannel', 'ttffAfterPc'];
-    let container = document.getElementById('timeline-chart');
-    let rowHeight = 45;
+    const container = document.getElementById('timeline-chart');
+    const rowHeight = 45;
+    const chart = new google.visualization.Timeline(container);
+    const dataTable = new google.visualization.DataTable();
     let containerHeight = rowHeight;
-    let chart = new google.visualization.Timeline(container);
-    let dataTable = new google.visualization.DataTable();
-    let minTime = metrics.master.signaling.startTime < metrics.viewer.signaling.startTime ? metrics.master.signaling.startTime : metrics.viewer.signaling.startTime;
+    let minTime = Math.min(metrics.master.signaling.startTime, metrics.viewer.signaling.startTime);
     let diffInMillis = minTime - new Date(0).getTime(); // to start the x-axis timescale at 0
     let colors = [];
 
@@ -1055,7 +1055,7 @@ function drawChart() {
     dataTable.addColumn({ type: 'date', id: 'End' });
 
     masterOrder.forEach((key) => {
-        if (metrics.master[key] != null || metrics.master[key] != undefined) {
+        if (metrics.master[key]) {
             let startTime = getCalculatedEpoch(metrics.master[key].startTime, diffInMillis, minTime);
             let endTime = getCalculatedEpoch(metrics.master[key].endTime, diffInMillis, minTime);
             let duration = endTime - startTime;
@@ -1069,7 +1069,7 @@ function drawChart() {
     });
 
     viewerOrder.forEach((key) => {
-        if (metrics.viewer[key] != null || metrics.viewer[key] != undefined) {
+        if (metrics.viewer[key]) {
             let startTime = getCalculatedEpoch(metrics.viewer[key].startTime, diffInMillis, minTime);
             let endTime = getCalculatedEpoch(metrics.viewer[key].endTime, diffInMillis, minTime);
             let duration = endTime - startTime;
