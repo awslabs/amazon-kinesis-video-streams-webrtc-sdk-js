@@ -171,7 +171,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
         const iceServers = [];
         // Don't add stun if user selects TURN only or NAT traversal disabled
         if (!formValues.natTraversalDisabled && !formValues.forceTURN) {
-            iceServers.push({urls: `stun:stun.kinesisvideo.${formValues.region}.amazonaws.com:443`});
+            iceServers.push({ urls: `stun:stun.kinesisvideo.${formValues.region}.amazonaws.com:443` });
         }
 
         // Don't add turn if user selects STUN only or NAT traversal disabled
@@ -193,10 +193,10 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
 
         const resolution = formValues.widescreen
             ? {
-                width: {ideal: 1280},
-                height: {ideal: 720},
-            }
-            : {width: {ideal: 640}, height: {ideal: 480}};
+                  width: { ideal: 1280 },
+                  height: { ideal: 720 },
+              }
+            : { width: { ideal: 640 }, height: { ideal: 480 } };
         const constraints = {
             video: formValues.sendVideo ? resolution : false,
             audio: formValues.sendAudio,
@@ -267,7 +267,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             });
 
             // Send any ICE candidates to the other peer
-            peerConnection.addEventListener('icecandidate', ({candidate}) => {
+            peerConnection.addEventListener('icecandidate', ({ candidate }) => {
                 if (candidate) {
                     printSignalingLog('[MASTER] Generated ICE candidate for client', remoteClientId);
                     console.debug('ICE candidate:', candidate);
@@ -394,7 +394,9 @@ function onPeerConnectionFailed(printLostConnectionLog = true) {
             console.error(
                 '[MASTER] Stopping the application after',
                 maxConnectionFailuresWithinTenMinutesForRetries,
-                `failed attempts to connect to the storage session within a 10-minute interval [${master.connectionFailures.map(date => new Date(date)).join(', ')}]. Exiting the application.`,
+                `failed attempts to connect to the storage session within a 10-minute interval [${master.connectionFailures
+                    .map(date => new Date(date))
+                    .join(', ')}]. Exiting the application.`,
             );
             onStop();
             return;
@@ -479,6 +481,24 @@ function sendMasterMessage(message) {
     });
     return sent;
 }
+
+$('#share-screen-button').on('click', async function() {
+    try {
+        const screenShare = await navigator.mediaDevices.getDisplayMedia({
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+        });
+        // master.localStream.getTracks().forEach(track => track.stop());
+
+        master.localStream = screenShare;
+        Object.keys(master.peerConnectionByClientId).forEach(clientId => {
+            master.peerConnectionByClientId[clientId].addTrack(master.localStream.getTracks()[0]);
+            // master.peerConnectionByClientId[clientId].getSenders()[1].replaceTrack(master.localStream.getTracks()[0]);
+        });
+    } catch (e) {
+        console.error('[MASTER] Error sharing screen', e);
+    }
+});
 
 function printSignalingLog(message, clientId) {
     console.log(`${message}${clientId ? ': ' + clientId : ' (no senderClientId provided)'}`);
