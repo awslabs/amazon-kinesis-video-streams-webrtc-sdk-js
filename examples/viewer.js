@@ -4,18 +4,17 @@
 const viewer = {};
 
 //globals for DQP metrics and test
-const DQPtestLength = 120; //test time in seconds
 const profilingTestLength = 20;
-let viewerButtonPressed = Date.now();
+const DQPtestLength = 10; //test time in seconds
+let viewerButtonPressed = 0;
 let initialDate = 0;
+let statStartTime = 0;
 let chart = {};
 let vTimeStampPrev = 0;
 let aTimeStampPrev = 0;
 let vBytesPrev = 0;
 let vFDroppedPrev = 0;
 let aBytesPrev = 0;
-let connectionTime = 0;
-let statStartTime = 0;
 let profilingStartTime = 0;
 let statStartDate = 0;
 let rttSum = 0;
@@ -39,6 +38,12 @@ let videoBitRateArray = [];
 let audioRateArray = [];
 let timeArray = [];
 let chartHeight = 0;
+
+let offerSentTime = 0;
+let signalingSetUpTime = 0;
+let timeToSetUpViewerMedia = 0;
+let timeToFirstFrameFromOffer = 0;
+let timeToFirstFrameFromViewerStart = 0;
 
 let metrics = {
     viewer: {
@@ -245,7 +250,7 @@ let dataChannelLatencyCalcMessage = {
     'lastMessageFromViewerTs': ''
 }
 
-async function startViewer(localView, remoteView, formValues, onStatsReport, remoteMessage) {
+async function startViewer(localView, remoteView, formValues, onStatsReport, onRemoteDataMessage) {
     try {
         console.log('[VIEWER] Client id is:', formValues.clientId);
         viewerButtonPressed = Date.now();
@@ -254,6 +259,14 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
             setTimeout(profilingCalculations, profilingTestLength * 1000);
         }
 
+        if(formValues.enableDQPmetrics) {
+            const videoElement = document.getElementById('videoPlayerFromMaster');
+            videoElement.onloadeddata = function() {
+                let firstFrameTime = Date.now();
+                timeToFirstFrameFromOffer = firstFrameTime - offerSentTime;
+                timeToFirstFrameFromViewerStart = firstFrameTime - viewerButtonPressed.getTime();
+            };
+        }
         viewer.localView = localView;
         viewer.remoteView = remoteView;
 
@@ -635,9 +648,11 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
             console.log('[VIEWER] Connected to signaling service');
 
             metrics.viewer.setupMediaPlayer.startTime = Date.now();
+            signalingSetUpTime = Date.now() - viewerButtonPressed.getTime();
             // Get a stream from the webcam, add it to the peer connection, and display it in the local view.
             // If no video/audio needed, no need to request for the sources.
             // Otherwise, the browser will throw an error saying that either video or audio has to be enabled.
+            let startViewerMediaSetUp = Date.now();
             if (formValues.sendVideo || formValues.sendAudio) {
                 try {
                     viewer.localStream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -648,6 +663,8 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
                     return;
                 }
             }
+            timeToSetUpViewerMedia = Date.now() - startViewerMediaSetUp;
+
 
             metrics.viewer.setupMediaPlayer.endTime = Date.now();
 
@@ -665,6 +682,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
             if (formValues.useTrickleICE) {
                 console.log('[VIEWER] Sending SDP offer');
                 console.debug('SDP offer:', viewer.peerConnection.localDescription);
+                offerSentTime = Date.now();
                 viewer.signalingClient.sendSdpOffer(viewer.peerConnection.localDescription);
             }
             console.log('[VIEWER] Generating ICE candidates');
@@ -738,9 +756,8 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
             remoteView.srcObject = viewer.remoteStream;
 
             //measure the time to first track
-            if (formValues.enableDQPmetrics && connectionTime === 0) {
-                initialDate = Date.now();
-                connectionTime = calcDiffTimestamp2Sec(initialDate, viewerButtonPressed);
+            if (formValues.enableDQPmetrics && initialDate === 0) {
+                initialDate = new Date();
             }
         });
 
@@ -861,7 +878,9 @@ function calcStats(stats, clientId) {
 
     let activeCandidatePair = null;
     let remoteCandidate = null;
-    let connectionString = '';
+    let localCandidate = null;
+    let remoteCandidateConnectionString = '';
+    let localCandidateConnectionString = '';
     let htmlString = '';
 
     //Loop through each report and find the active pair.
@@ -881,18 +900,32 @@ function calcStats(stats, clientId) {
     }
 
     // Get the remote candidate connected
-    if (activeCandidatePair && activeCandidatePair.remoteCandidateId) {
+    if (activeCandidatePair && activeCandidatePair.remoteCandidateId && activeCandidatePair.localCandidateId) {
         remoteCandidate = stats.get(activeCandidatePair.remoteCandidateId);
+        localCandidate = stats.get(activeCandidatePair.localCandidateId);
     }
 
     // Capture the IP and port of the remote candidate
     if (remoteCandidate) {
+        remoteCandidateConnectionString = '[' + remoteCandidate.candidateType + '] '
         if (remoteCandidate.address && remoteCandidate.port) {
-            connectionString = remoteCandidate.address + ' : ' + remoteCandidate.port + ' - ' + remoteCandidate.protocol;
+            remoteCandidateConnectionString = remoteCandidateConnectionString + remoteCandidate.address + ':' + remoteCandidate.port + ' - ' + remoteCandidate.protocol;
         } else if (remoteCandidate.ip && remoteCandidate.port) {
-            connectionString = remoteCandidate.ip + ' : ' + remoteCandidate.port + ' - ' + remoteCandidate.protocol;
+            remoteCandidateConnectionString = remoteCandidateConnectionString + remoteCandidate.ip + ':' + remoteCandidate.port + ' - ' + remoteCandidate.protocol;
         } else if (remoteCandidate.ipAddress && remoteCandidate.portNumber) {
-            connectionString = remoteCandidate.ipAddress + ' : ' + remoteCandidate.portNumber + ' - ' + remoteCandidate.protocol;
+            remoteCandidateConnectionString = remoteCandidateConnectionString + remoteCandidate.ipAddress + ':' + remoteCandidate.portNumber + ' - ' + remoteCandidate.protocol;
+        }
+    }
+
+    // Capture the IP and port of the remote candidate
+    if (localCandidate) {
+        localCandidateConnectionString = '[' + localCandidate.candidateType + '] '
+        if (localCandidate.address && localCandidate.port) {
+            localCandidateConnectionString = localCandidateConnectionString + localCandidate.address + ':' + localCandidate.port + ' - ' + localCandidate.protocol;
+        } else if (localCandidate.ip && localCandidate.port) {
+            localCandidateConnectionString = localCandidateConnectionString + localCandidate.ip + ':' + localCandidate.port + ' - ' + localCandidate.protocol;
+        } else if (localCandidate.ipAddress && localCandidate.portNumber) {
+            localCandidateConnectionString = localCandidateConnectionString + localCandidate.ipAddress + ':' + localCandidate.portNumber + ' - ' + localCandidate.protocol;
         }
     }
 
@@ -991,8 +1024,11 @@ function calcStats(stats, clientId) {
                 htmlString =
                     '<table><tr><strong>DQP TEST (2min) - <FONT COLOR=RED>RESULTS READY IN: ' + (DQPtestLength - statRunTime) + ' sec</FONT></strong></tr>' +
                     '<tr><td>Client ID: </td><td>' + clientId + '</td></tr>' +
-                    '<tr><td>Time to P2P connection: </td><td>' + connectionTime + ' sec</td></tr>' +
-                    '<tr><td>Time to decoded stream(sec): </td><td>' + calcDiffTimestamp2Sec(statStartTime, viewerButtonPressed) + ' sec</td></tr></table>';
+                    '<tr><td>Time from viewer button click to signaling setup: </td><td>' + signalingSetUpTime + ' ms</td></tr>' +
+                    '<tr><td>Time to set up viewer media view: </td><td>' + timeToSetUpViewerMedia + ' ms</td></tr>' +
+                    '<tr><td>Time from offer to first decoded frame: </td><td>' + timeToFirstFrameFromOffer + ' ms</td></tr>' +
+                    '<tr><td>Time from viewer button click to first decoded frame: </td><td>' + timeToFirstFrameFromViewerStart + ' ms</td></tr>' +
+                    '<tr><td>Time to decoded stream (as seen from inbound stats): </td><td>' + (statStartTime - viewerButtonPressed.getTime()) + ' ms</td></tr></table>';
                 testAvgRTT = avgRtt;
                 testAvgFPS = avgFramerate;
                 testAvgDropPer = avgDropPercent;
@@ -1014,9 +1050,13 @@ function calcStats(stats, clientId) {
                     '<table><tr><th>DQP TEST COMPLETE - RESULTS:</th></tr>' +
                     '<tr><td>Test Run Time:</td><td>' + DQPtestLength + ' sec</td></tr>' +
                     '<tr><td>Client ID: </td><td>' + clientId + '</td></tr>' +
-                    '<tr><td>Time to first track: </td><td>' + connectionTime + '</td></tr>' +
-                    '<tr><td>Time to decoded frames: </td><td>' + calcDiffTimestamp2Sec(statStartTime, viewerButtonPressed) + '</td></tr>' +
-                    '<tr><td>Peer Connection: </td><td>' + connectionString + '</td></tr>' +
+                    '<tr><td>Selected remote candidate: </td><td>' + remoteCandidateConnectionString + '</td></tr>' +
+                    '<tr><td>Selected local candidate: </td><td>' + localCandidateConnectionString + '</td></tr>' +
+                    '<tr><td>Time from viewer button click to signaling setup: </td><td>' + signalingSetUpTime + ' ms</td></tr>' +
+                    '<tr><td>Time to set up viewer media view: </td><td>' + timeToSetUpViewerMedia + ' ms</td></tr>' +
+                    '<tr><td>Time from offer to first decoded frame: </td><td>' + timeToFirstFrameFromOffer + ' ms</td></tr>' +
+                    '<tr><td>Time from viewer button click to first decoded frame: </td><td>' + timeToFirstFrameFromViewerStart + ' ms</td></tr>' +
+                    '<tr><td>Time to decoded stream (as seen from inbound stats): </td><td>' + (statStartTime - viewerButtonPressed.getTime()) + ' ms</td></tr>' +
                     '<tr><td>Avg RTT: </td><td>' + testAvgRTT.toFixed(3) + ' sec</td></tr>' +
                     '<tr><td>Video Resolution: </td><td>' + videoWidth + ' x ' + videoHeight + '</td></tr>' +
                     '<tr><td>Avg Video bitrate: </td><td>' + testAvgVbitrate.toFixed(1) + ' kbps</td></tr>' +
@@ -1036,7 +1076,8 @@ function calcStats(stats, clientId) {
                 '<tr><td>TRACK Start: </td><td>' + new Date(initialDate).toISOString() + '</td></tr>' +
                 '<tr><td>DECODED Start: </td><td>' + new Date(statStartDate).toISOString() + '</td></tr>' +
                 '<tr><td>Time Connected: </td><td>' + statRunTime + ' sec</td></tr>' +
-                '<tr><td>Peer Connection: </td><td>' + connectionString + '</td></tr>' +
+                '<tr><td>Selected remote candidate: </td><td>' + remoteCandidateConnectionString + '</td></tr>' +
+                '<tr><td>Selected local candidate: </td><td>' + localCandidateConnectionString + '</td></tr>' +
                 '<tr><td>RTT: </td><td>' + rttCurrent.toFixed(3) + ' sec</td></tr>' +
                 '<tr><td><u>VIDEO: </u></td></tr>' +
                 '<tr><td></td><td>Resolution: </td><td>' + videoWidth + ' x ' + videoHeight + '</td></tr>' +

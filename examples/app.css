@@ -6,6 +6,10 @@
     width: 100%;
 }
 
+#videoPlayerFromMaster {
+    border: 2px solid blue;
+}
+
 #logs-header {
     margin-top: 20px;
 }
