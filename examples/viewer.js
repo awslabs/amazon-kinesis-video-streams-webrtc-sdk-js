@@ -237,12 +237,12 @@ let metrics = {
 };
 
 let dataChannelLatencyCalcMessage = {
-    content: 'Opened data channel by viewer',
-    timestamp1: '',
-    timestamp2: '',
-    timestamp3: '',
-    timestamp4: '',
-    timestamp5: ''
+    'content': 'Opened data channel by viewer',
+    'firstMessageFromViewerTs': '',
+    'firstMessageFromMasterTs': '',
+    'secondMessageFromViewerTs': '',
+    'secondMessageFromMasterTs': '',
+    'lastMessageFromViewerTs': ''
 }
 
 async function startViewer(localView, remoteView, formValues, onStatsReport, remoteMessage) {
@@ -509,7 +509,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
             viewer.dataChannel = dataChannelObj;
             dataChannelObj.onopen = () => {
                 if (formValues.enableDQPmetrics) {
-                    dataChannelLatencyCalcMessage.timestamp1 = Date.now();
+                    dataChannelLatencyCalcMessage.firstMessageFromViewerTs = Date.now().toString();
                     dataChannelObj.send(JSON.stringify(dataChannelLatencyCalcMessage));
                 } else {
                     dataChannelObj.send("Opened data channel by viewer");
@@ -521,23 +521,23 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
                 remoteMessage.append(`${message.data}\n\n`);
                 if (formValues.enableDQPmetrics) {
 
-                    // The datachannel first sends a message of the following format with timestamp1 attached, 
-                    // to which the master responds back with the same message attaching timestamp2. 
-                    // In response to this, the viewer sends the same message back with timestamp3 and so on until timestamp5. 
-                    // The viewer is responsible for attaching timestamp1, timestamp3, timestamp5. The master is responsible for timestamp2 and timestamp4. 
-                    // (Master e2e time: timestamp4 - timestamp2, Viewer e2e time: timestamp3 - timestamp1)
+                    // The datachannel first sends a message of the following format with firstMessageFromViewerTs attached, 
+                    // to which the master responds back with the same message attaching firstMessageFromMasterTs. 
+                    // In response to this, the viewer sends the same message back with secondMessageFromViewerTs and so on until lastMessageFromViewerTs. 
+                    // The viewer is responsible for attaching firstMessageFromViewerTs, secondMessageFromViewerTs, lastMessageFromViewerTs. The master is responsible for firstMessageFromMasterTs and secondMessageFromMasterTs. 
+                    // (Master e2e time: secondMessageFromMasterTs - firstMessageFromMasterTs, Viewer e2e time: secondMessageFromViewerTs - firstMessageFromViewerTs)
                     try {
                         let dataChannelMessage = JSON.parse(message.data);
-                        if (dataChannelMessage.hasOwnProperty('timestamp1')) {
-                            if (dataChannelMessage.timestamp3 === '') {
-                                dataChannelMessage.timestamp3 = Date.now();
-                            } else if (dataChannelMessage.timestamp5 === '') {
-                                dataChannelMessage.timestamp5 = Date.now();
-                                metrics.master.dataChannel.startTime = Number(dataChannelMessage.timestamp2);
-                                metrics.master.dataChannel.endTime = Number(dataChannelMessage.timestamp4);
+                        if (dataChannelMessage.hasOwnProperty('firstMessageFromViewerTs')) {
+                            if (dataChannelMessage.secondMessageFromViewerTs === '') {
+                                dataChannelMessage.secondMessageFromViewerTs = Date.now().toString();
+                            } else if (dataChannelMessage.lastMessageFromViewerTs === '') {
+                                dataChannelMessage.lastMessageFromViewerTs = Date.now().toString();
+                                metrics.master.dataChannel.startTime = Number(dataChannelMessage.firstMessageFromMasterTs);
+                                metrics.master.dataChannel.endTime = Number(dataChannelMessage.secondMessageFromMasterTs);
         
-                                metrics.viewer.dataChannel.startTime = Number(dataChannelMessage.timestamp1);
-                                metrics.viewer.dataChannel.endTime = Number(dataChannelMessage.timestamp3);
+                                metrics.viewer.dataChannel.startTime = Number(dataChannelMessage.firstMessageFromViewerTs);
+                                metrics.viewer.dataChannel.endTime = Number(dataChannelMessage.secondMessageFromViewerTs);
                             }
                             dataChannelMessage.content = 'Message from JS viewer';
                             dataChannelObj.send(JSON.stringify(dataChannelMessage));
