@@ -74,14 +74,14 @@ let metrics = {
             name: 'signaling-viewer-describe-channel',
             startTime: '',
             endTime: '',
-            tooltip: 'Time taken for the API call to desribeSignalingChannel on the viewer',
+            tooltip: 'Time taken for the API call to describeSignalingChannel on the viewer',
             color: '#EF9A9A',
         },
         describeMediaStorageConfiguration: {
             name: 'signaling-viewer-describe-media-storage-config',
             startTime: '',
             endTime: '',
-            tooltip: 'Time taken for the API call to desribeSignalingChannel on the viewer',
+            tooltip: 'Time taken for the API call to describeSignalingChannel on the viewer',
             color: '#EF9A9A',
         }, 
         channelEndpoint: {
