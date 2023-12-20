@@ -178,6 +178,18 @@
                 </div>
             </div>
 
+            <h4>Amazon KVS WebRTC Datachannel Benchmarking</h4>
+            <div class="form-group">
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="enableDatachannelBenchmarking" value="enableDatachannelBenchmarking">
+                    <label for="enableDatachannelBenchmarking" class="form-check-label">Enable KVS WebRTC Datachannel Benchmarking <small>(Master + Viewer)</small></label>
+                    <span data-delay="{ &quot;hide&quot;: 1500 }" data-position="auto" tabindex="0" class="text-info ml-1" data-toggle="tooltip" data-html="true" title="
+                    <p>Enables the test and metrics for the Amazon KVS WebRTC by sending the master-side metrics to the viewer via datachannel and display a timeline chart.</p>
+                    <a href=&quot;https://github.com/awslabs/amazon-kinesis-video-streams-webrtc-sdk-js/tree/develop?tab=readme-ov-file#metrics&quot;>Additional information</a>
+                "><sup>&#9432;</sup></span>
+                </div>
+            </div>
+
             <details><summary class="h4">Advanced</summary>
                 <p><small>Filter settings for which ICE candidates and sent to and received from the peer.</small></p>
                 <div class="container">
@@ -339,26 +351,34 @@
             </div>
         </div>
 
-        <div id="dqpmetrics" class="d-none">
-            <h3 id="dqpmetrics-header">DQP Test Metrics (from Master)</h3>
-            <div class="row">
-                <div class="col">
-                    <div class="card bg-light mb-3">
-                        <div id="dqp-test"></div>
+        <div>
+            <div id="dqpmetrics" class="d-none">
+                <h3 id="dqpmetrics-header">DQP Test Metrics (from Master)</h3>
+                <div class="row">
+                    <div class="col">
+                        <div class="card bg-light mb-3">
+                            <div id="dqp-test"></div>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="card bg-light mb-3">
+                            <canvas id="metricsChart" style="width:100%"; height="400px"></canvas>
+                        </div>
                     </div>
                 </div>
-                <div class="col">
-                    <div class="card bg-light mb-3">
-                        <canvas id="metricsChart" style="width:100%"; height="400px"></canvas>
-                    </div>
+                <h3 id="live-stats-header">Live Stats (from Master)</h3>
+                <div class="card bg-light mb-3">
+                    <div id="webrtc-live-stats"></div>
                 </div>
             </div>
-            <div class="row">
-                <div id="timeline-chart" style="width:100%;height:0px"></div>
-            </div>
-            <h3 id="live-stats-header">Live Stats (from Master)</h3>
-            <div class="card bg-light mb-3">
-                <div id="webrtc-live-stats"></div>
+            <div id="datachannel-benchmarking" class="d-none" style="padding-top:20px;">
+                <div class="row">
+                    <div class="col">
+                        <h4 id="datachannel-benchmarking-header"></h4>
+                        <div id="timeline-chart" style="width:100%;height:0px">
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 

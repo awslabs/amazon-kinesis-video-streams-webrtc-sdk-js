@@ -89,6 +89,7 @@ function getFormValues() {
         secretAccessKey: $('#secretAccessKey').val(),
         sessionToken: $('#sessionToken').val() || null,
         enableDQPmetrics: $('#enableDQPmetrics').is(':checked'),
+        enableDatachannelBenchmarking: $('#enableDatachannelBenchmarking').is(':checked'),
         sendHostCandidates: $('#send-host').is(':checked'),
         acceptHostCandidates: $('#accept-host').is(':checked'),
         sendRelayCandidates: $('#send-relay').is(':checked'),
@@ -135,6 +136,10 @@ function onStop() {
     if (getFormValues().enableDQPmetrics) {
         $('#dqpmetrics').addClass('d-none');
         $('#webrtc-live-stats').addClass('d-none');
+    }
+
+    if (getFormValues().enableDatachannelBenchmarking) {
+        $('#datachannel-benchmarking').addClass('d-none');
     }
 
     $('#form').removeClass('d-none');
@@ -214,6 +219,10 @@ $('#viewer-button').click(async () => {
     if (formValues.enableDQPmetrics) {
         $('#dqpmetrics').removeClass('d-none');
         $('#webrtc-live-stats').removeClass('d-none');
+    }
+
+    if (formValues.enableDatachannelBenchmarking) {
+        $('#datachannel-benchmarking').removeClass('d-none');
     }
 
     $(remoteMessage).empty();
@@ -426,6 +435,7 @@ const fields = [
     { field: 'forceTURN', type: 'radio', name: 'natTraversal' },
     { field: 'natTraversalDisabled', type: 'radio', name: 'natTraversal' },
     { field: 'enableDQPmetrics', type: 'checkbox' },
+    { field: 'enableDatachannelBenchmarking', type: 'checkbox' },
     { field: 'send-host', type: 'checkbox' },
     { field: 'accept-host', type: 'checkbox' },
     { field: 'send-relay', type: 'checkbox' },
