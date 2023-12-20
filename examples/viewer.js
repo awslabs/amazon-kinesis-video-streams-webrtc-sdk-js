@@ -5,7 +5,7 @@ const viewer = {};
 
 //globals for DQP metrics and test
 const DQPtestLength = 120; //test time in seconds
-const DatachannelBenchmarkingTestLength = 20;
+const profilingTestLength = 20;
 let viewerButtonPressed = Date.now();
 let initialDate = 0;
 let chart = {};
@@ -16,7 +16,7 @@ let vFDroppedPrev = 0;
 let aBytesPrev = 0;
 let connectionTime = 0;
 let statStartTime = 0;
-let benchmarkingStartTime = 0;
+let profilingStartTime = 0;
 let statStartDate = 0;
 let rttSum = 0;
 let vjitterSum = 0;
@@ -250,14 +250,14 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
         console.log('[VIEWER] Client id is:', formValues.clientId);
         viewerButtonPressed = Date.now();
 
-        if (formValues.enableDatachannelBenchmarking) {
-            setTimeout(dataChannelBenchmarkingCalculations, DatachannelBenchmarkingTestLength * 1000);
+        if (formValues.enableProfileTimeline) {
+            setTimeout(profilingCalculations, profilingTestLength * 1000);
         }
 
         viewer.localView = localView;
         viewer.remoteView = remoteView;
 
-        if (formValues.enableDatachannelBenchmarking) {
+        if (formValues.enableProfileTimeline) {
             viewer.remoteView.addEventListener('loadeddata', () => {
                 metrics.viewer.ttff.endTime = Date.now();
 
@@ -273,7 +273,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
             });
         }
 
-        if (formValues.enableDatachannelBenchmarking) {
+        if (formValues.enableProfileTimeline) {
             metrics.viewer.ttff.startTime = viewerButtonPressed;
             metrics.master.waitTime.endTime = viewerButtonPressed;
 
@@ -483,7 +483,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
         };
         viewer.peerConnection = new RTCPeerConnection(configuration);
 
-        if (formValues.enableDatachannelBenchmarking) {
+        if (formValues.enableProfileTimeline) {
             viewer.peerConnection.onicegatheringstatechange = (event) => {
                 if (viewer.peerConnection.iceGatheringState === 'gathering') {
                     metrics.viewer.iceGathering.startTime = Date.now();
@@ -519,7 +519,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
             const dataChannelObj = viewer.peerConnection.createDataChannel('kvsDataChannel');
             viewer.dataChannel = dataChannelObj;
             dataChannelObj.onopen = () => {
-                if (formValues.enableDatachannelBenchmarking) {
+                if (formValues.enableProfileTimeline) {
                     dataChannelLatencyCalcMessage.firstMessageFromViewerTs = Date.now().toString();
                     dataChannelObj.send(JSON.stringify(dataChannelLatencyCalcMessage));
                 } else {
@@ -530,7 +530,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
             let onRemoteDataMessageViewer = (message) => {
                 
                 remoteMessage.append(`${message.data}\n\n`);
-                if (formValues.enableDatachannelBenchmarking) {
+                if (formValues.enableProfileTimeline) {
 
                     // The datachannel first sends a message of the following format with firstMessageFromViewerTs attached, 
                     // to which the master responds back with the same message attaching firstMessageFromMasterTs. 
@@ -614,14 +614,14 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
             viewer.peerConnectionStatsInterval = setInterval(() => viewer.peerConnection.getStats().then(stats => calcStats(stats, formValues.clientId)), 1000);
         }
 
-        if (formValues.enableDatachannelBenchmarking) {
-            benchmarkingStartTime = new Date().getTime();
-            let headerElement = document.getElementById("datachannel-benchmarking-header");
-            viewer.dataChannelBenchmarkingInterval = setInterval(() => {
-                let statRunTime = calcDiffTimestamp2Sec(new Date().getTime(), benchmarkingStartTime);
+        if (formValues.enableProfileTimeline) {
+            profilingStartTime = new Date().getTime();
+            let headerElement = document.getElementById("timeline-profiling-header");
+            viewer.profilingInterval = setInterval(() => {
+                let statRunTime = calcDiffTimestamp2Sec(new Date().getTime(), profilingStartTime);
                 statRunTime = Number.parseFloat(statRunTime).toFixed(0);
-                if (statRunTime <= DatachannelBenchmarkingTestLength) {
-                    headerElement.textContent = "Datachannel benchmarking timeline chart available in " + (DatachannelBenchmarkingTestLength - statRunTime);
+                if (statRunTime <= profilingTestLength) {
+                    headerElement.textContent = "Profiling timeline chart available in " + (profilingTestLength - statRunTime);
                 }
             }, 1000);
         }
@@ -797,13 +797,13 @@ function stopViewer() {
             statStartTime = 0;
         }
 
-        if (getFormValues().enableDatachannelBenchmarking) {
+        if (getFormValues().enableProfileTimeline) {
             let container = document.getElementById('timeline-chart');
-            let headerElement = document.getElementById("datachannel-benchmarking-header");
+            let headerElement = document.getElementById("timeline-profiling-header");
             container.innerHTML = "";
             container.style.height = "0px";
-            if (viewer.dataChannelBenchmarkingInterval) {
-                clearInterval(viewer.dataChannelBenchmarkingInterval);
+            if (viewer.profilingInterval) {
+                clearInterval(viewer.profilingInterval);
             }
             headerElement.textContent = "";
         }
@@ -829,12 +829,12 @@ function sendViewerMessage(message) {
     }
 }
 
-function dataChannelBenchmarkingCalculations() {
-    let headerElement = document.getElementById("datachannel-benchmarking-header");
-    headerElement.textContent = "Datachannel benchmarking timeline chart";
+function profilingCalculations() {
+    let headerElement = document.getElementById("timeline-profiling-header");
+    headerElement.textContent = "Profiling Timeline chart";
     google.charts.load('current', {packages:['timeline']});
     google.charts.setOnLoadCallback(drawChart);
-    clearInterval(viewer.dataChannelBenchmarkingInterval);
+    clearInterval(viewer.profilingInterval);
 }
 
 // Functions below support DQP test and metrics
