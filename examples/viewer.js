@@ -39,7 +39,6 @@ let audioRateArray = [];
 let timeArray = [];
 let chartHeight = 0;
 
-let offerSentTime = 0;
 let signalingSetUpTime = 0;
 let timeToSetUpViewerMedia = 0;
 let timeToFirstFrameFromOffer = 0;
@@ -259,21 +258,12 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
             setTimeout(profilingCalculations, profilingTestLength * 1000);
         }
 
-        if(formValues.enableDQPmetrics) {
-            const videoElement = document.getElementById('videoPlayerFromMaster');
-            videoElement.onloadeddata = function() {
-                let firstFrameTime = Date.now();
-                timeToFirstFrameFromOffer = firstFrameTime - offerSentTime;
-                timeToFirstFrameFromViewerStart = firstFrameTime - viewerButtonPressed.getTime();
-            };
-        }
         viewer.localView = localView;
         viewer.remoteView = remoteView;
 
-        if (formValues.enableProfileTimeline) {
-            viewer.remoteView.addEventListener('loadeddata', () => {
-                metrics.viewer.ttff.endTime = Date.now();
-
+        viewer.remoteView.addEventListener('loadeddata', () => {
+            metrics.viewer.ttff.endTime = Date.now();
+            if (formValues.enableProfileTimeline) {
                 metrics.viewer.ttffAfterPc.endTime = metrics.viewer.ttff.endTime;
                 metrics.master.ttffAfterPc.endTime = metrics.viewer.ttff.endTime;
 
@@ -281,15 +271,18 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
                 // if the ice-gathering on the master side is not complete by the time the metrics are sent, the endTime > startTime
                 // in order to plot it, we can show it as an ongoing process
                 if (metrics.master.iceGathering.startTime > metrics.master.iceGathering.endTime) {
-                    metrics.master.iceGathering.endTime = metrics.viewer.ttff.endTime; 
+                    metrics.master.iceGathering.endTime = metrics.viewer.ttff.endTime;
                 }
-            });
-        }
+            }
+            if(formValues.enableDQPmetrics) {
+                timeToFirstFrameFromOffer = metrics.viewer.ttff.endTime - metrics.viewer.offAnswerTime.startTime;
+                timeToFirstFrameFromViewerStart = metrics.viewer.ttff.endTime - viewerButtonPressed.getTime();
+            }
+        });
 
         if (formValues.enableProfileTimeline) {
-            metrics.viewer.ttff.startTime = viewerButtonPressed;
-            metrics.master.waitTime.endTime = viewerButtonPressed;
-
+            metrics.viewer.ttff.startTime = viewerButtonPressed.getTime();
+            metrics.master.waitTime.endTime = viewerButtonPressed.getTime();
         }
 
         if (formValues.enableDQPmetrics) {
@@ -648,11 +641,10 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
             console.log('[VIEWER] Connected to signaling service');
 
             metrics.viewer.setupMediaPlayer.startTime = Date.now();
-            signalingSetUpTime = Date.now() - viewerButtonPressed.getTime();
+            signalingSetUpTime = metrics.viewer.setupMediaPlayer.startTime - viewerButtonPressed.getTime();
             // Get a stream from the webcam, add it to the peer connection, and display it in the local view.
             // If no video/audio needed, no need to request for the sources.
             // Otherwise, the browser will throw an error saying that either video or audio has to be enabled.
-            let startViewerMediaSetUp = Date.now();
             if (formValues.sendVideo || formValues.sendAudio) {
                 try {
                     viewer.localStream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -663,12 +655,10 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
                     return;
                 }
             }
-            timeToSetUpViewerMedia = Date.now() - startViewerMediaSetUp;
-
 
             metrics.viewer.setupMediaPlayer.endTime = Date.now();
+            timeToSetUpViewerMedia = metrics.viewer.setupMediaPlayer.endTime - metrics.viewer.setupMediaPlayer.startTime;
 
-            metrics.viewer.offAnswerTime.startTime = Date.now();
             // Create an SDP offer to send to the master
             console.log('[VIEWER] Creating SDP offer');
             await viewer.peerConnection.setLocalDescription(
@@ -682,7 +672,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
             if (formValues.useTrickleICE) {
                 console.log('[VIEWER] Sending SDP offer');
                 console.debug('SDP offer:', viewer.peerConnection.localDescription);
-                offerSentTime = Date.now();
+                metrics.viewer.offAnswerTime.startTime = Date.now();
                 viewer.signalingClient.sendSdpOffer(viewer.peerConnection.localDescription);
             }
             console.log('[VIEWER] Generating ICE candidates');
@@ -917,7 +907,7 @@ function calcStats(stats, clientId) {
         }
     }
 
-    // Capture the IP and port of the remote candidate
+    // Capture the IP and port of the local candidate
     if (localCandidate) {
         localCandidateConnectionString = '[' + localCandidate.candidateType + '] '
         if (localCandidate.address && localCandidate.port) {
