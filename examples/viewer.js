@@ -250,10 +250,10 @@ let dataChannelLatencyCalcMessage = {
     'lastMessageFromViewerTs': ''
 }
 
-async function startViewer(localView, remoteView, formValues, onStatsReport, onRemoteDataMessage) {
+async function startViewer(localView, remoteView, formValues, onStatsReport, remoteMessage) {
     try {
         console.log('[VIEWER] Client id is:', formValues.clientId);
-        viewerButtonPressed = Date.now();
+        viewerButtonPressed = new Date();
 
         if (formValues.enableProfileTimeline) {
             setTimeout(profilingCalculations, profilingTestLength * 1000);
@@ -1027,8 +1027,7 @@ function calcStats(stats, clientId) {
                     '<tr><td>Time from viewer button click to signaling setup: </td><td>' + signalingSetUpTime + ' ms</td></tr>' +
                     '<tr><td>Time to set up viewer media view: </td><td>' + timeToSetUpViewerMedia + ' ms</td></tr>' +
                     '<tr><td>Time from offer to first decoded frame: </td><td>' + timeToFirstFrameFromOffer + ' ms</td></tr>' +
-                    '<tr><td>Time from viewer button click to first decoded frame: </td><td>' + timeToFirstFrameFromViewerStart + ' ms</td></tr>' +
-                    '<tr><td>Time to decoded stream (as seen from inbound stats): </td><td>' + (statStartTime - viewerButtonPressed.getTime()) + ' ms</td></tr></table>';
+                    '<tr><td>Time from viewer button click to first decoded frame: </td><td>' + timeToFirstFrameFromViewerStart + ' ms</td></tr>';
                 testAvgRTT = avgRtt;
                 testAvgFPS = avgFramerate;
                 testAvgDropPer = avgDropPercent;
@@ -1053,10 +1052,9 @@ function calcStats(stats, clientId) {
                     '<tr><td>Selected remote candidate: </td><td>' + remoteCandidateConnectionString + '</td></tr>' +
                     '<tr><td>Selected local candidate: </td><td>' + localCandidateConnectionString + '</td></tr>' +
                     '<tr><td>Time from viewer button click to signaling setup: </td><td>' + signalingSetUpTime + ' ms</td></tr>' +
-                    '<tr><td>Time to set up viewer media view: </td><td>' + timeToSetUpViewerMedia + ' ms</td></tr>' +
+                    '<tr><td>Time set up viewer media view: </td><td>' + timeToSetUpViewerMedia + ' ms</td></tr>' +
                     '<tr><td>Time from offer to first decoded frame: </td><td>' + timeToFirstFrameFromOffer + ' ms</td></tr>' +
-                    '<tr><td>Time from viewer button click to first decoded frame: </td><td>' + timeToFirstFrameFromViewerStart + ' ms</td></tr>' +
-                    '<tr><td>Time to decoded stream (as seen from inbound stats): </td><td>' + (statStartTime - viewerButtonPressed.getTime()) + ' ms</td></tr>' +
+                    '<tr><td>Time from viewer button click to first decoded frame (without viewer media screen set up): </td><td>' + (timeToFirstFrameFromViewerStart - timeToSetUpViewerMedia) + ' ms</td></tr>' +
                     '<tr><td>Avg RTT: </td><td>' + testAvgRTT.toFixed(3) + ' sec</td></tr>' +
                     '<tr><td>Video Resolution: </td><td>' + videoWidth + ' x ' + videoHeight + '</td></tr>' +
                     '<tr><td>Avg Video bitrate: </td><td>' + testAvgVbitrate.toFixed(1) + ' kbps</td></tr>' +
