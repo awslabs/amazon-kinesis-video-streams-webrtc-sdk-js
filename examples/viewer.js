@@ -661,12 +661,30 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
 
             // Create an SDP offer to send to the master
             console.log('[VIEWER] Creating SDP offer');
-            await viewer.peerConnection.setLocalDescription(
-                await viewer.peerConnection.createOffer({
-                    offerToReceiveAudio: true,
-                    offerToReceiveVideo: true,
-                }),
+            const offer = await viewer.peerConnection.createOffer({
+                offerToReceiveAudio: true,
+                offerToReceiveVideo: true
+            });
+            console.log("Original SDP: " + offer.sdp)
+            let modifiedSDP = offer.sdp;
+            modifiedSDP = modifiedSDP.replace(
+                /(m=audio\s+[\d\s]+UDP\/TLS\/RTP\/SAVPF\s+)(\d+(\s+\d+)*)/i,
+                `$1$2 114`
             );
+            const audioSectionEndIndex = modifiedSDP.indexOf('m=', modifiedSDP.indexOf('m=audio') + 1);
+            const audioSection = modifiedSDP.slice(0, audioSectionEndIndex);
+            const restOfSDP = modifiedSDP.slice(audioSectionEndIndex);
+            modifiedSDP = audioSection
+                + 'a=rtpmap:114 MPEG4-GENERIC/44000/2\r\n'
+                + 'a=fmtp:114 profile-level-id=1; mode=AAC-hbr; config=F8F0212; sizelength=13; indexlength=3; indexdeltalength=3;\r\n'
+                + restOfSDP;
+            console.log("New SDP:" + modifiedSDP);
+            // Set the modified SDP as the local description
+            await viewer.peerConnection.setLocalDescription(new RTCSessionDescription({
+                type: 'offer',
+                sdp: modifiedSDP
+            }));
+
 
             // When trickle ICE is enabled, send the offer now and then send ICE candidates as they are generated. Otherwise wait on the ICE candidates.
             if (formValues.useTrickleICE) {
