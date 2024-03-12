@@ -4,17 +4,18 @@
 const viewer = {};
 
 //globals for DQP metrics and test
-const DQPtestLength = 120; //test time in seconds
-let viewerButtonPressed = new Date();
+const profilingTestLength = 20;
+const DQPtestLength = 10; //test time in seconds
+let viewerButtonPressed = 0;
 let initialDate = 0;
+let statStartTime = 0;
 let chart = {};
 let vTimeStampPrev = 0;
 let aTimeStampPrev = 0;
 let vBytesPrev = 0;
 let vFDroppedPrev = 0;
 let aBytesPrev = 0;
-let connectionTime = 0;
-let statStartTime = 0;
+let profilingStartTime = 0;
 let statStartDate = 0;
 let rttSum = 0;
 let vjitterSum = 0;
@@ -36,16 +37,255 @@ let droppedFramePerArray = [];
 let videoBitRateArray = [];
 let audioRateArray = [];
 let timeArray = [];
+let chartHeight = 0;
 
-async function startViewer(localView, remoteView, formValues, onStatsReport, onRemoteDataMessage) {
+let signalingSetUpTime = 0;
+let timeToSetUpViewerMedia = 0;
+let timeToFirstFrameFromOffer = 0;
+let timeToFirstFrameFromViewerStart = 0;
+
+let metrics = {
+    viewer: {
+        waitTime: {
+            name: 'viewer-waiting-for-master',
+            startTime: '',
+            endTime: '',
+            tooltip: 'Time duration the viewer was waiting for the master to start (time to start the SDK after the viewer signaling channel was connected)',
+            color: 'yellow',
+        }, 
+        signaling: {
+            name: 'signaling-viewer',
+            startTime: '',
+            endTime: '',
+            tooltip: 'Time taken to establish a signaling connection on the viewer-side',
+            color: '#F44336',
+        },
+        setupMediaPlayer: {
+            name: 'setup-media-player-viewer',
+            startTime: '',
+            endTime: '',
+            tooltip: 'Time taken to setup a media player on the viewer-side by seeking permissions for mic / camera (if needed), fetch tracks from the same and add them to the peer connection',
+            color: '#9575CD',
+        }, 
+        offAnswerTime: {
+            name: 'sdp-exchange-viewer',
+            startTime: '',
+            endTime: '',
+            tooltip: 'Time taken to send an offer and receive a response',
+            color: '#FF6F00',
+        },
+        describeChannel: {
+            name: 'signaling-viewer-describe-channel',
+            startTime: '',
+            endTime: '',
+            tooltip: 'Time taken for the API call to describeSignalingChannel on the viewer',
+            color: '#EF9A9A',
+        },
+        describeMediaStorageConfiguration: {
+            name: 'signaling-viewer-describe-media-storage-config',
+            startTime: '',
+            endTime: '',
+            tooltip: 'Time taken for the API call to describeSignalingChannel on the viewer',
+            color: '#EF9A9A',
+        }, 
+        channelEndpoint: {
+            name: 'signaling-viewer-get-signaling-channel-endpoint',
+            startTime: '',
+            endTime: '',
+            tooltip: 'Time taken for the API call to getSignalingChannelEndpoint on the viewer',
+            color: '#EF9A9A',
+        },
+        iceServerConfig: {
+            name: 'signaling-viewer-get-ice-server-config',
+            startTime: '',
+            endTime: '',
+            tooltip: 'Time taken for the API call to getIceServerConfig on the viewer',
+            color: '#EF9A9A',
+        },
+        connectAsViewer: {
+            name: 'signaling-connect-as-viewer',
+            startTime: '',
+            endTime: '',
+            tooltip: 'Time taken to open the websocket via connectAsViewer',
+            color: '#EF9A9A',
+        },
+        iceGathering: {
+            name: 'ice-gathering-viewer',
+            startTime: '',
+            endTime: '',
+            tooltip: 'Time taken to gather all ice candidates on the viewer',
+            color: '#90CAF9',
+        }, 
+        peerConnection: {
+            name: 'pc-establishment-viewer',
+            startTime: '',
+            endTime: '',
+            tooltip: 'Time taken to establish the peer connection on the viewer',
+            color: '#2196F3',
+        },
+        ttffAfterPc: {
+            name: 'ttff-after-pc-viewer',
+            startTime: '',
+            endTime: '',
+            tooltip: 'Time to first frame after the viewer\'s peer connection has been established',
+            color: '#2196F3', 
+        }, 
+        ttff: {
+            name: 'ttff',
+            startTime: '',
+            endTime: '',
+            tooltip: 'Time to first frame since the viewer button was clicked',
+            color: '#4CAF50',
+        },
+        dataChannel: {
+            name: 'datachannel-viewer',
+            startTime: '',
+            endTime: '',
+            tooltip: 'Time taken to send a message to the master and receive a response back',
+            color: '#4CAF50',
+        }
+    },
+    master: {
+        waitTime: {
+            name: 'master-waiting-for-viewer',
+            startTime: '',
+            endTime: '',
+            tooltip: 'Time duration the master was waiting for the viewer to start (time to click the button after the master signaling channel was connected)',
+            color: 'yellow',
+        }, 
+        signaling: {
+            name: 'signaling-master',
+            startTime: '',
+            endTime: '',
+            tooltip: 'Time taken to establish a signaling connection on the master-side',
+            color: '#F44336',
+        },
+        offAnswerTime: {
+            name: 'sdp-exchange-master',
+            startTime: '',
+            endTime: '',
+            tooltip: 'Time taken to respond to an offer from the viewer with an answer',
+            color: '#FF6F00',
+        },
+        describeChannel: {
+            name: 'signaling-master-describe-channel',
+            startTime: '',
+            endTime: '',
+            tooltip: 'Time taken for the API call to desribeSignalingChannel on the master',
+            color: '#EF9A9A',
+        },
+        channelEndpoint: {
+            name: 'signaling-master-get-signaling-channel-endpoint',
+            startTime: '',
+            endTime: '',
+            tooltip: 'Time taken for the API call to getSignalingChannelEndpoint on the master',
+            color: '#EF9A9A',
+        },
+        iceServerConfig: {
+            name: 'signaling-master-get-ice-server-config',
+            startTime: '',
+            endTime: '',
+            tooltip: 'Time taken for the API call to getIceServerConfig on the master',
+            color: '#EF9A9A',
+        },
+        getToken: {
+            name: 'signaling-master-get-token',
+            startTime: '',
+            endTime: '',
+            tooltip: 'Time taken for the getToken call on the master',
+            color: '#EF9A9A',
+        },
+        createChannel: {
+            name: 'signaling-master-create-channel',
+            startTime: '',
+            endTime: '',
+            tooltip: 'Time taken createChannel API call on the master',
+            color: '#EF9A9A',
+        },
+        connectAsMaster: {
+            name: 'signaling-master-connect',
+            startTime: '',
+            endTime: '',
+            tooltip: 'Time taken for the signaling connect on the master',
+            color: '#EF9A9A',
+        },
+        iceGathering: {
+            name: 'ice-gathering-master',
+            startTime: '',
+            endTime: '',
+            tooltip: 'Time taken to gather all ice candidates on the master',
+            color: '#90CAF9',
+        }, 
+        peerConnection: {
+            name: 'pc-establishment-master',
+            startTime: '',
+            endTime: '',
+            tooltip: 'Time taken to establish the peer connection on the master',
+            color: '#2196F3',
+        },
+        dataChannel: {
+            name: 'datachannel-master',
+            startTime: '',
+            endTime: '',
+            tooltip: 'Time taken to send a message to the viewer and receive a response back',
+            color: '#4CAF50',
+        },
+        ttffAfterPc: {
+            name: 'ttff-after-pc-master',
+            startTime: '',
+            endTime: '',
+            tooltip: 'Time to first frame after the master\'s peer connection has been established',
+            color: '#2196F3',
+        }
+    }
+};
+
+let dataChannelLatencyCalcMessage = {
+    'content': 'Opened data channel by viewer',
+    'firstMessageFromViewerTs': '',
+    'firstMessageFromMasterTs': '',
+    'secondMessageFromViewerTs': '',
+    'secondMessageFromMasterTs': '',
+    'lastMessageFromViewerTs': ''
+}
+
+async function startViewer(localView, remoteView, formValues, onStatsReport, remoteMessage) {
     try {
         console.log('[VIEWER] Client id is:', formValues.clientId);
+        viewerButtonPressed = new Date();
+
+        if (formValues.enableProfileTimeline) {
+            setTimeout(profilingCalculations, profilingTestLength * 1000);
+        }
 
         viewer.localView = localView;
         viewer.remoteView = remoteView;
 
+        viewer.remoteView.addEventListener('loadeddata', () => {
+            metrics.viewer.ttff.endTime = Date.now();
+            if (formValues.enableProfileTimeline) {
+                metrics.viewer.ttffAfterPc.endTime = metrics.viewer.ttff.endTime;
+                metrics.master.ttffAfterPc.endTime = metrics.viewer.ttff.endTime;
+
+
+                // if the ice-gathering on the master side is not complete by the time the metrics are sent, the endTime > startTime
+                // in order to plot it, we can show it as an ongoing process
+                if (metrics.master.iceGathering.startTime > metrics.master.iceGathering.endTime) {
+                    metrics.master.iceGathering.endTime = metrics.viewer.ttff.endTime;
+                }
+            }
+            if(formValues.enableDQPmetrics) {
+                timeToFirstFrameFromOffer = metrics.viewer.ttff.endTime - metrics.viewer.offAnswerTime.startTime;
+                timeToFirstFrameFromViewerStart = metrics.viewer.ttff.endTime - viewerButtonPressed.getTime();
+            }
+        });
+
+        if (formValues.enableProfileTimeline) {
+            metrics.viewer.ttff.startTime = viewerButtonPressed.getTime();
+            metrics.master.waitTime.endTime = viewerButtonPressed.getTime();
+        }
+
         if (formValues.enableDQPmetrics) {
-            viewerButtonPressed = new Date();
             console.log('[WebRTC] DQP METRICS TEST STARTED: ', viewerButtonPressed);
 
             let htmlString = '<table><tr><strong><FONT COLOR=RED>Connecting to MASTER...</FONT></strong></tr></table>';
@@ -107,6 +347,8 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
             });
         }
 
+        metrics.viewer.signaling.startTime = Date.now();
+        
         // Create KVS client
         const kinesisVideoClient = new AWS.KinesisVideo({
             region: formValues.region,
@@ -118,21 +360,31 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
         });
 
         // Get signaling channel ARN
+        metrics.viewer.describeChannel.startTime = Date.now();
+
         const describeSignalingChannelResponse = await kinesisVideoClient
             .describeSignalingChannel({
                 ChannelName: formValues.channelName,
             })
             .promise();
+
+        metrics.viewer.describeChannel.endTime = Date.now();
+
         const channelARN = describeSignalingChannelResponse.ChannelInfo.ChannelARN;
         console.log('[VIEWER] Channel ARN:', channelARN);
 
         if (formValues.ingestMedia) {
             console.log('[VIEWER] Determining whether this signaling channel is in media ingestion mode.');
+            
+            metrics.viewer.describeMediaStorageConfiguration.startTime = Date.now();
+
             const mediaStorageConfiguration = await kinesisVideoClient
                 .describeMediaStorageConfiguration({
                     ChannelName: formValues.channelName,
                 })
                 .promise();
+
+            metrics.viewer.describeMediaStorageConfiguration.endTime = Date.now();
 
             if (mediaStorageConfiguration.MediaStorageConfiguration.Status !== 'DISABLED') {
                 console.error(
@@ -145,6 +397,9 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
         }
 
         // Get signaling channel endpoints
+
+        metrics.viewer.channelEndpoint.startTime = Date.now();
+
         const getSignalingChannelEndpointResponse = await kinesisVideoClient
             .getSignalingChannelEndpoint({
                 ChannelARN: channelARN,
@@ -154,6 +409,9 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
                 },
             })
             .promise();
+        
+        metrics.viewer.channelEndpoint.endTime = Date.now();
+
         const endpointsByProtocol = getSignalingChannelEndpointResponse.ResourceEndpointList.reduce((endpoints, endpoint) => {
             endpoints[endpoint.Protocol] = endpoint.ResourceEndpoint;
             return endpoints;
@@ -170,11 +428,17 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
         });
 
         // Get ICE server configuration
+
+        metrics.viewer.iceServerConfig.startTime = Date.now();
+
         const getIceServerConfigResponse = await kinesisVideoSignalingChannelsClient
             .getIceServerConfig({
                 ChannelARN: channelARN,
             })
             .promise();
+        
+        metrics.viewer.iceServerConfig.endTime = Date.now();
+        
         const iceServers = [];
         // Don't add stun if user selects TURN only or NAT traversal disabled
         if (!formValues.natTraversalDisabled && !formValues.forceTURN) {
@@ -193,6 +457,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
         }
         console.log('[VIEWER] ICE servers:', iceServers);
 
+        metrics.viewer.connectAsViewer.startTime = Date.now();
         // Create Signaling Client
         viewer.signalingClient = new KVSWebRTC.SignalingClient({
             channelARN,
@@ -223,18 +488,129 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
             iceTransportPolicy: formValues.forceTURN ? 'relay' : 'all',
         };
         viewer.peerConnection = new RTCPeerConnection(configuration);
+
+        if (formValues.enableProfileTimeline) {
+            viewer.peerConnection.onicegatheringstatechange = (event) => {
+                if (viewer.peerConnection.iceGatheringState === 'gathering') {
+                    metrics.viewer.iceGathering.startTime = Date.now();
+                } else if (viewer.peerConnection.iceGatheringState === 'complete') {
+                    metrics.viewer.iceGathering.endTime = Date.now();
+                }
+            };
+    
+            viewer.peerConnection.onconnectionstatechange = (event) => {
+                if (viewer.peerConnection.connectionState === 'new' || viewer.peerConnection.connectionState === 'connecting') {
+                    metrics.viewer.peerConnection.startTime = Date.now();
+                }
+                if (viewer.peerConnection.connectionState === 'connected') {
+                    metrics.viewer.peerConnection.endTime = Date.now();
+                    metrics.viewer.ttffAfterPc.startTime = metrics.viewer.peerConnection.endTime;
+                }
+            };
+    
+            viewer.peerConnection.oniceconnectionstatechange = (event) => {
+                if (viewer.peerConnection.iceConnectionState === 'connected') {
+                    viewer.peerConnection.getStats().then(stats => {
+                        stats.forEach(report => {
+                            if (report.type === 'candidate-pair') {
+                                activeCandidatePair = report;
+                            }
+                        });
+                    });
+                }
+            };    
+        }
+        
         if (formValues.openDataChannel) {
             const dataChannelObj = viewer.peerConnection.createDataChannel('kvsDataChannel');
             viewer.dataChannel = dataChannelObj;
-            dataChannelObj.onopen = event => {
-                dataChannelObj.send("Opened data channel by viewer");
+            dataChannelObj.onopen = () => {
+                if (formValues.enableProfileTimeline) {
+                    dataChannelLatencyCalcMessage.firstMessageFromViewerTs = Date.now().toString();
+                    dataChannelObj.send(JSON.stringify(dataChannelLatencyCalcMessage));
+                } else {
+                    dataChannelObj.send("Opened data channel by viewer");
+                }
             };
             // Callback for the data channel created by viewer
-            dataChannelObj.onmessage = onRemoteDataMessage;
+            let onRemoteDataMessageViewer = (message) => {
+                
+                remoteMessage.append(`${message.data}\n\n`);
+                if (formValues.enableProfileTimeline) {
+
+                    // The datachannel first sends a message of the following format with firstMessageFromViewerTs attached, 
+                    // to which the master responds back with the same message attaching firstMessageFromMasterTs. 
+                    // In response to this, the viewer sends the same message back with secondMessageFromViewerTs and so on until lastMessageFromViewerTs. 
+                    // The viewer is responsible for attaching firstMessageFromViewerTs, secondMessageFromViewerTs, lastMessageFromViewerTs. The master is responsible for firstMessageFromMasterTs and secondMessageFromMasterTs. 
+                    // (Master e2e time: secondMessageFromMasterTs - firstMessageFromMasterTs, Viewer e2e time: secondMessageFromViewerTs - firstMessageFromViewerTs)
+                    try {
+                        let dataChannelMessage = JSON.parse(message.data);
+                        if (dataChannelMessage.hasOwnProperty('firstMessageFromViewerTs')) {
+                            if (dataChannelMessage.secondMessageFromViewerTs === '') {
+                                dataChannelMessage.secondMessageFromViewerTs = Date.now().toString();
+                            } else if (dataChannelMessage.lastMessageFromViewerTs === '') {
+                                dataChannelMessage.lastMessageFromViewerTs = Date.now().toString();
+                                metrics.master.dataChannel.startTime = Number(dataChannelMessage.firstMessageFromMasterTs);
+                                metrics.master.dataChannel.endTime = Number(dataChannelMessage.secondMessageFromMasterTs);
+        
+                                metrics.viewer.dataChannel.startTime = Number(dataChannelMessage.firstMessageFromViewerTs);
+                                metrics.viewer.dataChannel.endTime = Number(dataChannelMessage.secondMessageFromViewerTs);
+                            }
+                            dataChannelMessage.content = 'Message from JS viewer';
+                            dataChannelObj.send(JSON.stringify(dataChannelMessage));
+                        
+                        } else if (dataChannelMessage.hasOwnProperty('peerConnectionStartTime')) {
+                            metrics.master.peerConnection.startTime = dataChannelMessage.peerConnectionStartTime;
+                            metrics.master.peerConnection.endTime = dataChannelMessage.peerConnectionEndTime;
+        
+                            metrics.master.ttffAfterPc.startTime = metrics.master.peerConnection.endTime;
+                        
+                        } else if (dataChannelMessage.hasOwnProperty('signalingStartTime')) {
+                            metrics.master.signaling.startTime = dataChannelMessage.signalingStartTime;
+                            metrics.master.signaling.endTime = dataChannelMessage.signalingEndTime;
+        
+                            if (metrics.viewer.ttff.startTime < metrics.master.signaling.startTime) {
+                                metrics.viewer.ttff.startTime = metrics.master.signaling.startTime;
+                            }
+        
+                            metrics.master.waitTime.startTime = metrics.master.signaling.endTime;
+                            metrics.viewer.waitTime.endTime = metrics.master.signaling.startTime;
+        
+                            metrics.master.offAnswerTime.startTime = dataChannelMessage.offerReceiptTime;
+                            metrics.master.offAnswerTime.endTime = dataChannelMessage.sendAnswerTime;
+        
+                            metrics.master.describeChannel.startTime = dataChannelMessage.describeChannelStartTime;
+                            metrics.master.describeChannel.endTime = dataChannelMessage.describeChannelEndTime;
+        
+                            metrics.master.channelEndpoint.startTime = dataChannelMessage.getSignalingChannelEndpointStartTime;
+                            metrics.master.channelEndpoint.endTime = dataChannelMessage.getSignalingChannelEndpointEndTime;
+        
+                            metrics.master.iceServerConfig.startTime = dataChannelMessage.getIceServerConfigStartTime;
+                            metrics.master.iceServerConfig.endTime = dataChannelMessage.getIceServerConfigEndTime;
+        
+                            metrics.master.getToken.startTime = dataChannelMessage.getTokenStartTime;
+                            metrics.master.getToken.endTime = dataChannelMessage.getTokenEndTime;
+        
+                            metrics.master.createChannel.startTime = dataChannelMessage.createChannelStartTime;
+                            metrics.master.createChannel.endTime = dataChannelMessage.createChannelEndTime;
+        
+                            metrics.master.connectAsMaster.startTime = dataChannelMessage.connectStartTime;
+                            metrics.master.connectAsMaster.endTime = dataChannelMessage.connectEndTime;
+                            
+                        } else if (dataChannelMessage.hasOwnProperty('candidateGatheringStartTime')) {
+                            metrics.master.iceGathering.startTime = dataChannelMessage.candidateGatheringStartTime;
+                            metrics.master.iceGathering.endTime = dataChannelMessage.candidateGatheringEndTime;
+                        } 
+                    } catch (e) {
+                        console.log("Receiving a non-json message");
+                    }
+                }
+            };
+            dataChannelObj.onmessage = onRemoteDataMessageViewer;
 
             viewer.peerConnection.ondatachannel = event => {
                 // Callback for the data channel created by master
-                event.channel.onmessage = onRemoteDataMessage;
+                event.channel.onmessage = onRemoteDataMessageViewer;
             };
         }
 
@@ -244,9 +620,28 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
             viewer.peerConnectionStatsInterval = setInterval(() => viewer.peerConnection.getStats().then(stats => calcStats(stats, formValues.clientId)), 1000);
         }
 
+        if (formValues.enableProfileTimeline) {
+            profilingStartTime = new Date().getTime();
+            let headerElement = document.getElementById("timeline-profiling-header");
+            viewer.profilingInterval = setInterval(() => {
+                let statRunTime = calcDiffTimestamp2Sec(new Date().getTime(), profilingStartTime);
+                statRunTime = Number.parseFloat(statRunTime).toFixed(0);
+                if (statRunTime <= profilingTestLength) {
+                    headerElement.textContent = "Profiling timeline chart available in " + (profilingTestLength - statRunTime);
+                }
+            }, 1000);
+        }
+
         viewer.signalingClient.on('open', async () => {
+
+            metrics.viewer.connectAsViewer.endTime = Date.now();
+            metrics.viewer.signaling.endTime = metrics.viewer.connectAsViewer.endTime;
+            metrics.viewer.waitTime.startTime = metrics.viewer.signaling.endTime;
+            
             console.log('[VIEWER] Connected to signaling service');
 
+            metrics.viewer.setupMediaPlayer.startTime = Date.now();
+            signalingSetUpTime = metrics.viewer.setupMediaPlayer.startTime - viewerButtonPressed.getTime();
             // Get a stream from the webcam, add it to the peer connection, and display it in the local view.
             // If no video/audio needed, no need to request for the sources.
             // Otherwise, the browser will throw an error saying that either video or audio has to be enabled.
@@ -261,6 +656,9 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
                 }
             }
 
+            metrics.viewer.setupMediaPlayer.endTime = Date.now();
+            timeToSetUpViewerMedia = metrics.viewer.setupMediaPlayer.endTime - metrics.viewer.setupMediaPlayer.startTime;
+
             // Create an SDP offer to send to the master
             console.log('[VIEWER] Creating SDP offer');
             await viewer.peerConnection.setLocalDescription(
@@ -274,6 +672,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
             if (formValues.useTrickleICE) {
                 console.log('[VIEWER] Sending SDP offer');
                 console.debug('SDP offer:', viewer.peerConnection.localDescription);
+                metrics.viewer.offAnswerTime.startTime = Date.now();
                 viewer.signalingClient.sendSdpOffer(viewer.peerConnection.localDescription);
             }
             console.log('[VIEWER] Generating ICE candidates');
@@ -283,6 +682,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
             // Add the SDP answer to the peer connection
             console.log('[VIEWER] Received SDP answer');
             console.debug('SDP answer:', answer);
+            metrics.viewer.offAnswerTime.endTime = Date.now();
             await viewer.peerConnection.setRemoteDescription(answer);
         });
 
@@ -346,9 +746,8 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, onR
             remoteView.srcObject = viewer.remoteStream;
 
             //measure the time to first track
-            if (formValues.enableDQPmetrics && connectionTime === 0) {
+            if (formValues.enableDQPmetrics && initialDate === 0) {
                 initialDate = new Date();
-                connectionTime = calcDiffTimestamp2Sec(initialDate.getTime(), viewerButtonPressed.getTime());
             }
         });
 
@@ -404,6 +803,18 @@ function stopViewer() {
             chart.destroy();
             statStartTime = 0;
         }
+
+        if (getFormValues().enableProfileTimeline) {
+            let container = document.getElementById('timeline-chart');
+            let headerElement = document.getElementById("timeline-profiling-header");
+            container.innerHTML = "";
+            container.style.height = "0px";
+            if (viewer.profilingInterval) {
+                clearInterval(viewer.profilingInterval);
+            }
+            headerElement.textContent = "";
+        }
+
     } catch (e) {
         console.error('[VIEWER] Encountered error stopping', e);
     }
@@ -423,6 +834,14 @@ function sendViewerMessage(message) {
         console.warn('[VIEWER] No DataChannel exists!');
         return false;
     }
+}
+
+function profilingCalculations() {
+    let headerElement = document.getElementById("timeline-profiling-header");
+    headerElement.textContent = "Profiling Timeline chart";
+    google.charts.load('current', {packages:['timeline']});
+    google.charts.setOnLoadCallback(drawChart);
+    clearInterval(viewer.profilingInterval);
 }
 
 // Functions below support DQP test and metrics
@@ -449,7 +868,9 @@ function calcStats(stats, clientId) {
 
     let activeCandidatePair = null;
     let remoteCandidate = null;
-    let connectionString = '';
+    let localCandidate = null;
+    let remoteCandidateConnectionString = '';
+    let localCandidateConnectionString = '';
     let htmlString = '';
 
     //Loop through each report and find the active pair.
@@ -469,18 +890,32 @@ function calcStats(stats, clientId) {
     }
 
     // Get the remote candidate connected
-    if (activeCandidatePair && activeCandidatePair.remoteCandidateId) {
+    if (activeCandidatePair && activeCandidatePair.remoteCandidateId && activeCandidatePair.localCandidateId) {
         remoteCandidate = stats.get(activeCandidatePair.remoteCandidateId);
+        localCandidate = stats.get(activeCandidatePair.localCandidateId);
     }
 
     // Capture the IP and port of the remote candidate
     if (remoteCandidate) {
+        remoteCandidateConnectionString = '[' + remoteCandidate.candidateType + '] '
         if (remoteCandidate.address && remoteCandidate.port) {
-            connectionString = remoteCandidate.address + ' : ' + remoteCandidate.port + ' - ' + remoteCandidate.protocol;
+            remoteCandidateConnectionString = remoteCandidateConnectionString + remoteCandidate.address + ':' + remoteCandidate.port + ' - ' + remoteCandidate.protocol;
         } else if (remoteCandidate.ip && remoteCandidate.port) {
-            connectionString = remoteCandidate.ip + ' : ' + remoteCandidate.port + ' - ' + remoteCandidate.protocol;
+            remoteCandidateConnectionString = remoteCandidateConnectionString + remoteCandidate.ip + ':' + remoteCandidate.port + ' - ' + remoteCandidate.protocol;
         } else if (remoteCandidate.ipAddress && remoteCandidate.portNumber) {
-            connectionString = remoteCandidate.ipAddress + ' : ' + remoteCandidate.portNumber + ' - ' + remoteCandidate.protocol;
+            remoteCandidateConnectionString = remoteCandidateConnectionString + remoteCandidate.ipAddress + ':' + remoteCandidate.portNumber + ' - ' + remoteCandidate.protocol;
+        }
+    }
+
+    // Capture the IP and port of the local candidate
+    if (localCandidate) {
+        localCandidateConnectionString = '[' + localCandidate.candidateType + '] '
+        if (localCandidate.address && localCandidate.port) {
+            localCandidateConnectionString = localCandidateConnectionString + localCandidate.address + ':' + localCandidate.port + ' - ' + localCandidate.protocol;
+        } else if (localCandidate.ip && localCandidate.port) {
+            localCandidateConnectionString = localCandidateConnectionString + localCandidate.ip + ':' + localCandidate.port + ' - ' + localCandidate.protocol;
+        } else if (localCandidate.ipAddress && localCandidate.portNumber) {
+            localCandidateConnectionString = localCandidateConnectionString + localCandidate.ipAddress + ':' + localCandidate.portNumber + ' - ' + localCandidate.protocol;
         }
     }
 
@@ -528,8 +963,8 @@ function calcStats(stats, clientId) {
 
         // Only start test and display metrics once something has been decoded
         if (videoDecodedFrameCount > 0 || audioSamplesReceived > 0) {
-            const currentDate = new Date();
-            const currentTime = currentDate.getTime();
+            const currentDate = Date.now();
+            const currentTime = new Date(currentDate).getTime();
 
             //timestamp start of decoded frames
             if (statStartTime === 0) {
@@ -579,8 +1014,10 @@ function calcStats(stats, clientId) {
                 htmlString =
                     '<table><tr><strong>DQP TEST (2min) - <FONT COLOR=RED>RESULTS READY IN: ' + (DQPtestLength - statRunTime) + ' sec</FONT></strong></tr>' +
                     '<tr><td>Client ID: </td><td>' + clientId + '</td></tr>' +
-                    '<tr><td>Time to P2P connection: </td><td>' + connectionTime + ' sec</td></tr>' +
-                    '<tr><td>Time to decoded stream(sec): </td><td>' + calcDiffTimestamp2Sec(statStartTime, viewerButtonPressed.getTime()) + ' sec</td></tr></table>';
+                    '<tr><td>Time from viewer button click to signaling setup: </td><td>' + signalingSetUpTime + ' ms</td></tr>' +
+                    '<tr><td>Time to set up viewer media view: </td><td>' + timeToSetUpViewerMedia + ' ms</td></tr>' +
+                    '<tr><td>Time from offer to first decoded frame: </td><td>' + timeToFirstFrameFromOffer + ' ms</td></tr>' +
+                    '<tr><td>Time from viewer button click to first decoded frame: </td><td>' + timeToFirstFrameFromViewerStart + ' ms</td></tr>';
                 testAvgRTT = avgRtt;
                 testAvgFPS = avgFramerate;
                 testAvgDropPer = avgDropPercent;
@@ -602,9 +1039,12 @@ function calcStats(stats, clientId) {
                     '<table><tr><th>DQP TEST COMPLETE - RESULTS:</th></tr>' +
                     '<tr><td>Test Run Time:</td><td>' + DQPtestLength + ' sec</td></tr>' +
                     '<tr><td>Client ID: </td><td>' + clientId + '</td></tr>' +
-                    '<tr><td>Time to P2P connection: </td><td>' + connectionTime + ' sec</td></tr>' +
-                    '<tr><td>Time to decoded frames: </td><td>' + calcDiffTimestamp2Sec(statStartTime, viewerButtonPressed.getTime()) + ' sec</td></tr>' +
-                    '<tr><td>Peer Connection: </td><td>' + connectionString + '</td></tr>' +
+                    '<tr><td>Selected remote candidate: </td><td>' + remoteCandidateConnectionString + '</td></tr>' +
+                    '<tr><td>Selected local candidate: </td><td>' + localCandidateConnectionString + '</td></tr>' +
+                    '<tr><td>Time from viewer button click to signaling setup: </td><td>' + signalingSetUpTime + ' ms</td></tr>' +
+                    '<tr><td>Time set up viewer media view: </td><td>' + timeToSetUpViewerMedia + ' ms</td></tr>' +
+                    '<tr><td>Time from offer to first decoded frame: </td><td>' + timeToFirstFrameFromOffer + ' ms</td></tr>' +
+                    '<tr><td>Time from viewer button click to first decoded frame (without viewer media screen set up): </td><td>' + (timeToFirstFrameFromViewerStart - timeToSetUpViewerMedia) + ' ms</td></tr>' +
                     '<tr><td>Avg RTT: </td><td>' + testAvgRTT.toFixed(3) + ' sec</td></tr>' +
                     '<tr><td>Video Resolution: </td><td>' + videoWidth + ' x ' + videoHeight + '</td></tr>' +
                     '<tr><td>Avg Video bitrate: </td><td>' + testAvgVbitrate.toFixed(1) + ' kbps</td></tr>' +
@@ -620,11 +1060,12 @@ function calcStats(stats, clientId) {
             // Display ongoing live stats.
             // prettier-ignore
             htmlString =
-                '<table><tr><td>VIEWER Start: </td><td>' + viewerButtonPressed.toISOString() + '</td></tr>' +
-                '<tr><td>TRACK Start: </td><td>' + initialDate.toISOString() + '</td></tr>' +
-                '<tr><td>DECODED Start: </td><td>' + statStartDate.toISOString() + '</td></tr>' +
+                '<table><tr><td>VIEWER Start: </td><td>' + new Date(viewerButtonPressed).toISOString() + '</td></tr>' +
+                '<tr><td>TRACK Start: </td><td>' + new Date(initialDate).toISOString() + '</td></tr>' +
+                '<tr><td>DECODED Start: </td><td>' + new Date(statStartDate).toISOString() + '</td></tr>' +
                 '<tr><td>Time Connected: </td><td>' + statRunTime + ' sec</td></tr>' +
-                '<tr><td>Peer Connection: </td><td>' + connectionString + '</td></tr>' +
+                '<tr><td>Selected remote candidate: </td><td>' + remoteCandidateConnectionString + '</td></tr>' +
+                '<tr><td>Selected local candidate: </td><td>' + localCandidateConnectionString + '</td></tr>' +
                 '<tr><td>RTT: </td><td>' + rttCurrent.toFixed(3) + ' sec</td></tr>' +
                 '<tr><td><u>VIDEO: </u></td></tr>' +
                 '<tr><td></td><td>Resolution: </td><td>' + videoWidth + ' x ' + videoHeight + '</td></tr>' +
@@ -645,4 +1086,77 @@ function calcStats(stats, clientId) {
             console.log('[DQP TEST] Waiting for stream stats...');
         }
     }
+}
+
+function getTooltipContent(explanation, duration) {
+    return `<div style="padding:10px;">
+        <p><strong>Duration: </strong>${duration} ms</p>
+        <p><strong>Explanation: </strong>${explanation}</p>
+    </div>`
+}
+
+function getCalculatedEpoch(time, diffInMillis, minTime) {
+    return time > minTime ? new Date(time - diffInMillis) : new Date(minTime - diffInMillis);
+}
+
+function drawChart() {
+    const viewerOrder = ['signaling', 'describeChannel', 'describeMediaStorageConfiguration', 'channelEndpoint', 'iceServerConfig', 'connectAsViewer', 'setupMediaPlayer', 'waitTime',
+                    'offAnswerTime', 'iceGathering', 'peerConnection', 'dataChannel', 'ttffAfterPc', 'ttff'];
+    const masterOrder = ['signaling', 'describeChannel', 'channelEndpoint', 'iceServerConfig', 'getToken', 'createChannel', 'connectAsMaster', 'waitTime', 
+                    'offAnswerTime', 'iceGathering', 'peerConnection', 'dataChannel', 'ttffAfterPc'];
+    const container = document.getElementById('timeline-chart');
+    const rowHeight = 45;
+    const chart = new google.visualization.Timeline(container);
+    const dataTable = new google.visualization.DataTable();
+    let containerHeight = rowHeight;
+    let minTime = Math.min(metrics.master.signaling.startTime, metrics.viewer.signaling.startTime);
+    let diffInMillis = minTime - new Date(0).getTime(); // to start the x-axis timescale at 0
+    let colors = [];
+
+    dataTable.addColumn({ type: 'string', id: 'Term' });
+    dataTable.addColumn({ type: 'string', id: 'Bar label' });
+    dataTable.addColumn({ type: 'string', role: 'tooltip' });
+    dataTable.addColumn({ type: 'date', id: 'Start' });
+    dataTable.addColumn({ type: 'date', id: 'End' });
+
+    masterOrder.forEach((key) => {
+        if (metrics.master[key]) {
+            let startTime = getCalculatedEpoch(metrics.master[key].startTime, diffInMillis, minTime);
+            let endTime = getCalculatedEpoch(metrics.master[key].endTime, diffInMillis, minTime);
+            let duration = endTime - startTime;
+
+            if (duration > 0) {
+                dataTable.addRow([ metrics.master[key].name, null, getTooltipContent(metrics.master[key].tooltip, duration), startTime, endTime ]);
+                colors.push(metrics.master[key].color);
+                containerHeight += rowHeight;
+            } 
+        }
+    });
+
+    viewerOrder.forEach((key) => {
+        if (metrics.viewer[key]) {
+            let startTime = getCalculatedEpoch(metrics.viewer[key].startTime, diffInMillis, minTime);
+            let endTime = getCalculatedEpoch(metrics.viewer[key].endTime, diffInMillis, minTime);
+            let duration = endTime - startTime;
+
+            if (duration > 0) {
+                dataTable.addRow([ metrics.viewer[key].name, null, getTooltipContent(metrics.viewer[key].tooltip, duration), startTime, endTime ]);
+                colors.push(metrics.viewer[key].color);
+                containerHeight += rowHeight;
+            } 
+        }
+    });
+
+    options = {
+        tooltip: {
+            isHtml: true
+        },
+        timeline: {
+            groupByRowLabel: true,
+            minValue: new Date(0)
+        },
+        colors: colors
+    }
+    container.style.height = containerHeight.toString() + 'px';
+    chart.draw(dataTable, options);
 }
