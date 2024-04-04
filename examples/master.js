@@ -45,6 +45,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
     master.sdpOfferReceived = false;
     master.connectionFailures = [];
     master.currentJoinStorageSessionRetries = 0;
+    let signalingConnectionStarted;
 
     try {
         master.localView = localView;
@@ -135,6 +136,26 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
                 secretAccessKey: formValues.secretAccessKey,
                 sessionToken: formValues.sessionToken,
             },
+            requestSigner: {
+                getSignedURL: async function(signalingEndpoint, queryParams, date) {
+                    const signer = new KVSWebRTC.SigV4RequestSigner(formValues.region, {
+                        accessKeyId: formValues.accessKeyId,
+                        secretAccessKey: formValues.secretAccessKey,
+                        sessionToken: formValues.sessionToken,
+                    });
+
+                    const signingStart = new Date();
+                    console.debug('[MASTER] Signing the url started at', signingStart);
+                    const retVal = await signer.getSignedURL(signalingEndpoint, queryParams, date);
+                    const signingEnd = new Date();
+                    console.debug('[MASTER] Signing the url ended at', signingEnd);
+                    console.log('[MASTER] Time to sign the request:', signingEnd.getTime() - signingStart.getTime(), 'ms');
+                    signalingConnectionStarted = new Date();
+                    console.log('[MASTER] Connecting to KVS Signaling...');
+                    console.debug('[MASTER] ConnectAsMaster started at', signalingConnectionStarted);
+                    return retVal;
+                },
+            },
             systemClockOffset: kinesisVideoClient.config.systemClockOffset,
         });
 
@@ -218,7 +239,10 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
         master.signalingClient.on('open', async () => {
             const masterRunId = ++master.runId;
             master.websocketOpened = true;
+            const signalingConnected = new Date();
+            console.debug('[MASTER] ConnectAsMaster completed at', signalingConnected);
             console.log('[MASTER] Connected to signaling service');
+            console.log('[MASTER] Time to connect to signaling:', signalingConnected.getTime() - signalingConnectionStarted.getTime(), 'ms');
             if (formValues.showJSSButton) {
                 $('#join-storage-session-button').removeClass('d-none');
             }
