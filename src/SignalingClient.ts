@@ -148,7 +148,7 @@ export class SignalingClient extends EventEmitter {
         }
 
         /* istanbul ignore next */
-        this.websocket = new (global.WebSocket || require('ws'))(signedURL);
+        this.websocket = new (WebSocket || require('ws'))(signedURL);
 
         this.websocket.addEventListener('open', this.onOpen);
         this.websocket.addEventListener('message', this.onMessage);
