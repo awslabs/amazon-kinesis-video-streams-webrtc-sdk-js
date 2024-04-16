@@ -345,7 +345,7 @@ function stopMaster() {
         console.log('[MASTER] Stopping master connection');
         master.sdpOfferReceived = true;
 
-        master.channelHelper.getSignalingClient().close();
+        master.channelHelper.getSignalingClient()?.close();
 
         Object.keys(master.peerConnectionByClientId).forEach(clientId => {
             master.peerConnectionByClientId[clientId].close();
