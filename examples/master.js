@@ -1,7 +1,7 @@
 /**
  * This file demonstrates the process of starting WebRTC streaming using a KVS Signaling Channel.
  */
-const master = {
+const masterDefaults = {
     kinesisVideoClient: null,
     signalingClient: null,
     storageClient: null,
@@ -18,6 +18,8 @@ const master = {
     connectionFailures: [], // Dates of when PeerConnection transitions to failed state.
     currentJoinStorageSessionRetries: 0,
 };
+
+let master = {};
 
 /**
  * Base milliseconds between retries of joinStorageSession API calls.
@@ -42,168 +44,63 @@ const maxConnectionFailuresWithinTenMinutesForRetries = 5;
 const millisecondsInTenMinutes = 600_000;
 
 async function startMaster(localView, remoteView, formValues, onStatsReport, onRemoteDataMessage) {
-    master.sdpOfferReceived = false;
-    master.connectionFailures = [];
-    master.currentJoinStorageSessionRetries = 0;
-    let signalingConnectionStarted;
+    master = { ...masterDefaults };
 
     try {
         master.localView = localView;
         master.remoteView = remoteView;
 
-        // Create KVS client
-        const kinesisVideoClient = new AWS.KinesisVideo({
-            region: formValues.region,
-            accessKeyId: formValues.accessKeyId,
-            secretAccessKey: formValues.secretAccessKey,
-            sessionToken: formValues.sessionToken,
-            endpoint: formValues.endpoint,
-            correctClockSkew: true,
-        });
-        master.kinesisVideoClient = kinesisVideoClient;
-
-        // Get signaling channel ARN
-        const describeSignalingChannelResponse = await kinesisVideoClient
-            .describeSignalingChannel({
-                ChannelName: formValues.channelName,
-            })
-            .promise();
-        const channelARN = describeSignalingChannelResponse.ChannelInfo.ChannelARN;
-        console.log('[MASTER] Channel ARN:', channelARN);
-
-        master.channelARN = channelARN;
-
-        const protocols = ['WSS', 'HTTPS'];
-
+        // Determine the media ingestion mode
+        let ingestionMode = ChannelHelper.IngestionMode.OFF;
         if (formValues.ingestMedia) {
-            console.log('[MASTER] Determining whether to use media ingestion feature.');
-            const describeMediaStorageConfigurationResponse = await kinesisVideoClient
-                .describeMediaStorageConfiguration({
-                    ChannelARN: master.channelARN,
-                })
-                .promise();
-            const mediaStorageConfiguration = describeMediaStorageConfigurationResponse.MediaStorageConfiguration;
-
-            const mediaServiceMode = mediaStorageConfiguration.Status === 'ENABLED' || mediaStorageConfiguration.StreamARN !== null;
-            if (mediaServiceMode) {
-                if (!formValues.sendAudio || !formValues.sendVideo) {
-                    console.error('[MASTER] Both Send Video and Send Audio checkboxes need to be checked to ingest and store media.');
-                    return;
-                }
-                protocols.push('WEBRTC');
-                master.streamARN = mediaStorageConfiguration.StreamARN;
-                console.log(`[MASTER] Using media ingestion feature. Stream ARN: ${master.streamARN}`);
-
-                $('#master .remote').addClass('d-none');
-                if (formValues.openDataChannel) {
-                    console.warn('[MASTER] DataChannel is not enabled for WebRTC ingestion. Overriding value to false.');
-                    formValues.openDataChannel = false;
-                    $('.datachannel').addClass('d-none');
-                }
-            } else {
-                console.log('[MASTER] Not using media ingestion feature.');
-                master.streamARN = null;
-            }
-        } else {
-            console.log('[MASTER] Not using media ingestion feature.');
-            master.streamARN = null;
+            ingestionMode = ChannelHelper.IngestionMode.DETERMINE_THROUGH_DESCRIBE;
         }
 
-        // Get signaling channel endpoints
-        const getSignalingChannelEndpointResponse = await kinesisVideoClient
-            .getSignalingChannelEndpoint({
-                ChannelARN: channelARN,
-                SingleMasterChannelEndpointConfiguration: {
-                    Protocols: protocols,
-                    Role: KVSWebRTC.Role.MASTER,
-                },
-            })
-            .promise();
-        const endpointsByProtocol = getSignalingChannelEndpointResponse.ResourceEndpointList.reduce((endpoints, endpoint) => {
-            endpoints[endpoint.Protocol] = endpoint.ResourceEndpoint;
-            return endpoints;
-        }, {});
-        console.log('[MASTER] Endpoints:', endpointsByProtocol);
-
-        // Create Signaling Client
-        master.signalingClient = new KVSWebRTC.SignalingClient({
-            channelARN,
-            channelEndpoint: endpointsByProtocol.WSS,
-            role: KVSWebRTC.Role.MASTER,
-            region: formValues.region,
-            credentials: {
-                accessKeyId: formValues.accessKeyId,
-                secretAccessKey: formValues.secretAccessKey,
-                sessionToken: formValues.sessionToken,
-            },
-            requestSigner: {
-                getSignedURL: async function(signalingEndpoint, queryParams, date) {
-                    const signer = new KVSWebRTC.SigV4RequestSigner(formValues.region, {
-                        accessKeyId: formValues.accessKeyId,
-                        secretAccessKey: formValues.secretAccessKey,
-                        sessionToken: formValues.sessionToken,
-                    });
-
-                    const signingStart = new Date();
-                    console.debug('[MASTER] Signing the url started at', signingStart);
-                    const retVal = await signer.getSignedURL(signalingEndpoint, queryParams, date);
-                    const signingEnd = new Date();
-                    console.debug('[MASTER] Signing the url ended at', signingEnd);
-                    console.log('[MASTER] Time to sign the request:', signingEnd.getTime() - signingStart.getTime(), 'ms');
-                    signalingConnectionStarted = new Date();
-                    console.log('[MASTER] Connecting to KVS Signaling...');
-                    console.debug('[MASTER] ConnectAsMaster started at', signalingConnectionStarted);
-                    return retVal;
-                },
-            },
-            systemClockOffset: kinesisVideoClient.config.systemClockOffset,
-        });
-
-        if (master.streamARN) {
-            master.storageClient = new AWS.KinesisVideoWebRTCStorage({
+        master.channelHelper = new ChannelHelper(
+            formValues.channelName,
+            {
                 region: formValues.region,
                 accessKeyId: formValues.accessKeyId,
                 secretAccessKey: formValues.secretAccessKey,
                 sessionToken: formValues.sessionToken,
-                endpoint: endpointsByProtocol.WEBRTC,
-                maxRetries: 0,
-                httpOptions: {
-                    timeout: retryIntervalForJoinStorageSession,
-                },
-            });
+            },
+            formValues.endpoint,
+            KVSWebRTC.Role.MASTER,
+            ingestionMode,
+            '[MASTER]',
+        );
+
+        await master.channelHelper.init();
+
+        if (master.channelHelper.isIngestionEnabled()) {
+            if (!formValues.sendAudio || !formValues.sendVideo) {
+                console.error('[MASTER] Both Send Video and Send Audio checkboxes need to be checked to ingest and store media.');
+                return;
+            }
+
+            $('#master .remote').addClass('d-none');
+            if (formValues.openDataChannel) {
+                console.warn('[MASTER] DataChannel is not enabled for WebRTC ingestion. Overriding value to false.');
+                formValues.openDataChannel = false;
+                $('.datachannel').addClass('d-none');
+            }
+
+            master.channelHelper.getWebRTCStorageClient().config.maxRetries = 0;
+            master.channelHelper.getWebRTCStorageClient().config.httpOptions.timeout = retryIntervalForJoinStorageSession;
         } else {
-            master.storageClient = null;
+            console.log('[MASTER] Not using media ingestion feature.');
         }
 
-        // Get ICE server configuration
-        const kinesisVideoSignalingChannelsClient = new AWS.KinesisVideoSignalingChannels({
-            region: formValues.region,
-            accessKeyId: formValues.accessKeyId,
-            secretAccessKey: formValues.secretAccessKey,
-            sessionToken: formValues.sessionToken,
-            endpoint: endpointsByProtocol.HTTPS,
-            correctClockSkew: true,
-        });
-        const getIceServerConfigResponse = await kinesisVideoSignalingChannelsClient
-            .getIceServerConfig({
-                ChannelARN: channelARN,
-            })
-            .promise();
         const iceServers = [];
-        // Don't add stun if user selects TURN only or NAT traversal disabled
-        if (!formValues.natTraversalDisabled && !formValues.forceTURN) {
-            iceServers.push({urls: `stun:stun.kinesisvideo.${formValues.region}.amazonaws.com:443`});
+
+        // Add the STUN server unless it is disabled
+        if (!formValues.natTraversalDisabled && !formValues.forceTURN && (formValues.sendSrflxCandidates || formValues.sendPrflxCandidates)) {
+            iceServers.push({ urls: `stun:stun.kinesisvideo.${formValues.region}.amazonaws.com:443` });
         }
 
-        // Don't add turn if user selects STUN only or NAT traversal disabled
-        if (!formValues.natTraversalDisabled && !formValues.forceSTUN) {
-            getIceServerConfigResponse.IceServerList.forEach(iceServer =>
-                iceServers.push({
-                    urls: iceServer.Uris,
-                    username: iceServer.Username,
-                    credential: iceServer.Password,
-                }),
-            );
+        // Add the TURN servers unless it is disabled
+        if (!formValues.natTraversalDisabled && !formValues.forceSTUN && formValues.sendRelayCandidates) {
+            iceServers.push(...(await master.channelHelper.fetchTurnServers()));
         }
         console.log('[MASTER] ICE servers:', iceServers);
 
@@ -234,178 +131,184 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
                 console.error(`[MASTER] Could not find ${Object.keys(constraints).filter(k => constraints[k])} input device.`, e);
                 return;
             }
+        } else {
+            // Hide the video element if nothing is to be sent.
+            // $('#master .local-view').addClass('d-none');
         }
 
-        master.signalingClient.on('open', async () => {
-            const masterRunId = ++master.runId;
-            master.websocketOpened = true;
-            const signalingConnected = new Date();
-            console.debug('[MASTER] ConnectAsMaster completed at', signalingConnected);
-            console.log('[MASTER] Connected to signaling service');
-            console.log('[MASTER] Time to connect to signaling:', signalingConnected.getTime() - signalingConnectionStarted.getTime(), 'ms');
-            if (formValues.showJSSButton) {
-                $('#join-storage-session-button').removeClass('d-none');
-            }
-            if (master.streamARN) {
-                if (formValues.ingestMedia) {
-                    await connectToMediaServer(masterRunId);
-                } else {
-                    console.log('[MASTER] Waiting for media ingestion and storage viewer to join...');
-                }
-            } else {
-                console.log('[MASTER] Waiting for peers to join...');
-            }
-        });
-
-        master.signalingClient.on('sdpOffer', async (offer, remoteClientId) => {
-            printSignalingLog('[MASTER] Received SDP offer from client', remoteClientId);
-            master.sdpOfferReceived = true;
-            master.currentJoinStorageSessionRetries = 0;
-            console.debug('SDP offer:', offer);
-
-            // Create a new peer connection using the offer from the given client
-            if (master.peerConnectionByClientId[remoteClientId] && master.peerConnectionByClientId[remoteClientId].connectionState !== 'closed') {
-                master.peerConnectionByClientId[remoteClientId].close();
-            }
-            const peerConnection = new RTCPeerConnection(configuration);
-            master.peerConnectionByClientId[remoteClientId] = peerConnection;
-
-            if (formValues.openDataChannel) {
-                peerConnection.ondatachannel = event => {
-                    master.dataChannelByClientId[remoteClientId] = event.channel;
-                    event.channel.onmessage = onRemoteDataMessage;
-                };
-            }
-
-            // Poll for connection stats
-            if (!master.peerConnectionStatsInterval) {
-                master.peerConnectionStatsInterval = setInterval(() => peerConnection.getStats().then(onStatsReport), 10000);
-            }
-
-            peerConnection.addEventListener('connectionstatechange', async event => {
-                printPeerConnectionStateInfo(event, '[MASTER]', remoteClientId);
-
-                if (master.streamARN && event.target.connectionState === 'connected') {
-                    console.log('[MASTER] Successfully joined the storage session. Media is being recorded to', master.streamARN);
-                }
-            });
-
-            // Send any ICE candidates to the other peer
-            peerConnection.addEventListener('icecandidate', ({candidate}) => {
-                if (candidate) {
-                    printSignalingLog('[MASTER] Generated ICE candidate for client', remoteClientId);
-                    console.debug('ICE candidate:', candidate);
-
-                    // When trickle ICE is enabled, send the ICE candidates as they are generated.
-                    if (formValues.useTrickleICE) {
-                        if (shouldSendIceCandidate(formValues, candidate)) {
-                            printSignalingLog('[MASTER] Sending ICE candidate to client', remoteClientId);
-                            master.signalingClient.sendIceCandidate(candidate, remoteClientId);
-                        } else {
-                            console.log('[MASTER] Not sending ICE candidate to client', remoteClientId);
-                        }
-                    }
-                } else {
-                    printSignalingLog('[MASTER] All ICE candidates have been generated for client', remoteClientId);
-
-                    // When trickle ICE is disabled, send the answer now that all the ICE candidates have ben generated.
-                    if (!formValues.useTrickleICE) {
-                        printSignalingLog('[MASTER] Sending SDP answer to client', remoteClientId);
-                        const correlationId = randomString();
-                        console.debug('SDP answer:', peerConnection.localDescription, 'correlationId:', correlationId);
-                        master.signalingClient.sendSdpAnswer(peerConnection.localDescription, remoteClientId, correlationId);
-                    }
-                }
-            });
-
-            // As remote tracks are received, add them to the remote view
-            peerConnection.addEventListener('track', event => {
-                printSignalingLog('[MASTER] Received remote track from client', remoteClientId);
-                addViewerTrackToMaster(remoteClientId, event.streams[0]);
-            });
-
-            // If there's no video/audio, master.localStream will be null. So, we should skip adding the tracks from it.
-            if (master.localStream) {
-                master.localStream.getTracks().forEach(track => peerConnection.addTrack(track, master.localStream));
-            }
-            await peerConnection.setRemoteDescription(offer);
-
-            // Create an SDP answer to send back to the client
-            printSignalingLog('[MASTER] Creating SDP answer for client', remoteClientId);
-            await peerConnection.setLocalDescription(
-                await peerConnection.createAnswer({
-                    offerToReceiveAudio: true,
-                    offerToReceiveVideo: true,
-                }),
-            );
-
-            // When trickle ICE is enabled, send the answer now and then send ICE candidates as they are generated. Otherwise wait on the ICE candidates.
-            if (formValues.useTrickleICE) {
-                printSignalingLog('[MASTER] Sending SDP answer to client', remoteClientId);
-                const correlationId = randomString();
-                console.debug('SDP answer:', peerConnection.localDescription, 'correlationId:', correlationId);
-                master.signalingClient.sendSdpAnswer(peerConnection.localDescription, remoteClientId, correlationId);
-            }
-            printSignalingLog('[MASTER] Generating ICE candidates for client', remoteClientId);
-
-            // If in WebRTC ingestion mode, retry if no connection was established within 5 seconds.
-            if (master.streamARN) {
-                setTimeout(function() {
-                    // We check that it's not failed because if the state transitioned to failed,
-                    // the state change callback would handle this already
-                    if (
-                        peerConnection.connectionState !== 'connected' &&
-                        peerConnection.connectionState !== 'failed' &&
-                        peerConnection.connectionState !== 'closed'
-                    ) {
-                        console.error('[MASTER] Connection failed to establish within 5 seconds. Retrying...');
-                        onPeerConnectionFailed(false);
-                    }
-                }, 5000);
-            }
-        });
-
-        master.signalingClient.on('iceCandidate', async (candidate, remoteClientId) => {
-            printSignalingLog('[MASTER] Received ICE candidate from client', remoteClientId);
-            console.debug('[MASTER] ICE candidate:', candidate);
-
-            if (shouldAcceptCandidate(formValues, candidate)) {
-                // Add the ICE candidate received from the client to the peer connection
-                const peerConnection = master.peerConnectionByClientId[remoteClientId];
-                peerConnection.addIceCandidate(candidate);
-            } else {
-                console.log('[MASTER] Not adding candidate from peer.');
-            }
-        });
-
-        master.signalingClient.on('statusResponse', statusResponse => {
-            if (statusResponse.success) {
-                return;
-            }
-            console.error('[MASTER] Received response from Signaling:', statusResponse);
-
-            if (master.streamARN) {
-                console.error('[MASTER] Encountered a fatal error. Stopping the application.');
-                onStop();
-            }
-        });
-
-        master.signalingClient.on('close', () => {
-            master.websocketOpened = false;
-            master.runId++;
-            console.log('[MASTER] Disconnected from signaling channel');
-        });
-
-        master.signalingClient.on('error', error => {
-            console.error('[MASTER] Signaling client error', error);
-        });
-
+        registerMasterSignalingClientCallbacks(master.channelHelper.getSignalingClient(), formValues, configuration);
         console.log('[MASTER] Starting master connection');
-        master.signalingClient.open();
+        master.channelHelper.getSignalingClient().open();
     } catch (e) {
         console.error('[MASTER] Encountered error starting:', e);
         onStop();
     }
+}
+
+registerMasterSignalingClientCallbacks = (signalingClient, formValues, configuration) => {
+    signalingClient.on('open', async () => {
+        const masterRunId = ++master.runId;
+        master.websocketOpened = true;
+        const signalingConnected = new Date();
+        console.debug('[MASTER] ConnectAsMaster completed at', signalingConnected);
+        console.log('[MASTER] Connected to signaling service');
+        console.log('[MASTER] Time to connect to signaling:', signalingConnected.getTime() - master.channelHelper.getSignalingConnectionLastStarted().getTime(), 'ms');
+        if (formValues.showJSSButton) {
+            $('#join-storage-session-button').removeClass('d-none');
+        }
+        if (master.streamARN) {
+            if (master.channelHelper.isIngestionEnabled()) {
+                await connectToMediaServer(masterRunId);
+            } else {
+                console.log('[MASTER] Waiting for media ingestion and storage viewer to join...');
+            }
+        } else {
+            console.log('[MASTER] Waiting for peers to join...');
+        }
+    });
+
+    signalingClient.on('sdpOffer', async (offer, remoteClientId) => {
+        printSignalingLog('[MASTER] Received SDP offer from client', remoteClientId);
+        master.sdpOfferReceived = true;
+        master.currentJoinStorageSessionRetries = 0;
+        console.debug('SDP offer:', offer);
+
+        // Create a new peer connection using the offer from the given client
+        if (master.peerConnectionByClientId[remoteClientId] && master.peerConnectionByClientId[remoteClientId].connectionState !== 'closed') {
+            master.peerConnectionByClientId[remoteClientId].close();
+        }
+        const peerConnection = new RTCPeerConnection(configuration);
+        master.peerConnectionByClientId[remoteClientId] = peerConnection;
+
+        if (formValues.openDataChannel) {
+            peerConnection.ondatachannel = event => {
+                master.dataChannelByClientId[remoteClientId] = event.channel;
+                event.channel.onmessage = onRemoteDataMessage;
+            };
+        }
+
+        // Poll for connection stats
+        if (!master.peerConnectionStatsInterval) {
+            master.peerConnectionStatsInterval = setInterval(() => peerConnection.getStats().then(onStatsReport), 10000);
+        }
+
+        peerConnection.addEventListener('connectionstatechange', async event => {
+            printPeerConnectionStateInfo(event, '[MASTER]', remoteClientId);
+
+            if (master.streamARN && event.target.connectionState === 'connected') {
+                console.log('[MASTER] Successfully joined the storage session. Media is being recorded to', master.streamARN);
+            }
+        });
+
+        // Send any ICE candidates to the other peer
+        peerConnection.addEventListener('icecandidate', ({candidate}) => {
+            if (candidate) {
+                printSignalingLog('[MASTER] Generated ICE candidate for client', remoteClientId);
+                console.debug('ICE candidate:', candidate);
+
+                // When trickle ICE is enabled, send the ICE candidates as they are generated.
+                if (formValues.useTrickleICE) {
+                    if (shouldSendIceCandidate(formValues, candidate)) {
+                        printSignalingLog('[MASTER] Sending ICE candidate to client', remoteClientId);
+                        signalingClient.sendIceCandidate(candidate, remoteClientId);
+                    } else {
+                        console.log('[MASTER] Not sending ICE candidate to client', remoteClientId);
+                    }
+                }
+            } else {
+                printSignalingLog('[MASTER] All ICE candidates have been generated for client', remoteClientId);
+
+                // When trickle ICE is disabled, send the answer now that all the ICE candidates have ben generated.
+                if (!formValues.useTrickleICE) {
+                    printSignalingLog('[MASTER] Sending SDP answer to client', remoteClientId);
+                    const correlationId = randomString();
+                    console.debug('SDP answer:', peerConnection.localDescription, 'correlationId:', correlationId);
+                    signalingClient.sendSdpAnswer(peerConnection.localDescription, remoteClientId, correlationId);
+                }
+            }
+        });
+
+        // As remote tracks are received, add them to the remote view
+        peerConnection.addEventListener('track', event => {
+            printSignalingLog('[MASTER] Received remote track from client', remoteClientId);
+            addViewerTrackToMaster(remoteClientId, event.streams[0]);
+        });
+
+        // If there's no video/audio, master.localStream will be null. So, we should skip adding the tracks from it.
+        if (master.localStream) {
+            master.localStream.getTracks().forEach(track => peerConnection.addTrack(track, master.localStream));
+        }
+        await peerConnection.setRemoteDescription(offer);
+
+        // Create an SDP answer to send back to the client
+        printSignalingLog('[MASTER] Creating SDP answer for client', remoteClientId);
+        await peerConnection.setLocalDescription(
+            await peerConnection.createAnswer({
+                offerToReceiveAudio: true,
+                offerToReceiveVideo: true,
+            }),
+        );
+
+        // When trickle ICE is enabled, send the answer now and then send ICE candidates as they are generated. Otherwise wait on the ICE candidates.
+        if (formValues.useTrickleICE) {
+            printSignalingLog('[MASTER] Sending SDP answer to client', remoteClientId);
+            const correlationId = randomString();
+            console.debug('SDP answer:', peerConnection.localDescription, 'correlationId:', correlationId);
+            signalingClient.sendSdpAnswer(peerConnection.localDescription, remoteClientId, correlationId);
+        }
+        printSignalingLog('[MASTER] Generating ICE candidates for client', remoteClientId);
+
+        // If in WebRTC ingestion mode, retry if no connection was established within 5 seconds.
+        if (master.streamARN) {
+            setTimeout(function() {
+                // We check that it's not failed because if the state transitioned to failed,
+                // the state change callback would handle this already
+                if (
+                    peerConnection.connectionState !== 'connected' &&
+                    peerConnection.connectionState !== 'failed' &&
+                    peerConnection.connectionState !== 'closed'
+                ) {
+                    console.error('[MASTER] Connection failed to establish within 5 seconds. Retrying...');
+                    onPeerConnectionFailed(false);
+                }
+            }, 5000);
+        }
+    });
+
+    signalingClient.on('iceCandidate', async (candidate, remoteClientId) => {
+        printSignalingLog('[MASTER] Received ICE candidate from client', remoteClientId);
+        console.debug('[MASTER] ICE candidate:', candidate);
+
+        if (shouldAcceptCandidate(formValues, candidate)) {
+            // Add the ICE candidate received from the client to the peer connection
+            const peerConnection = master.peerConnectionByClientId[remoteClientId];
+            peerConnection.addIceCandidate(candidate);
+        } else {
+            console.log('[MASTER] Not adding candidate from peer.');
+        }
+    });
+
+    signalingClient.on('statusResponse', statusResponse => {
+        if (statusResponse.success) {
+            return;
+        }
+        console.error('[MASTER] Received response from Signaling:', statusResponse);
+
+        if (master.streamARN) {
+            console.error('[MASTER] Encountered a fatal error. Stopping the application.');
+            onStop();
+        }
+    });
+
+    signalingClient.on('close', () => {
+        master.websocketOpened = false;
+        master.runId++;
+        console.log('[MASTER] Disconnected from signaling channel');
+    });
+
+    signalingClient.on('error', error => {
+        console.error('[MASTER] Signaling client error', error);
+    });
 }
 
 function onPeerConnectionFailed(printLostConnectionLog = true) {
@@ -441,16 +344,12 @@ function stopMaster() {
         console.log('[MASTER] Stopping master connection');
         master.sdpOfferReceived = true;
 
-        if (master.signalingClient) {
-            master.signalingClient.close();
-            master.signalingClient = null;
-        }
+        master.channelHelper.close();
 
         Object.keys(master.peerConnectionByClientId).forEach(clientId => {
             master.peerConnectionByClientId[clientId].close();
             removeViewerTrackFromMaster(clientId);
         });
-        master.peerConnectionByClientId = [];
 
         if (master.localStream) {
             master.localStream.getTracks().forEach(track => track.stop());
