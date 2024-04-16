@@ -53,6 +53,8 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
         let ingestionMode = ChannelHelper.IngestionMode.OFF;
         if (formValues.ingestMedia) {
             ingestionMode = ChannelHelper.IngestionMode.DETERMINE_THROUGH_DESCRIBE;
+        } else if (formValues.showJSSButton) {
+            ingestionMode = ChannelHelper.IngestionMode.ON;
         }
 
         master.channelHelper = new ChannelHelper(
@@ -192,7 +194,10 @@ registerMasterSignalingClientCallbacks = (signalingClient, formValues, configura
             printPeerConnectionStateInfo(event, '[MASTER]', remoteClientId);
 
             if (master.channelHelper.isIngestionEnabled() && event.target.connectionState === 'connected') {
-                console.log('[MASTER] Successfully joined the storage session. Media is being recorded to', master.channelHelper.getStreamArn());
+                console.log(
+                    '[MASTER] Successfully joined the storage session. Media is being recorded to',
+                    master.channelHelper.getStreamArn() ?? 'Kinesis Video Streams',
+                );
             }
         });
 

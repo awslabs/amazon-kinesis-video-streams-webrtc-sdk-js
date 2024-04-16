@@ -197,6 +197,8 @@ class ChannelHelper {
     // Returns an object containing the protocols as keys and the
     // returned endpoint as values: { HTTPS: "https://...", WSS: "wss://..." }
     async _getSignalingChannelEndpoints(kinesisVideoClient, arn, role, protocols) {
+        // This API will throw an error if WEBRTC protocol is specified but
+        // the channel is not configured for ingestion
         const getSignalingChannelEndpointResponse = await kinesisVideoClient
             .getSignalingChannelEndpoint({
                 ChannelARN: arn,
