@@ -51,10 +51,8 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
 
         // Determine the media ingestion mode
         let ingestionMode = ChannelHelper.IngestionMode.OFF;
-        if (formValues.ingestMedia) {
+        if (formValues.ingestMedia || formValues.showJSSButton) {
             ingestionMode = ChannelHelper.IngestionMode.DETERMINE_THROUGH_DESCRIBE;
-        } else if (formValues.showJSSButton) {
-            ingestionMode = ChannelHelper.IngestionMode.ON;
         }
 
         master.channelHelper = new ChannelHelper(
