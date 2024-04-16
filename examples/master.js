@@ -328,7 +328,7 @@ function onPeerConnectionFailed(printLostConnectionLog = true) {
         master.sdpOfferReceived = false;
         if (!master.websocketOpened) {
             console.log('[MASTER] Websocket is closed. Reopening...');
-            master.signalingClient.open();
+            master.channelHelper.getSignalingClient().open();
         } else {
             connectToMediaServer(++master.runId);
         }
@@ -340,7 +340,7 @@ function stopMaster() {
         console.log('[MASTER] Stopping master connection');
         master.sdpOfferReceived = true;
 
-        master.channelHelper.close();
+        master.channelHelper.getSignalingClient().close();
 
         Object.keys(master.peerConnectionByClientId).forEach(clientId => {
             master.peerConnectionByClientId[clientId].close();
@@ -459,7 +459,7 @@ async function connectToMediaServer(masterRunId) {
     } else if (!master.websocketOpened && !master.sdpOfferReceived) {
         // TODO: ideally, we send a ping message. But, that's unavailable in browsers.
         console.log('[MASTER] Websocket is closed. Reopening...');
-        master.signalingClient.open();
+        master.channelHelper.getSignalingClient().open();
     }
 }
 
