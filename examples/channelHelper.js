@@ -42,11 +42,15 @@ class ChannelHelper {
     };
 
     isIngestionEnabled = () => {
-        return this._ingestionMode === this._ingestionMode.ON;
+        return this._ingestionMode === ChannelHelper.IngestionMode.ON;
     };
 
     getWebRTCStorageClient = () => {
         return this._webrtcStorageClient;
+    };
+
+    getStreamArn = () => {
+        return this._streamArn;
     };
 
     fetchTurnServers = async () => {
@@ -86,13 +90,14 @@ class ChannelHelper {
         if (this._ingestionMode === ChannelHelper.IngestionMode.DETERMINE_THROUGH_DESCRIBE) {
             const describeMediaStorageConfigurationResponse = await this._kinesisVideoClient
                 .describeMediaStorageConfiguration({
-                    ChannelARN: master.channelARN,
+                    ChannelARN: this._channelArn,
                 })
                 .promise();
             const mediaStorageConfiguration = describeMediaStorageConfigurationResponse.MediaStorageConfiguration;
 
-            if (mediaStorageConfiguration.Status === 'ENABLED' || mediaStorageConfiguration.StreamARN !== null) {
+            if (mediaStorageConfiguration.Status === 'ENABLED' && mediaStorageConfiguration.StreamARN !== null) {
                 this._ingestionMode = ChannelHelper.IngestionMode.ON;
+                this._streamArn = mediaStorageConfiguration.StreamARN;
             } else {
                 this._ingestionMode = ChannelHelper.IngestionMode.OFF;
             }
@@ -156,7 +161,7 @@ class ChannelHelper {
             systemClockOffset: this._kinesisVideoClient.config.systemClockOffset,
         });
 
-        if (this._ingestionMode.ON) {
+        if (this._ingestionMode === ChannelHelper.IngestionMode.ON) {
             this._webrtcStorageClient = new AWS.KinesisVideoWebRTCStorage({
                 ...this._clientArgs,
                 endpoint: this._endpoints['WEBRTC'],

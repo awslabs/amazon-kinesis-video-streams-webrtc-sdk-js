@@ -6,7 +6,6 @@ const masterDefaults = {
     signalingClient: null,
     storageClient: null,
     channelARN: null,
-    streamARN: null,
     peerConnectionByClientId: {},
     dataChannelByClientId: {},
     localStream: null,
@@ -153,15 +152,12 @@ registerMasterSignalingClientCallbacks = (signalingClient, formValues, configura
         console.debug('[MASTER] ConnectAsMaster completed at', signalingConnected);
         console.log('[MASTER] Connected to signaling service');
         console.log('[MASTER] Time to connect to signaling:', signalingConnected.getTime() - master.channelHelper.getSignalingConnectionLastStarted().getTime(), 'ms');
+
         if (formValues.showJSSButton) {
             $('#join-storage-session-button').removeClass('d-none');
-        }
-        if (master.streamARN) {
-            if (master.channelHelper.isIngestionEnabled()) {
-                await connectToMediaServer(masterRunId);
-            } else {
-                console.log('[MASTER] Waiting for media ingestion and storage viewer to join...');
-            }
+            console.log('[MASTER] Waiting for media ingestion and storage viewer to join...');
+        } else if (master.channelHelper.isIngestionEnabled()) {
+            await connectToMediaServer(masterRunId, master.channelHelper.getChannelArn(), master.channelHelper.getWebRTCStorageClient());
         } else {
             console.log('[MASTER] Waiting for peers to join...');
         }
@@ -195,8 +191,8 @@ registerMasterSignalingClientCallbacks = (signalingClient, formValues, configura
         peerConnection.addEventListener('connectionstatechange', async event => {
             printPeerConnectionStateInfo(event, '[MASTER]', remoteClientId);
 
-            if (master.streamARN && event.target.connectionState === 'connected') {
-                console.log('[MASTER] Successfully joined the storage session. Media is being recorded to', master.streamARN);
+            if (master.channelHelper.isIngestionEnabled() && event.target.connectionState === 'connected') {
+                console.log('[MASTER] Successfully joined the storage session. Media is being recorded to', master.channelHelper.getStreamArn());
             }
         });
 
@@ -218,7 +214,7 @@ registerMasterSignalingClientCallbacks = (signalingClient, formValues, configura
             } else {
                 printSignalingLog('[MASTER] All ICE candidates have been generated for client', remoteClientId);
 
-                // When trickle ICE is disabled, send the answer now that all the ICE candidates have ben generated.
+                // When trickle ICE is disabled, send the answer now that all the ICE candidates have been generated.
                 if (!formValues.useTrickleICE) {
                     printSignalingLog('[MASTER] Sending SDP answer to client', remoteClientId);
                     const correlationId = randomString();
@@ -259,7 +255,7 @@ registerMasterSignalingClientCallbacks = (signalingClient, formValues, configura
         printSignalingLog('[MASTER] Generating ICE candidates for client', remoteClientId);
 
         // If in WebRTC ingestion mode, retry if no connection was established within 5 seconds.
-        if (master.streamARN) {
+        if (master.channelHelper.isIngestionEnabled()) {
             setTimeout(function() {
                 // We check that it's not failed because if the state transitioned to failed,
                 // the state change callback would handle this already
@@ -294,7 +290,7 @@ registerMasterSignalingClientCallbacks = (signalingClient, formValues, configura
         }
         console.error('[MASTER] Received response from Signaling:', statusResponse);
 
-        if (master.streamARN) {
+        if (master.channelHelper.isIngestionEnabled()) {
             console.error('[MASTER] Encountered a fatal error. Stopping the application.');
             onStop();
         }
@@ -312,7 +308,7 @@ registerMasterSignalingClientCallbacks = (signalingClient, formValues, configura
 }
 
 function onPeerConnectionFailed(printLostConnectionLog = true) {
-    if (master.streamARN) {
+    if (master.channelHelper.isIngestionEnabled()) {
         if (printLostConnectionLog) {
             console.warn('[MASTER] Lost connection to the storage session.');
         }
@@ -425,7 +421,7 @@ function printSignalingLog(message, clientId) {
  * @returns {Promise<boolean>} true if successfully joined, and sdp offer was received. false if not; this includes
  * when the {@link master.runId} is incremented during a retry attempt.
  */
-async function callJoinStorageSessionUntilSDPOfferReceived(runId, kinesisVideoWebrtcStorageClient, channelARN) {
+async function callJoinStorageSessionUntilSDPOfferReceived(runId) {
     let firstTime = true; // Used for log messages
     let shouldRetryCallingJoinStorageSession = true;
     while (shouldRetryCallingJoinStorageSession && !master.sdpOfferReceived && master.runId === runId && master.websocketOpened) {
@@ -435,9 +431,10 @@ async function callJoinStorageSessionUntilSDPOfferReceived(runId, kinesisVideoWe
         firstTime = false;
         try {
             // The AWS SDK for JS will perform limited retries on this API call.
-            await kinesisVideoWebrtcStorageClient
+            await master.channelHelper
+                .getWebRTCStorageClient()
                 .joinStorageSession({
-                    channelArn: channelARN,
+                    channelArn: master.channelHelper.getChannelArn(),
                 })
                 .promise();
         } catch (e) {
@@ -454,7 +451,7 @@ async function callJoinStorageSessionUntilSDPOfferReceived(runId, kinesisVideoWe
 
 async function connectToMediaServer(masterRunId) {
     console.log('[MASTER] Joining storage session...');
-    const success = await callJoinStorageSessionUntilSDPOfferReceived(masterRunId, master.storageClient, master.channelARN);
+    const success = await callJoinStorageSessionUntilSDPOfferReceived(masterRunId);
     if (success) {
         console.log('[MASTER] Join storage session API call(s) completed.');
     } else if (masterRunId === master.runId) {
