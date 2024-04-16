@@ -137,7 +137,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             // $('#master .local-view').addClass('d-none');
         }
 
-        registerMasterSignalingClientCallbacks(master.channelHelper.getSignalingClient(), formValues, configuration);
+        registerMasterSignalingClientCallbacks(master.channelHelper.getSignalingClient(), formValues, configuration, onStatsReport, onRemoteDataMessage);
         console.log('[MASTER] Starting master connection');
         master.channelHelper.getSignalingClient().open();
     } catch (e) {
@@ -146,7 +146,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
     }
 }
 
-registerMasterSignalingClientCallbacks = (signalingClient, formValues, configuration) => {
+registerMasterSignalingClientCallbacks = (signalingClient, formValues, configuration, onStatsReport, onRemoteDataMessage) => {
     signalingClient.on('open', async () => {
         const masterRunId = ++master.runId;
         master.websocketOpened = true;
