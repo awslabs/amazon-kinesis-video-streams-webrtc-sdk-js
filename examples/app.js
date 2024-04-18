@@ -1,4 +1,4 @@
-let ROLE = null; // Possible values: 'master', 'viewer', null
+let ROLE = null; // Possible values: 'MASTER', 'VIEWER', null
 const LOG_LEVELS = ['debug', 'info', 'warn', 'error'];
 let LOG_LEVEL = 'info'; // Possible values: any value of LOG_LEVELS
 
@@ -102,6 +102,7 @@ function getFormValues() {
         acceptTcpCandidates: $('#accept-tcp').is(':checked'),
         sendUdpCandidates: $('#send-udp').is(':checked'),
         acceptUdpCandidates: $('#accept-udp').is(':checked'),
+        viewerIsAnswerer: $('#flip-viewer-role').is(':checked'),
     };
 }
 
@@ -123,11 +124,15 @@ function onStop() {
         return;
     }
 
-    if (ROLE === 'master') {
+    if (ROLE === 'MASTER' || getFormValues().viewerIsAnswerer) {
         stopMaster();
         $('#master').addClass('d-none');
         $('#master .remote-view').removeClass('d-none');
         $('#master .remote').removeClass('d-none');
+
+        $('#master-heading').text('Master');
+        $('#master-section-heading').text('Master Section');
+        $('#master-viewer-heading').text('Viewer Return Channel');
     } else {
         stopViewer();
         $('#viewer').addClass('d-none');
@@ -166,7 +171,8 @@ $('#master-button').click(async () => {
     if (!form[0].checkValidity()) {
         return;
     }
-    ROLE = 'master';
+    const formValues = getFormValues();
+    ROLE = $('#master-heading').text() === 'Viewer' ? 'VIEWER' : 'MASTER';
     form.addClass('d-none');
     $('#master').removeClass('d-none');
 
@@ -174,7 +180,6 @@ $('#master-button').click(async () => {
     const remoteView = $('#viewer-view-holder')[0];
     const localMessage = $('#master .local-message')[0];
     const remoteMessage = $('#master .remote-message')[0];
-    const formValues = getFormValues();
 
     $(remoteMessage).empty();
     localMessage.value = '';
@@ -206,7 +211,19 @@ $('#viewer-button').click(async () => {
     if (!form[0].checkValidity()) {
         return;
     }
-    ROLE = 'viewer';
+    const formValues = getFormValues();
+
+    if (formValues.viewerIsAnswerer) {
+        $('#master-heading').text('Viewer');
+        $('#master-section-heading').text('Viewer Section');
+        $('#master-viewer-heading').text('Master Return Channel');
+        $('#stop-master-button').text('Stop Viewer');
+        $('#data-channel-input').text('DataChannel message to send to master');
+        $('#master-button').click();
+        return;
+    }
+
+    ROLE = 'VIEWER`';
     form.addClass('d-none');
     $('#viewer').removeClass('d-none');
 
@@ -214,7 +231,6 @@ $('#viewer-button').click(async () => {
     const remoteView = $('#viewer .remote-view')[0];
     const localMessage = $('#viewer .local-message')[0];
     const remoteMessage = $('#viewer .remote-message')[0];
-    const formValues = getFormValues();
 
     if (formValues.enableDQPmetrics) {
         $('#dqpmetrics').removeClass('d-none');
@@ -348,7 +364,7 @@ $('#region').on('focusout', event => {
     }
 });
 
-function addViewerTrackToMaster(viewerId, track) {
+function addViewerMediaStreamToMaster(viewerId, track) {
     $('#empty-video-placeholder')?.remove();
 
     $('#viewer-view-holder')
@@ -407,7 +423,7 @@ async function printPeerConnectionStateInfo(event, logPrefix, remoteClientId) {
             removeViewerTrackFromMaster(remoteClientId);
         }
         console.error(logPrefix, `Connection to ${remoteClientId || 'peer'} failed!`);
-        onPeerConnectionFailed();
+        onPeerConnectionFailed(remoteClientId);
     }
 }
 
@@ -448,6 +464,7 @@ const fields = [
     { field: 'accept-tcp', type: 'checkbox' },
     { field: 'send-udp', type: 'checkbox' },
     { field: 'accept-udp', type: 'checkbox' },
+    { field: 'flip-viewer-role', type: 'checkbox' },
 ];
 
 fields.forEach(({ field, type, name }) => {

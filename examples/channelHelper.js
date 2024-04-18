@@ -12,13 +12,14 @@ class ChannelHelper {
         DETERMINE_THROUGH_DESCRIBE: 2,
     };
 
-    constructor(channelName, clientArgs, endpoint, role, ingestionMode, loggingPrefix) {
+    constructor(channelName, clientArgs, endpoint, role, ingestionMode, loggingPrefix, clientId) {
         this._channelName = channelName;
         this._clientArgs = clientArgs;
         this._role = role;
         this._endpoint = endpoint;
         this._ingestionMode = ingestionMode;
         this._loggingPrefix = loggingPrefix;
+        this._clientId = clientId;
     }
 
     // Must be called first
@@ -153,6 +154,7 @@ class ChannelHelper {
                 secretAccessKey: this._clientArgs.secretAccessKey,
                 sessionToken: this._clientArgs.sessionToken,
             },
+            clientId: this._clientId,
             requestSigner: {
                 // We override the default requestSigner to add timing information.
                 // Inside the function, `this` refers to the function itself,
