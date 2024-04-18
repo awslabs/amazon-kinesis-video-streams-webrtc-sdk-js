@@ -41,6 +41,7 @@ const maxConnectionFailuresWithinTenMinutesForRetries = 5;
 const millisecondsInTenMinutes = 600_000;
 
 async function startMaster(localView, remoteView, formValues, onStatsReport, onRemoteDataMessage) {
+    const role = ROLE;
     master = { ...masterDefaults };
 
     try {
@@ -72,13 +73,13 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
 
         if (master.channelHelper.isIngestionEnabled()) {
             if (!formValues.sendAudio || !formValues.sendVideo) {
-                console.error(`[${ROLE}] Both Send Video and Send Audio checkboxes need to be checked to ingest and store media.`);
+                console.error(`[${role}] Both Send Video and Send Audio checkboxes need to be checked to ingest and store media.`);
                 return;
             }
 
             $('#master .remote').addClass('d-none');
             if (formValues.openDataChannel) {
-                console.warn(`[${ROLE}] DataChannel is not supported for WebRTC ingestion. Overriding value to false.`);
+                console.warn(`[${role}] DataChannel is not supported for WebRTC ingestion. Overriding value to false.`);
                 formValues.openDataChannel = false;
                 $('.datachannel').addClass('d-none');
             }
@@ -86,7 +87,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             master.channelHelper.getWebRTCStorageClient().config.maxRetries = 0;
             master.channelHelper.getWebRTCStorageClient().config.httpOptions.timeout = retryIntervalForJoinStorageSession;
         } else {
-            console.log(`[${ROLE}] Not using media ingestion feature.`);
+            console.log(`[${role}] Not using media ingestion feature.`);
         }
 
         const iceServers = [];
@@ -100,7 +101,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
         if (!formValues.natTraversalDisabled && !formValues.forceSTUN && formValues.sendRelayCandidates) {
             iceServers.push(...(await master.channelHelper.fetchTurnServers()));
         }
-        console.log(`[${ROLE}]`, 'ICE servers:', iceServers);
+        console.log(`[${role}]`, 'ICE servers:', iceServers);
 
         const configuration = {
             iceServers,
@@ -130,10 +131,10 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
         }
 
         registerMasterSignalingClientCallbacks(master.channelHelper.getSignalingClient(), formValues, configuration, onStatsReport, onRemoteDataMessage);
-        console.log(`[${ROLE}] Starting master connection`);
+        console.log(`[${role}] Starting master connection`);
         master.channelHelper.getSignalingClient().open();
     } catch (e) {
-        console.error(`[${ROLE}] Encountered error starting:`, e);
+        console.error(`[${role}] Encountered error starting:`, e);
         $('#stop-master-button').click();
     }
 }
