@@ -133,6 +133,7 @@ function onStop() {
         $('#master-heading').text('Master');
         $('#master-section-heading').text('Master Section');
         $('#master-viewer-heading').text('Viewer Return Channel');
+        $('#master-data-channel-input').text('DataChannel message to send to viewer(s)');
     } else {
         stopViewer();
         $('#viewer').addClass('d-none');
@@ -218,7 +219,7 @@ $('#viewer-button').click(async () => {
         $('#master-section-heading').text('Viewer Section');
         $('#master-viewer-heading').text('Master Return Channel');
         $('#stop-master-button').text('Stop Viewer');
-        $('#data-channel-input').text('DataChannel message to send to master');
+        $('#master-data-channel-input').text('DataChannel message to send to master');
         $('#master-button').click();
         return;
     }
