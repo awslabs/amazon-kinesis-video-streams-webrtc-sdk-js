@@ -216,8 +216,8 @@ $('#viewer-button').click(async () => {
 
     if (formValues.viewerIsAnswerer) {
         $('#master-heading').text('Viewer');
-        $('#master-section-heading').text('Viewer Section');
-        $('#master-viewer-heading').text('Master Return Channel');
+        $('#master-section-heading').text('Return Channel');
+        $('#master-viewer-heading').text('From Master');
         $('#stop-master-button').text('Stop Viewer');
         $('#master-data-channel-input').text('DataChannel message to send to master');
         $('#master-button').click();

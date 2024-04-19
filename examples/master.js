@@ -294,6 +294,11 @@ function stopMaster() {
             delete master.peerByClientId[clientId];
         });
 
+        if (master.localStream) {
+            master.localStream.getTracks().forEach(track => track.stop());
+            master.localStream = null;
+        }
+
         if (master.localView) {
             master.localView.srcObject = null;
         }
