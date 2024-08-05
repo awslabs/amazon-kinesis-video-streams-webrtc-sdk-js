@@ -18,11 +18,13 @@ async function createSignalingChannel(formValues) {
         });
 
         // Get signaling channel ARN
-        await kinesisVideoClient
+        const createSignalingChannelResponse = await kinesisVideoClient
             .createSignalingChannel({
                 ChannelName: formValues.channelName,
             })
             .promise();
+
+        console.debug(createSignalingChannelResponse.ChannelARN);
 
         // Get signaling channel ARN
         const describeSignalingChannelResponse = await kinesisVideoClient
