@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="./app.css">
     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js"></script>
-    <script src="aws-sdk-2.1363.0.min.js"></script>
+    <script src="aws-sdk-all-2.1646.0.js"></script>
     <script src="https://unpkg.com/@ungap/url-search-params"></script>
     <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.2.1/dist/chart.umd.min.js"></script>
@@ -25,9 +25,9 @@
     <div class="row loader"></div>
     <div id="main" class="d-none">
         <form id="form" onsubmit="return false">
-            <h4>AWS Region</h4>
+            <h4>KVS Endpoint</h4>
             <div class="form-group has-validation" style="position: relative;">
-                <label for="region">Region your signaling channel is located</label>
+                <label for="region">Region</label>
                 <input type="text" class="form-control valid" id="region" placeholder="Region" value="us-west-2" autocomplete="off" required>
                 <datalist id="regionList"></datalist>
                 <div id="region-invalid-feedback" class="invalid-feedback"></div>
@@ -64,17 +64,17 @@
                 <input type="text" class="form-control" id="clientId" placeholder="Client id">
             </div>
             <h4>Tracks</h4>
-            <p><small>Control which media types are transmitted to the remote client. Both audio and video must be sent for WebRTC Ingestion and Storage.</small></p>
+            <p><small>Control which media types are transmitted to the remote client. For WebRTC Ingestion and Storage master, both audio and video must be sent, and viewers cannot not send video and optional audio.</small></p>
             <div class="form-group">
-                <div class="form-check form-check-inline">
+                <div class="form-check-inline">
                     <input class="form-check-input" type="checkbox" id="sendVideo" value="video" checked>
                     <label for="sendVideo" class="form-check-label">Send Video</label>
                 </div>
-                <div class="form-check form-check-inline">
+                <div class="form-check-inline">
                     <input class="form-check-input" type="checkbox" id="sendAudio" value="audio">
                     <label for="sendAudio" class="form-check-label">Send Audio</label>
                 </div>
-                <div class="form-check form-check-inline">
+                <div class="form-check-inline">
                     <input class="form-check-input" type="checkbox" id="openDataChannel" value="datachannel">
                     <label for="openDataChannel" class="form-check-label">Open DataChannel</label>
                     <span data-delay="{ &quot;hide&quot;: 1500 }" data-position="auto" tabindex="0" class="text-info ml-1" data-toggle="tooltip" data-html="true" title="
@@ -102,28 +102,49 @@
                     <button id="listStorageChannels" class="btn btn-primary">List All Media Storage Channels</button>
                     <p><small>List storage channels outputs the ARNs of all signaling channels configured for storage and their associated stream's ARN.</small></p>
                 </div>
-                <div class="form-group form-check form-check-inline">
+                <div class="form-group form-check-inline">
                     <input class="form-check-input" type="checkbox" id="ingest-media">
-                    <label for="ingest-media" class="form-check-label"><i>Ingestion and storage peer</i> joins automatically</label>
+                    <label for="ingest-media" class="form-check-label">Automatically determine ingestion mode</label>
                     <span data-delay="{ &quot;hide&quot;: 1500 }" data-position="auto" tabindex="0" class="text-info ml-1" data-toggle="tooltip" data-html="true" title="
                     <p>If WebRTC Ingestion and Storage is configured, after connecting to Kinesis Video Signaling, this sample application will invoke the JoinStorageSession API to have the Kinesis video producing device join the WebRTC session as a viewer.</p>
                     <a href=&quot;https://docs.aws.amazon.com/kinesisvideostreams/latest/dg/API_webrtc_JoinStorageSession.html&quot;>Additional information</a>
                     "><sup>&#9432;</sup></span>
                 </div>
-                <div class="form-group form-check form-check-inline">
-                    <input class="form-check-input" type="checkbox" id="show-join-storage-session-button">
-                    <label for="show-join-storage-session-button" class="form-check-label">Show button to manually call JoinStorageSession API.</label></span>
+
+                <div id="manual-ingestion-mode-button-override" class="form-group form-check-inline">
+                    <label for="show-join-storage-session-button" class="form-check-label mr-2">Manual override:</label>
+                    <div id="manual-join-button-group" class="btn-group" role="group" aria-label="ingestion manual mode">
+                        <button id="ingest-media-manual-on" class="btn btn-secondary">ON</button>
+                        <button id="ingest-media-manual-off" class="btn btn-primary" data-selected="true">OFF</button>
+                    </div>
+                </div>
+                <br />
+                <div id="show-join-storage-session-manually">
+                    <div class="form-group form-check-inline">
+                        <input class="form-check-input" type="checkbox" id="show-join-storage-session-button">
+                        <label for="show-join-storage-session-button" class="form-check-label">Show button to manually call JoinStorageSession API.</label>
+                        <span data-delay="{ &quot;hide&quot;: 1500 }" data-position="auto" tabindex="0" class="text-info ml-1" data-toggle="tooltip" data-html="true" title="
+                    <p>If enabled, this application won't automatically invoke this API after connecting to Signaling. You will need to invoke this API manually.</p>
+                    "><sup>&#9432;</sup></span>
+                    </div>
+                    <div class="form-group form-check-inline">
+                        <input class="form-check-input" type="checkbox" id="show-join-storage-session-as-viewer-button">
+                        <label for="show-join-storage-session-as-viewer-button" class="form-check-label">Show button to manually call JoinStorageSessionAsViewer API.</label>
+                        <span data-delay="{ &quot;hide&quot;: 1500 }" data-position="auto" tabindex="0" class="text-info ml-1" data-toggle="tooltip" data-html="true" title="
+                    <p>If enabled, this application won't automatically invoke this API after connecting to Signaling. You will need to invoke this API manually.</p>
+                    "><sup>&#9432;</sup></span>
+                    </div>
                 </div>
             </div>
             </details>
             <h4>Video Resolution</h4>
             <p><small>Set the desired video resolution and aspect ratio.</small></p>
             <div class="form-group">
-                <div class="form-check form-check">
+                <div class="form-check">
                     <input class="form-check-input" type="radio" name="resolution" id="widescreen" value="option1" checked>
                     <label class="form-check-label" for="widescreen">1280x720 <small>(16:9 widescreen)</small></label>
                 </div>
-                <div class="form-check form-check">
+                <div class="form-check">
                     <input class="form-check-input" type="radio" name="resolution" id="fullscreen" value="option2">
                     <label class="form-check-label" for="fullscreen">640x480 <small>(4:3 fullscreen)</small></label>
                 </div>
@@ -135,25 +156,25 @@
                     <a href=&quot;https://docs.aws.amazon.com/kinesisvideostreams-webrtc-dg/latest/devguide/kvswebrtc-how-it-works.html#how-kvswebrtc-works&quot;>Additional information</a>
                 "><sup>&#9432;</sup></span></p>
             <div class="form-group">
-                <div class="form-check form-check">
+                <div class="form-check">
                     <input class="form-check-input" type="radio" name="natTraversal" id="natTraversalEnabled" value="option2" checked>
                     <label class="form-check-label" for="natTraversalEnabled">STUN/TURN</label>
                 </div>
-                <div class="form-check form-check">
+                <div class="form-check">
                     <input class="form-check-input" type="radio" name="natTraversal" id="forceTURN" value="option3">
                     <label class="form-check-label" for="forceTURN">TURN Only <small>(force cloud relay)</small></label>
                 </div>
-                <div class="form-check form-check">
+                <div class="form-check">
                     <input class="form-check-input" type="radio" name="natTraversal" id="forceSTUN" value="option4">
                     <label class="form-check-label" for="forceSTUN">STUN Only</label>
                 </div>
-                <div class="form-check form-check">
+                <div class="form-check">
                     <input class="form-check-input" type="radio" name="natTraversal" id="natTraversalDisabled" value="option1">
                     <label class="form-check-label" for="natTraversalDisabled">Disabled</label>
                 </div>
             </div>
             <div class="form-group">
-                <div class="form-check form-check-inline">
+                <div class="form-check-inline">
                     <input class="form-check-input" type="checkbox" id="useTrickleICE" value="useTrickleICE" checked>
                     <label for="useTrickleICE" class="form-check-label">Use trickle ICE</label>
                     <span data-delay="{ &quot;hide&quot;: 1500 }" data-position="auto" tabindex="0" class="text-info ml-1" data-toggle="tooltip" data-html="true" title="
@@ -164,7 +185,7 @@
             </div>
             <h4>Amazon KVS WebRTC DQP</h4>
             <div class="form-group">
-                <div class="form-check form-check-inline">
+                <div class="form-check-inline">
                     <input class="form-check-input" type="checkbox" id="enableDQPmetrics" value="enableDQPmetrics">
                     <label for="enableDQPmetrics" class="form-check-label">Enable KVS WebRTC DQP Test and Metrics <small>(Viewer only)</small></label>
                     <span data-delay="{ &quot;hide&quot;: 1500 }" data-position="auto" tabindex="0" class="text-info ml-1" data-toggle="tooltip" data-html="true" title="
@@ -176,7 +197,7 @@
 
             <h4>Amazon KVS WebRTC Profiling Timeline chart</h4>
             <div class="form-group">
-                <div class="form-check form-check-inline">
+                <div class="form-check-inline">
                     <input class="form-check-input" type="checkbox" id="enableProfileTimeline" value="enableProfileTimeline">
                     <label for="enableProfileTimeline" class="form-check-label">Enable C SDK master and JS viewer profile timeline<small>(Master + Viewer)</small></label>
                     <span data-delay="{ &quot;hide&quot;: 1500 }" data-position="auto" tabindex="0" class="text-info ml-1" data-toggle="tooltip" data-html="true" title="
@@ -188,65 +209,75 @@
 
             <details><summary class="h4">Advanced</summary>
                 <p><small>Filter settings for which ICE candidates are sent to and received from the peer.</small></p>
-                <div class="container mb-3">
+                <div class="container">
                     <div class="row">
                         <div class="col-sm">
-                            <div class="form-check form-check">
-                                <input class="form-check-input" type="checkbox" id="send-relay" checked>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="send-relay" checked />
                                 <label for="send-relay" class="form-check-label">Send <code>relay</code> candidates to peer</label>
                             </div>
-                            <div class="form-check form-check">
-                                <input class="form-check-input" type="checkbox" id="accept-relay" checked>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="accept-relay" checked />
                                 <label for="accept-relay" class="form-check-label">Accept <code>relay</code> candidates from peer</label>
                             </div>
-                            <div class="form-check form-check">
-                                <input class="form-check-input" type="checkbox" id="send-srflx" checked>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="send-srflx" checked />
                                 <label for="send-srflx" class="form-check-label">Send <code>srflx</code> candidates to peer</label>
                             </div>
-                            <div class="form-check form-check">
-                                <input class="form-check-input" type="checkbox" id="accept-srflx" checked>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="accept-srflx" checked />
                                 <label for="accept-srflx" class="form-check-label">Accept <code>srflx</code> candidates from peer</label>
                             </div>
-                            <div class="form-check form-check">
-                                <input class="form-check-input" type="checkbox" id="send-host" checked>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="send-host" checked />
                                 <label for="send-host" class="form-check-label">Send <code>host</code> candidates to peer</label>
                             </div>
-                            <div class="form-check form-check">
-                                <input class="form-check-input" type="checkbox" id="accept-host" checked>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="accept-host" checked />
                                 <label for="accept-host" class="form-check-label">Accept <code>host</code> candidates from peer</label>
                             </div>
                         </div>
                         <div class="col-sm">
-                            <div class="form-check form-check">
-                                <input class="form-check-input" type="checkbox" id="send-prflx" checked>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="send-prflx" checked />
                                 <label for="send-prflx" class="form-check-label">Send <code>prflx</code> candidates to peer</label>
                             </div>
-                            <div class="form-check form-check">
-                                <input class="form-check-input" type="checkbox" id="accept-prflx" checked>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="accept-prflx" checked />
                                 <label for="accept-prflx" class="form-check-label">Accept <code>prflx</code> candidates from peer</label>
                             </div>
-                            <div class="form-check form-check">
-                                <input class="form-check-input" type="checkbox" id="send-tcp" checked>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="send-tcp" checked />
                                 <label for="send-tcp" class="form-check-label">Send <code>tcp</code> candidates to peer</label>
                             </div>
-                            <div class="form-check form-check">
-                                <input class="form-check-input" type="checkbox" id="accept-tcp" checked>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="accept-tcp" checked />
                                 <label for="accept-tcp" class="form-check-label">Accept <code>tcp</code> candidates from peer</label>
                             </div>
-                            <div class="form-check form-check">
-                                <input class="form-check-input" type="checkbox" id="send-udp" checked>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="send-udp" checked />
                                 <label for="send-udp" class="form-check-label">Send <code>udp</code> candidates to peer</label>
                             </div>
-                            <div class="form-check form-check">
-                                <input class="form-check-input" type="checkbox" id="accept-udp" checked>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="accept-udp" checked />
                                 <label for="accept-udp" class="form-check-label">Accept <code>udp</code> candidates from peer</label>
                             </div>
                         </div>
                     </div>
                 </div>
-
+                <p class="mt-3"><small>Logging</small></p>
+                <div class="container">
+                    <div class="row">
+                        <div class="col-sm">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="log-aws-sdk-calls" onclick="configureAwsSdkLogs()"/>
+                                <label for="log-aws-sdk-calls" class="form-check-label">Log AWS SDK for JavaScript calls</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <p class="mt-3"><small>Endpoint Override</small></p>
                 <div class="form-group">
-                    <label for="endpoint"><small>Endpoint override (optional)</small></label>
                     <input type="text" class="form-control" id="endpoint" placeholder="Endpoint">
                 </div>
             </details>
@@ -288,21 +319,21 @@
         </div>
 
         <div id="master" class="d-none">
-            <h2>Master</h2>
+            <h2 id="master-heading">Master</h2>
             <div class="row">
                 <div class="col">
-                    <h5>Master Section</h5>
+                    <h5 id="master-section-heading">Master Section</h5>
                     <div class="video-container"><video class="local-view" autoplay playsinline controls muted></video></div>
                 </div>
                 <div id="viewer-view-holder" class="col remote">
-                    <h5>Viewer Return Channel</h5>
+                    <h5 id="master-viewer-heading">Viewer Return Channel</h5>
                     <div id="empty-video-placeholder" class="video-container"><video class="remote-view" autoplay playsinline controls></video></div>
                 </div>
             </div>
             <div class="row datachannel">
                 <div class="col">
                     <div class="form-group">
-                      <textarea type="text" class="form-control local-message" placeholder="DataChannel message to send to all viewers"> </textarea>
+                      <textarea id="master-data-channel-input" type="text" class="form-control local-message" placeholder="DataChannel message to send to all viewers"> </textarea>
                     </div>
                 </div>
                 <div class="col remote">
@@ -317,6 +348,7 @@
                 </span>
                 <button id="stop-master-button" type="button" class="btn btn-danger">Stop Master</button>
                 <button id="join-storage-session-button" type="button" class="btn btn-primary d-none">Join Storage Session</button>
+                <button id="join-storage-session-as-viewer-button" type="button" class="btn btn-primary d-none">Join Storage Session As Viewer</button>
             </div>
         </div>
 
@@ -412,6 +444,8 @@
 
 <script src="../kvs-webrtc.js"></script>
 <script src="./channelHelper.js"></script>
+<script src="./mediaHelper.js"></script>
+<script src="./answerer.js"></script>
 <script src="./master.js"></script>
 <script src="./viewer.js"></script>
 <script src="./createSignalingChannel.js"></script>
@@ -420,6 +454,7 @@
 <script src="./describeMediaStorageConfiguration.js"></script>
 <script src="./createStream.js"></script>
 <script src="./joinStorageSession.js"></script>
+<script src="./joinStorageSessionAsViewer.js"></script>
 <script src="./app.js"></script>
 
 </body>
