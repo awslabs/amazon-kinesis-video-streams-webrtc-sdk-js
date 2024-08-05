@@ -12,19 +12,27 @@ class ChannelHelper {
         DETERMINE_THROUGH_DESCRIBE: 2,
     };
 
-    constructor(channelName, clientArgs, endpoint, role, ingestionMode, loggingPrefix) {
+    constructor(channelName, clientArgs, endpoint, role, ingestionMode, loggingPrefix, clientId) {
         this._channelName = channelName;
         this._clientArgs = clientArgs;
         this._role = role;
         this._endpoint = endpoint;
         this._ingestionMode = ingestionMode;
         this._loggingPrefix = loggingPrefix;
+        this._clientId = clientId;
     }
 
     // Must be called first
     // Creates all the clients used to interface with Kinesis Video Streams Signaling
     async init() {
         await this._initializeClients();
+    }
+
+    // Determine if the signaling channel is configured for ingestion
+    // Separate from init(). Can be called at any time.
+    // Call isIngestionEnabled() afterwards to determine the result.
+    async determineMediaIngestionPath() {
+        await this._checkWebRTCIngestionPath();
     }
 
     // Returns the Signaling Channel ARN
@@ -93,37 +101,8 @@ class ChannelHelper {
     //   KVSWebRTC.SignalingClient                --> this._signalingClient
     //   AWS.KinesisVideoWebRTCStorage (optional) --> this._webrtcStorageClient
     async _initializeClients() {
-        // Kinesis Video Client
-        // Used to invoke APIs under https://docs.aws.amazon.com/kinesisvideostreams/latest/dg/API_Operations_Amazon_Kinesis_Video_Streams.html
-        this._kinesisVideoClient = new AWS.KinesisVideo({
-            ...this._clientArgs,
-            endpoint: this._endpoint,
-            correctClockSkew: true,
-        });
-
-        const describeSignalingChannelResponse = await this._kinesisVideoClient
-            .describeSignalingChannel({
-                ChannelName: this._channelName,
-            })
-            .promise();
-
-        this._channelArn = describeSignalingChannelResponse.ChannelInfo.ChannelARN;
-        console.debug(this._loggingPrefix, 'Channel ARN:', this._channelArn);
-
-        if (this._ingestionMode === ChannelHelper.IngestionMode.DETERMINE_THROUGH_DESCRIBE) {
-            const describeMediaStorageConfigurationResponse = await this._kinesisVideoClient
-                .describeMediaStorageConfiguration({
-                    ChannelARN: this._channelArn,
-                })
-                .promise();
-            const mediaStorageConfiguration = describeMediaStorageConfigurationResponse.MediaStorageConfiguration;
-
-            if (mediaStorageConfiguration.Status === 'ENABLED' && mediaStorageConfiguration.StreamARN !== null) {
-                this._ingestionMode = ChannelHelper.IngestionMode.ON;
-                this._streamArn = mediaStorageConfiguration.StreamARN;
-            } else {
-                this._ingestionMode = ChannelHelper.IngestionMode.OFF;
-            }
+        if (!this._kinesisVideoClient) {
+            await this._checkWebRTCIngestionPath();
         }
 
         const protocols = ['HTTPS', 'WSS'];
@@ -153,6 +132,7 @@ class ChannelHelper {
                 secretAccessKey: this._clientArgs.secretAccessKey,
                 sessionToken: this._clientArgs.sessionToken,
             },
+            clientId: this._clientId,
             requestSigner: {
                 // We override the default requestSigner to add timing information.
                 // Inside the function, `this` refers to the function itself,
@@ -170,6 +150,7 @@ class ChannelHelper {
                     const retVal = await signer.getSignedURL(signalingEndpoint, queryParams, date);
                     const signingEnd = new Date();
                     console.debug(this._loggingPrefix, 'Signing the url ended at', signingEnd);
+                    console.debug(this._loggingPrefix, 'Signaling Secure WebSocket URL:', retVal);
                     console.log(this._loggingPrefix, 'Time to sign the request:', signingEnd.getTime() - signingStart.getTime(), 'ms');
                     this._signalingConnectionStarted = new Date();
                     console.log(this._loggingPrefix, 'Connecting to KVS Signaling...');
@@ -193,6 +174,45 @@ class ChannelHelper {
         }
     }
 
+    // Check if the WebRTC ingestion mode should be used.
+    // After calling this, call isIngestionEnabled() to check the outcome.
+    async _checkWebRTCIngestionPath() {
+        if (!this._kinesisVideoClient) {
+            this._kinesisVideoClient = new AWS.KinesisVideo({
+                ...this._clientArgs,
+                endpoint: this._endpoint,
+                correctClockSkew: true,
+            });
+        }
+
+        if (!this._channelArn) {
+            const describeSignalingChannelResponse = await this._kinesisVideoClient
+                .describeSignalingChannel({
+                    ChannelName: this._channelName,
+                })
+                .promise();
+
+            this._channelArn = describeSignalingChannelResponse.ChannelInfo.ChannelARN;
+            console.log(this._loggingPrefix, 'Channel ARN:', this._channelArn);
+        }
+
+        if (this._ingestionMode === ChannelHelper.IngestionMode.DETERMINE_THROUGH_DESCRIBE) {
+            const describeMediaStorageConfigurationResponse = await this._kinesisVideoClient
+                .describeMediaStorageConfiguration({
+                    ChannelARN: this._channelArn,
+                })
+                .promise();
+            const mediaStorageConfiguration = describeMediaStorageConfigurationResponse.MediaStorageConfiguration;
+            console.log(this._loggingPrefix, 'Media storage configuration:', mediaStorageConfiguration);
+            if (mediaStorageConfiguration.Status === 'ENABLED' && mediaStorageConfiguration.StreamARN !== null) {
+                this._ingestionMode = ChannelHelper.IngestionMode.ON;
+                this._streamArn = mediaStorageConfiguration.StreamARN;
+            } else {
+                this._ingestionMode = ChannelHelper.IngestionMode.OFF;
+            }
+        }
+    }
+
     // Fetch the endpoints specified by the protocols.
     // Returns an object containing the protocols as keys and the
     // returned endpoint as values: { HTTPS: "https://...", WSS: "wss://..." }
@@ -212,7 +232,7 @@ class ChannelHelper {
             endpoints[endpoint.Protocol] = endpoint.ResourceEndpoint;
             return endpoints;
         }, {});
-        console.debug(this._loggingPrefix, 'Endpoints:', endpointsByProtocol);
+        console.log(this._loggingPrefix, 'Endpoints:', endpointsByProtocol);
         return endpointsByProtocol;
     }
 }

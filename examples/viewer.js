@@ -1,7 +1,7 @@
 /**
  * This file demonstrates the process of starting WebRTC streaming using a KVS Signaling Channel.
  */
-const viewer = {};
+let viewer = {};
 
 //globals for DQP metrics and test
 const profilingTestLength = 20;
@@ -380,7 +380,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
         const channelARN = describeSignalingChannelResponse.ChannelInfo.ChannelARN;
         console.log('[VIEWER] Channel ARN:', channelARN);
 
-        if (formValues.ingestMedia) {
+        if (formValues.autoDetermineMediaIngestMode) {
             console.log('[VIEWER] Determining whether this signaling channel is in media ingestion mode.');
 
             metrics.viewer.describeMediaStorageConfiguration.startTime = Date.now();
@@ -764,7 +764,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
 
         // As remote tracks are received, add them to the remote view
         viewer.peerConnection.addEventListener('track', event => {
-            console.log('[VIEWER] Received remote track');
+            console.log('[VIEWER] Received remote track with id:', event?.streams[0]?.id ?? '[Error retrieving track ID]');
             if (remoteView.srcObject) {
                 return;
             }
@@ -840,6 +840,8 @@ function stopViewer() {
             }
             headerElement.textContent = "";
         }
+
+        viewer = {};
 
     } catch (e) {
         console.error('[VIEWER] Encountered error stopping', e);
