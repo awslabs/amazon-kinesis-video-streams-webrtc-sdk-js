@@ -1,13 +1,15 @@
-let ROLE = null; // Possible values: 'master', 'viewer', null
+let ROLE = null; // Possible values: 'MASTER', 'VIEWER', null
 const LOG_LEVELS = ['debug', 'info', 'warn', 'error'];
 let LOG_LEVEL = 'info'; // Possible values: any value of LOG_LEVELS
+let randomClientId = getRandomClientId(); // Holder for randomly-generated client id
+let channelHelper = null; // Holder for channelHelper
 
 function configureLogging() {
     function log(level, messages) {
         const text = messages
             .map(message => {
                 if (message instanceof Error) {
-                    const { stack, ...rest } = message;
+                    const {stack, ...rest} = message;
                     if (Object.keys(rest).length === 0) {
                         if (stack) {
                             return stack;
@@ -36,25 +38,25 @@ function configureLogging() {
     }
 
     console._error = console.error;
-    console.error = function(...rest) {
+    console.error = function (...rest) {
         log('ERROR', Array.prototype.slice.call(rest));
         console._error.apply(this, rest);
     };
 
     console._warn = console.warn;
-    console.warn = function(...rest) {
+    console.warn = function (...rest) {
         log('WARN', Array.prototype.slice.call(rest));
         console._warn.apply(this, rest);
     };
 
     console._log = console.log;
-    console.log = function(...rest) {
+    console.log = function (...rest) {
         log('INFO', Array.prototype.slice.call(rest));
         console._log.apply(this, rest);
     };
 
     console._debug = console.debug;
-    console.debug = function(...rest) {
+    console.debug = function (...rest) {
         log('DEBUG', Array.prototype.slice.call(rest));
         console._debug.apply(this, rest);
     };
@@ -71,12 +73,13 @@ function getFormValues() {
     return {
         region: $('#region').val(),
         channelName: $('#channelName').val(),
-        clientId: $('#clientId').val() || getRandomClientId(),
+        clientId: $('#clientId').val() || randomClientId,
         sendVideo: $('#sendVideo').is(':checked'),
         sendAudio: $('#sendAudio').is(':checked'),
         streamName: $('#streamName').val(),
-        ingestMedia: $('#ingest-media').is(':checked'),
+        autoDetermineMediaIngestMode: $('#ingest-media').is(':checked'),
         showJSSButton: $('#show-join-storage-session-button').is(':checked'),
+        showJSSAsViewerButton: $('#show-join-storage-session-as-viewer-button').is(':checked'),
         openDataChannel: $('#openDataChannel').is(':checked'),
         widescreen: $('#widescreen').is(':checked'),
         fullscreen: $('#fullscreen').is(':checked'),
@@ -102,6 +105,8 @@ function getFormValues() {
         acceptTcpCandidates: $('#accept-tcp').is(':checked'),
         sendUdpCandidates: $('#send-udp').is(':checked'),
         acceptUdpCandidates: $('#accept-udp').is(':checked'),
+        mediaIngestionModeOverride: $('#ingest-media-manual-on').attr('data-selected') === 'true',
+        logAwsSdkCalls: $('#log-aws-sdk-calls').is(':checked'),
     };
 }
 
@@ -123,11 +128,17 @@ function onStop() {
         return;
     }
 
-    if (ROLE === 'master') {
+    if (!$('#master').hasClass('d-none')) {
         stopMaster();
         $('#master').addClass('d-none');
         $('#master .remote-view').removeClass('d-none');
         $('#master .remote').removeClass('d-none');
+
+        $('#master-heading').text('Master');
+        $('#master-section-heading').text('Master Section');
+        $('#master-viewer-heading').text('Viewer Return Channel');
+        $('#stop-master-button').text('Stop Master');
+        $('#master-data-channel-input').text('DataChannel message to send to viewer(s)');
     } else {
         stopViewer();
         $('#viewer').addClass('d-none');
@@ -144,17 +155,19 @@ function onStop() {
 
     $('#form').removeClass('d-none');
     $('#join-storage-session-button').addClass('d-none');
+    $('#join-storage-session-as-viewer-button').addClass('d-none');
     ROLE = null;
+    channelHelper = null;
 }
 
 window.addEventListener('beforeunload', onStop);
 
-window.addEventListener('error', function(event) {
+window.addEventListener('error', function (event) {
     console.error(event.message);
     event.preventDefault();
 });
 
-window.addEventListener('unhandledrejection', function(event) {
+window.addEventListener('unhandledrejection', function (event) {
     console.error(event.reason.toString());
     event.preventDefault();
 });
@@ -166,7 +179,8 @@ $('#master-button').click(async () => {
     if (!form[0].checkValidity()) {
         return;
     }
-    ROLE = 'master';
+    const formValues = getFormValues();
+    ROLE = $('#master-heading').text() === 'Viewer' ? 'VIEWER' : 'MASTER';
     form.addClass('d-none');
     $('#master').removeClass('d-none');
 
@@ -174,7 +188,6 @@ $('#master-button').click(async () => {
     const remoteView = $('#viewer-view-holder')[0];
     const localMessage = $('#master .local-message')[0];
     const remoteMessage = $('#master .remote-message')[0];
-    const formValues = getFormValues();
 
     $(remoteMessage).empty();
     localMessage.value = '';
@@ -206,7 +219,35 @@ $('#viewer-button').click(async () => {
     if (!form[0].checkValidity()) {
         return;
     }
-    ROLE = 'viewer';
+    randomClientId = getRandomClientId();
+    const formValues = getFormValues();
+
+    if (formValues.autoDetermineMediaIngestMode) {
+        channelHelper = new ChannelHelper(formValues.channelName,
+            {
+                region: formValues.region,
+                accessKeyId: formValues.accessKeyId,
+                secretAccessKey: formValues.secretAccessKey,
+                sessionToken: formValues.sessionToken,
+            },
+            formValues.endpoint,
+            KVSWebRTC.Role.VIEWER,
+            ChannelHelper.IngestionMode.DETERMINE_THROUGH_DESCRIBE,
+            '[VIEWER]',
+            formValues.clientId);
+        await channelHelper.determineMediaIngestionPath();
+
+        if (channelHelper.isIngestionEnabled()) {
+            updateViewerUI();
+            return;
+        }
+    } else if (formValues.mediaIngestionModeOverride) {
+        channelHelper = null;
+        updateViewerUI();
+        return;
+    }
+
+    ROLE = 'VIEWER';
     form.addClass('d-none');
     $('#viewer').removeClass('d-none');
 
@@ -214,7 +255,6 @@ $('#viewer-button').click(async () => {
     const remoteView = $('#viewer .remote-view')[0];
     const localMessage = $('#viewer .local-message')[0];
     const remoteMessage = $('#viewer .remote-message')[0];
-    const formValues = getFormValues();
 
     if (formValues.enableDQPmetrics) {
         $('#dqpmetrics').removeClass('d-none');
@@ -233,6 +273,15 @@ $('#viewer-button').click(async () => {
 
     startViewer(localView, remoteView, formValues, onStatsReport, remoteMessage);
 });
+
+function updateViewerUI() {
+    $('#master-heading').text('Viewer');
+    $('#master-section-heading').text('Return Channel');
+    $('#master-viewer-heading').text('From Master');
+    $('#stop-master-button').text('Stop Viewer');
+    $('#master-data-channel-input').text('DataChannel message to send to master');
+    $('#master-button').click();
+}
 
 $('#stop-viewer-button').click(onStop);
 
@@ -348,7 +397,7 @@ $('#region').on('focusout', event => {
     }
 });
 
-function addViewerTrackToMaster(viewerId, track) {
+function addViewerMediaStreamToMaster(viewerId, track) {
     $('#empty-video-placeholder')?.remove();
 
     $('#viewer-view-holder')
@@ -356,13 +405,16 @@ function addViewerTrackToMaster(viewerId, track) {
         ?.remove();
 
     const container = $(`<div id="${viewerId}"></div>`);
-    const video = $(`<video autoPlay playsInline controls title="${viewerId}"></video>`);
+    const video = viewerId?.length ?
+        $(`<video autoPlay playsInline controls title="${viewerId}"></video>`) :
+        $('<video autoPlay playsInline controls></video>');
     video.addClass('remote-view');
-
-    const title = $(`<p>${viewerId}</p>`);
-
     container.append(video);
-    container.append(title);
+
+    if (viewerId?.length) {
+        const title = $(`<p>${viewerId}</p>`);
+        container.append(title);
+    }
 
     video[0].srcObject = track;
 
@@ -407,50 +459,95 @@ async function printPeerConnectionStateInfo(event, logPrefix, remoteClientId) {
             removeViewerTrackFromMaster(remoteClientId);
         }
         console.error(logPrefix, `Connection to ${remoteClientId || 'peer'} failed!`);
-        onPeerConnectionFailed();
+        if (ROLE === 'MASTER') {
+            onPeerConnectionFailed(remoteClientId);
+        }
     }
 }
+
+$('#ingest-media').click((event) => {
+    if (event.target.checked) {
+        // Automatically determine mode through describeMediaStorageConfiguration
+        $('#manual-ingestion-mode-button-override').addClass('d-none');
+    } else {
+        // Manual override
+        $('#manual-ingestion-mode-button-override').removeClass('d-none');
+    }
+    updateIngestMediaPrompt();
+});
+
+$('#ingest-media-manual-on').click(() => {
+    $('#show-join-storage-session-manually').removeClass('d-none');
+    $('#ingest-media-manual-on').addClass('btn-primary');
+    $('#ingest-media-manual-on').removeClass('btn-secondary');
+    $('#ingest-media-manual-off').addClass('btn-secondary');
+    $('#ingest-media-manual-off').removeClass('btn-primary');
+    $('#ingest-media-manual-on').attr('data-selected', 'true');
+    $('#ingest-media-manual-off').attr('data-selected', 'false');
+
+    // Save to localStorage
+    $('#ingest-media-manual-on').trigger('change');
+    $('#ingest-media-manual-off').trigger('change');
+});
+
+$('#ingest-media-manual-off').click(() => {
+    $('#show-join-storage-session-manually').addClass('d-none');
+    $('#ingest-media-manual-on').addClass('btn-secondary');
+    $('#ingest-media-manual-on').removeClass('btn-primary');
+    $('#ingest-media-manual-off').addClass('btn-primary');
+    $('#ingest-media-manual-off').removeClass('btn-secondary');
+    $('#ingest-media-manual-off').attr('data-selected', 'true');
+    $('#ingest-media-manual-on').attr('data-selected', 'false');
+
+    // Save to localStorage
+    $('#ingest-media-manual-on').trigger('change');
+    $('#ingest-media-manual-off').trigger('change');
+});
 
 // Read/Write all of the fields to/from localStorage so that fields are not lost on refresh.
 const urlParams = new URLSearchParams(window.location.search);
 const fields = [
-    { field: 'channelName', type: 'text' },
-    { field: 'clientId', type: 'text' },
-    { field: 'region', type: 'text' },
-    { field: 'accessKeyId', type: 'text' },
-    { field: 'secretAccessKey', type: 'text' },
-    { field: 'sessionToken', type: 'text' },
-    { field: 'endpoint', type: 'text' },
-    { field: 'sendVideo', type: 'checkbox' },
-    { field: 'sendAudio', type: 'checkbox' },
-    { field: 'streamName', type: 'text' },
-    { field: 'ingest-media', type: 'checkbox' },
-    { field: 'show-join-storage-session-button', type: 'checkbox' },
-    { field: 'widescreen', type: 'radio', name: 'resolution' },
-    { field: 'fullscreen', type: 'radio', name: 'resolution' },
-    { field: 'openDataChannel', type: 'checkbox' },
-    { field: 'useTrickleICE', type: 'checkbox' },
-    { field: 'natTraversalEnabled', type: 'radio', name: 'natTraversal' },
-    { field: 'forceSTUN', type: 'radio', name: 'natTraversal' },
-    { field: 'forceTURN', type: 'radio', name: 'natTraversal' },
-    { field: 'natTraversalDisabled', type: 'radio', name: 'natTraversal' },
-    { field: 'enableDQPmetrics', type: 'checkbox' },
-    { field: 'enableProfileTimeline', type: 'checkbox' },
-    { field: 'send-host', type: 'checkbox' },
-    { field: 'accept-host', type: 'checkbox' },
-    { field: 'send-relay', type: 'checkbox' },
-    { field: 'accept-relay', type: 'checkbox' },
-    { field: 'send-srflx', type: 'checkbox' },
-    { field: 'accept-srflx', type: 'checkbox' },
-    { field: 'send-prflx', type: 'checkbox' },
-    { field: 'accept-prflx', type: 'checkbox' },
-    { field: 'send-tcp', type: 'checkbox' },
-    { field: 'accept-tcp', type: 'checkbox' },
-    { field: 'send-udp', type: 'checkbox' },
-    { field: 'accept-udp', type: 'checkbox' },
+    {field: 'channelName', type: 'text'},
+    {field: 'clientId', type: 'text'},
+    {field: 'region', type: 'text'},
+    {field: 'accessKeyId', type: 'text'},
+    {field: 'secretAccessKey', type: 'text'},
+    {field: 'sessionToken', type: 'text'},
+    {field: 'endpoint', type: 'text'},
+    {field: 'sendVideo', type: 'checkbox'},
+    {field: 'sendAudio', type: 'checkbox'},
+    {field: 'streamName', type: 'text'},
+    {field: 'ingest-media', type: 'checkbox'},
+    {field: 'ingest-media-manual-on', type: 'button'},
+    {field: 'ingest-media-manual-off', type: 'button'},
+    {field: 'show-join-storage-session-button', type: 'checkbox'},
+    {field: 'show-join-storage-session-as-viewer-button', type: 'checkbox'},
+    {field: 'widescreen', type: 'radio', name: 'resolution'},
+    {field: 'fullscreen', type: 'radio', name: 'resolution'},
+    {field: 'openDataChannel', type: 'checkbox'},
+    {field: 'useTrickleICE', type: 'checkbox'},
+    {field: 'natTraversalEnabled', type: 'radio', name: 'natTraversal'},
+    {field: 'forceSTUN', type: 'radio', name: 'natTraversal'},
+    {field: 'forceTURN', type: 'radio', name: 'natTraversal'},
+    {field: 'natTraversalDisabled', type: 'radio', name: 'natTraversal'},
+    {field: 'enableDQPmetrics', type: 'checkbox'},
+    {field: 'enableProfileTimeline', type: 'checkbox'},
+    {field: 'send-host', type: 'checkbox'},
+    {field: 'accept-host', type: 'checkbox'},
+    {field: 'send-relay', type: 'checkbox'},
+    {field: 'accept-relay', type: 'checkbox'},
+    {field: 'send-srflx', type: 'checkbox'},
+    {field: 'accept-srflx', type: 'checkbox'},
+    {field: 'send-prflx', type: 'checkbox'},
+    {field: 'accept-prflx', type: 'checkbox'},
+    {field: 'send-tcp', type: 'checkbox'},
+    {field: 'accept-tcp', type: 'checkbox'},
+    {field: 'send-udp', type: 'checkbox'},
+    {field: 'accept-udp', type: 'checkbox'},
+    {field: 'log-aws-sdk-calls', type: 'checkbox'},
 ];
 
-fields.forEach(({ field, type, name }) => {
+fields.forEach(({field, type, name}) => {
     const id = '#' + field;
 
     // Read field from localStorage
@@ -459,6 +556,15 @@ fields.forEach(({ field, type, name }) => {
         if (localStorageValue) {
             if (type === 'checkbox' || type === 'radio') {
                 $(id).prop('checked', localStorageValue === 'true');
+            } else if (type === 'button') {
+                $(id).attr('data-selected', localStorageValue);
+                if (localStorageValue === 'true') {
+                    $(id).addClass('btn-primary');
+                    $(id).removeClass('btn-secondary');
+                } else {
+                    $(id).addClass('btn-secondary');
+                    $(id).removeClass('btn-primary');
+                }
             } else {
                 $(id).val(localStorageValue);
             }
@@ -473,13 +579,22 @@ fields.forEach(({ field, type, name }) => {
         paramValue = urlParams.get(field);
         if (type === 'checkbox' || type === 'radio') {
             $(id).prop('checked', paramValue === 'true');
+        } else if (type === 'button') {
+            $(id).attr('data-selected', paramValue);
+            if (paramValue) {
+                $(id).addClass('btn-primary');
+                $(id).removeClass('btn-secondary');
+            } else {
+                $(id).addClass('btn-secondary');
+                $(id).removeClass('btn-primary');
+            }
         } else {
             $(id).val(paramValue);
         }
     }
 
     // Write field to localstorage on change event
-    $(id).change(function() {
+    $(id).change(function () {
         try {
             if (type === 'checkbox') {
                 localStorage.setItem(field, $(id).is(':checked'));
@@ -489,8 +604,12 @@ fields.forEach(({ field, type, name }) => {
                     .forEach(fieldItem => {
                         localStorage.setItem(fieldItem.field, fieldItem.field === field);
                     });
-            } else {
+            } else if (type === 'text') {
                 localStorage.setItem(field, $(id).val());
+            } else if (type === 'button') {
+                localStorage.setItem(field, $(id).attr('data-selected'));
+            } else {
+                console.warn('Unrecognized item:', fieldItem);
             }
         } catch (e) {
             /* Don't use localStorage */
@@ -505,7 +624,7 @@ fields.forEach(({ field, type, name }) => {
  * @returns true if the candidate should be added to the peerConnection.
  */
 function shouldAcceptCandidate(formValues, candidate) {
-    const { transport, type } = extractTransportAndType(candidate);
+    const {transport, type} = extractTransportAndType(candidate);
 
     if (!formValues.acceptUdpCandidates && transport === 'udp') {
         return false;
@@ -600,7 +719,7 @@ function saveAdvanced() {
  * @returns true if the candidate should be sent to the peer.
  */
 function shouldSendIceCandidate(formValues, candidate) {
-    const { transport, type } = extractTransportAndType(candidate);
+    const {transport, type} = extractTransportAndType(candidate);
 
     if (!formValues.sendUdpCandidates && transport === 'udp') {
         return false;
@@ -638,16 +757,16 @@ function extractTransportAndType(candidate) {
     }
 
     // https://datatracker.ietf.org/doc/html/rfc5245#section-15.1
-    return { transport: words[2], type: words[7] };
+    return {transport: words[2], type: words[7]};
 }
 
-$('#copy-logs').on('click', async function() {
+$('#copy-logs').on('click', async function () {
     const logsResult = [];
     $('#logs')
         .children()
         // Only copy the logs that are visible
         .filter((_, element) => !element.getAttribute('class')?.includes('d-none'))
-        .each(function() {
+        .each(function () {
             logsResult.push(this.textContent);
         });
     navigator.clipboard.writeText(logsResult.join(''));
@@ -660,27 +779,27 @@ $('#copy-logs').on('click', async function() {
     $('#copy-logs').addClass('btn-light');
 });
 
-$('#listStorageChannels').on('click', async function() {
+$('#listStorageChannels').on('click', async function () {
     const formValues = getFormValues();
     listStorageChannels(formValues);
 });
 
-$('#update-media-storage-configuration-button').on('click', async function() {
+$('#update-media-storage-configuration-button').on('click', async function () {
     const formValues = getFormValues();
     updateMediaStorageConfiguration(formValues);
 });
 
-$('#describe-media-storage-configuration-button').on('click', async function() {
+$('#describe-media-storage-configuration-button').on('click', async function () {
     const formValues = getFormValues();
     describeMediaStorageConfiguration(formValues);
 });
 
-$('#create-stream-modal').on('show.bs.modal', function() {
+$('#create-stream-modal').on('show.bs.modal', function () {
     // Set the stream name in the modal to the stream name.
     $('#create-stream-modal-stream-input').val($('#streamName').val());
 });
 
-$('#create-stream-modal-create-stream-button').on('click', async function() {
+$('#create-stream-modal-create-stream-button').on('click', async function () {
     await createStream({
         ...getFormValues(),
         streamName: $('#create-stream-modal-stream-input').val(),
@@ -688,20 +807,53 @@ $('#create-stream-modal-create-stream-button').on('click', async function() {
     });
 });
 
-$('#join-storage-session-button').on('click', async function() {
+$('#join-storage-session-button').on('click', async function () {
     const formValues = getFormValues();
     joinStorageSessionManually(formValues);
 });
 
+$('#join-storage-session-as-viewer-button').on('click', async function () {
+    const formValues = getFormValues();
+    joinStorageSessionAsViewerManually(formValues);
+});
+
+function updateIngestMediaPrompt() {
+    if ($('#ingest-media').is(':checked')) {
+        $('#show-join-storage-session-manually').addClass('d-none');
+        $('#manual-ingestion-mode-button-override').addClass('d-none');
+    } else {
+        $('#manual-ingestion-mode-button-override').removeClass('d-none');
+
+        if ($('#ingest-media-manual-on').attr('data-selected') === 'true') {
+            $('#show-join-storage-session-manually').removeClass('d-none');
+        } else {
+            $('#show-join-storage-session-manually').addClass('d-none');
+        }
+    }
+}
+
+updateIngestMediaPrompt();
+
+function configureAwsSdkLogs() {
+    if ($('#log-aws-sdk-calls').is(':checked')) {
+        AWS.config.logger = console;
+    } else {
+        AWS.config.logger = undefined;
+    }
+}
+
+configureAwsSdkLogs();
+
 // Enable tooltips
-$(document).ready(function() {
+$(document).ready(function () {
     $('[data-toggle="tooltip"]').tooltip();
 
     // Except the copy-logs tooltip
-    $('#copy-tooltip').tooltip({ trigger: 'manual' });
+    $('#copy-tooltip').tooltip({trigger: 'manual'});
 });
 
 // The page is all setup. Hide the loading spinner and show the page content.
 $('.loader').addClass('d-none');
 $('#main').removeClass('d-none');
 console.log('Page loaded');
+
