@@ -37,7 +37,7 @@
         "@typescript-eslint/eslint-plugin": "^2.34.0",
         "@typescript-eslint/parser": "^2.34.0",
         "codecov": "^3.7.1",
-        "eslint": "^6.8.0",
+        "eslint": "^9.14.0",
         "eslint-config-prettier": "^6.3.0",
         "eslint-plugin-kvs-webrtc": "file:eslint",
         "eslint-plugin-prettier": "^3.1.0",
