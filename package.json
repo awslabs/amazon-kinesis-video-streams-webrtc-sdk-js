@@ -35,7 +35,7 @@
         "@types/jest": "^24.0.23",
         "@types/node": "^17.0.41",
         "@typescript-eslint/eslint-plugin": "^2.34.0",
-        "@typescript-eslint/parser": "^2.34.0",
+        "@typescript-eslint/parser": "^8.14.0",
         "codecov": "^3.7.1",
         "eslint": "^6.8.0",
         "eslint-config-prettier": "^6.3.0",
