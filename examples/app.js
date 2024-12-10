@@ -465,6 +465,20 @@ async function printPeerConnectionStateInfo(event, logPrefix, remoteClientId) {
     }
 }
 
+$('#repeat-button').click(async (event) => {
+    for (let i = 1; i <= 450; i++) {
+        console.error(`Start run #${i}`);
+        $('#viewer-button').click();
+
+        await new Promise((res, rej) => setTimeout(res, 12000));
+
+        console.error(`End run #${i}`);
+        $('#stop-viewer-button').click();
+
+        await new Promise((res, rej) => setTimeout(res, 12000));
+    }
+});
+
 $('#ingest-media').click((event) => {
     if (event.target.checked) {
         // Automatically determine mode through describeMediaStorageConfiguration
