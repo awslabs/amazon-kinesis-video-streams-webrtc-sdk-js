@@ -113,8 +113,6 @@ describe('SignalingClient', () => {
     const mockDate = new Date('2020-05-01T00:00:00.000Z');
     const mockClockSkewedDate = new Date('2020-05-01T00:16:40.000Z');
 
-    // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
-    // @ts-ignore
     global.TextEncoder = util.TextEncoder;
 
     beforeEach(() => {
