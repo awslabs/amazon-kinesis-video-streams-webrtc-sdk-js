@@ -6,7 +6,7 @@ const { merge } = require('webpack-merge');
 const MAX_ASSET_SIZE_KB = 23.6;
 const MAX_ASSET_SIZE_BYTES = MAX_ASSET_SIZE_KB * 1024;
 
-module.exports = merge.smart(require('./webpack.config'), {
+module.exports = merge(require('./webpack.config'), {
     mode: 'production',
 
     output: {
