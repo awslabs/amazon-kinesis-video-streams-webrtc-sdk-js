@@ -256,6 +256,7 @@ let dataChannelLatencyCalcMessage = {
     'lastMessageFromViewerTs': ''
 }
 
+let once = false;
 async function startViewer(localView, remoteView, formValues, onStatsReport, remoteMessage) {
     try {
         console.log('[VIEWER] Client id is:', formValues.clientId);
@@ -269,6 +270,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
         viewer.remoteView = remoteView;
 
         viewer.loadedDataCallback = () => {
+            console.error('Offer to first frame:', Date.now() - metrics.viewer.offAnswerTime.startTime);
             metrics.viewer.ttff.endTime = Date.now();
             if (formValues.enableProfileTimeline) {
                 metrics.viewer.ttffAfterPc.endTime = metrics.viewer.ttff.endTime;
@@ -286,7 +288,10 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
             }
         };
 
-        viewer.remoteView.addEventListener('loadeddata', viewer.loadedDataCallback);
+        if (!once) {
+            viewer.remoteView.addEventListener('loadeddata', viewer.loadedDataCallback);
+            once = true;
+        }
 
         if (formValues.enableProfileTimeline) {
             metrics.viewer.ttff.startTime = viewerButtonPressed.getTime();
@@ -750,6 +755,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
             console.log('[VIEWER] Received SDP answer');
             console.debug('SDP answer:', answer);
             metrics.viewer.offAnswerTime.endTime = Date.now();
+            console.error('Offer to answer:', metrics.viewer.offAnswerTime.endTime - metrics.viewer.offAnswerTime.startTime);
             await viewer.peerConnection.setRemoteDescription(answer);
         });
 
@@ -803,6 +809,9 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
 
         viewer.peerConnection.addEventListener('connectionstatechange', async event => {
             printPeerConnectionStateInfo(event, '[VIEWER]');
+            if (event.target.connectionState === 'connected') {
+                console.error('Offer to peerconnection=connected:', Date.now() - metrics.viewer.offAnswerTime.startTime);
+            }
         });
 
         // As remote tracks are received, add them to the remote view
