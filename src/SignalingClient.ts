@@ -259,6 +259,7 @@ export class SignalingClient extends EventEmitter {
         let parsedMessagePayload: object;
         try {
             parsedEventData = JSON.parse(event.data) as WebSocketMessage;
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (e) {
             // For forwards compatibility we ignore messages that are not able to be parsed.
             // TODO: Consider how to make it easier for users to be aware of dropped messages.
@@ -266,6 +267,7 @@ export class SignalingClient extends EventEmitter {
         }
         try {
             parsedMessagePayload = SignalingClient.parseJSONObjectFromBase64String(parsedEventData.messagePayload);
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (e) {
             // TODO: Consider how to make it easier for users to be aware of dropped messages.
         }
@@ -299,6 +301,7 @@ export class SignalingClient extends EventEmitter {
     private static parseJSONObjectFromBase64String(base64EncodedString: string): object {
         try {
             return JSON.parse(atob(base64EncodedString));
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (e) {
             return JSON.parse(Buffer.from(base64EncodedString, 'base64').toString());
         }
@@ -310,6 +313,7 @@ export class SignalingClient extends EventEmitter {
     private static serializeJSONObjectAsBase64String(object: object): string {
         try {
             return btoa(JSON.stringify(object));
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (e) {
             return Buffer.from(JSON.stringify(object)).toString('base64');
         }
