@@ -52,7 +52,7 @@
         "webpack": "^5.0.0",
         "webpack-cli": "^4.7.0",
         "webpack-dev-server": "^4.0.0",
-        "webpack-merge": "^4.2.2"
+        "webpack-merge": "^6.0.1"
     },
     "dependencies": {
         "isomorphic-webcrypto": "^2.3.6",
