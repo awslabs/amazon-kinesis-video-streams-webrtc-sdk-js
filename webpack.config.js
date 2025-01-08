@@ -67,4 +67,8 @@ module.exports = {
 
     // Fail if there are any errors (such as a TypeScript type issue)
     bail: true,
+    
+    performance: {
+        maxAssetSize: 1048576
+    }
 };
