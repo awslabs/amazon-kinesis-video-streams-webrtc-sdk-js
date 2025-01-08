@@ -25,4 +25,9 @@ module.exports = merge(require('./webpack.config'), {
 
     // Keep running even if there are errors
     bail: false,
+
+    performance: {
+        maxAssetSize: 1048576,
+        maxEntrypointSize: 1048576,
+    },
 });
