@@ -127,7 +127,7 @@ export class SignalingClient extends EventEmitter {
         // Therefore, we just kick off the asynchronous process and then return and let it fire events.
         this.asyncOpen()
             .then()
-            .catch(err => this.onError(err));
+            .catch((err) => this.onError(err));
     }
 
     /**
@@ -346,7 +346,7 @@ export class SignalingClient extends EventEmitter {
             return;
         }
         delete this.pendingIceCandidatesByClientId[clientIdKey];
-        pendingIceCandidates.forEach(iceCandidate => {
+        pendingIceCandidates.forEach((iceCandidate) => {
             this.emit('iceCandidate', iceCandidate, clientId);
         });
     }

@@ -138,7 +138,7 @@ export class SigV4RequestSigner implements RequestSigner {
      */
     private static createHeadersString(headers: Headers): string {
         return Object.keys(headers)
-            .map(header => `${header}:${headers[header]}\n`)
+            .map((header) => `${header}:${headers[header]}\n`)
             .join();
     }
 
@@ -148,7 +148,7 @@ export class SigV4RequestSigner implements RequestSigner {
     private static createQueryString(queryParams: QueryParams): string {
         return Object.keys(queryParams)
             .sort()
-            .map(key => `${key}=${encodeURIComponent(queryParams[key])}`)
+            .map((key) => `${key}=${encodeURIComponent(queryParams[key])}`)
             .join('&');
     }
 
@@ -209,7 +209,7 @@ export class SigV4RequestSigner implements RequestSigner {
 
     private static toHex(buffer: ArrayBuffer): string {
         return Array.from(new Uint8Array(buffer))
-            .map(b => b.toString(16).padStart(2, '0'))
+            .map((b) => b.toString(16).padStart(2, '0'))
             .join('');
     }
 }
