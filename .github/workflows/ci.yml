@@ -9,6 +9,7 @@ on:
     branches:
       - master
       - develop
+      - dependabot/npm_and_yarn/develop/tslib-2.8.1
 
 jobs:
   nodejs-ubuntu-build:
