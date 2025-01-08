@@ -11,4 +11,9 @@ module.exports = merge(require('./webpack.config'), {
 
     // Include sourcemaps
     devtool: 'inline-source-map',
+
+    performance: {
+        maxAssetSize: 1048576,
+        maxEntrypointSize: 1048576,
+    },
 });
