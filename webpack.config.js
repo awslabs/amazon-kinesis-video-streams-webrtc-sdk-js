@@ -69,6 +69,7 @@ module.exports = {
     bail: true,
     
     performance: {
-        maxAssetSize: 1048576
+        maxAssetSize: 1048576,
+        maxEntrypointSize: 1048576,
     }
 };
