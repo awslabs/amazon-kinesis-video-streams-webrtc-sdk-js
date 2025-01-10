@@ -4,6 +4,7 @@ on:
     push:
         branches:
             - master
+            - remove-examples-publishing
 jobs:
     publish-ubuntu-build:
         runs-on: ubuntu-latest
@@ -25,7 +26,10 @@ jobs:
                   branch: gh-pages
                   clean: true
                   clean-exclude: develop/
+            - name: Delete examples directories
+              run: rm -rf examples dist/examples
             - name: Deploy to npm packages
               uses: JS-DevTools/npm-publish@v1
               with:
                   token: '${{ secrets.NPM_TOKEN }}'
+                  dry-run: true
