@@ -117,7 +117,7 @@ describe('SignalingClient', () => {
 
     beforeEach(() => {
         mockDateClass(mockDate);
-        signer = jest.fn().mockImplementation(endpoint => new Promise(resolve => resolve(endpoint)));
+        signer = jest.fn().mockImplementation((endpoint) => new Promise((resolve) => resolve(endpoint)));
         config = {
             role: Role.VIEWER,
             clientId: CLIENT_ID,
@@ -185,7 +185,7 @@ describe('SignalingClient', () => {
     });
 
     describe('open', () => {
-        it('should open a connection to the signaling server as the viewer', done => {
+        it('should open a connection to the signaling server as the viewer', (done) => {
             const client = new SignalingClient(config as SignalingClientConfig);
             client.on('open', () => {
                 expect(signer).toBeCalledWith(
@@ -201,7 +201,7 @@ describe('SignalingClient', () => {
             client.open();
         });
 
-        it('should open a connection to the signaling server as the master', done => {
+        it('should open a connection to the signaling server as the master', (done) => {
             config.role = Role.MASTER;
             delete config.clientId;
             const client = new SignalingClient(config as SignalingClientConfig);
@@ -218,7 +218,7 @@ describe('SignalingClient', () => {
             client.open();
         });
 
-        it('should open a connection to the signaling server with clock skew adjusted date', done => {
+        it('should open a connection to the signaling server with clock skew adjusted date', (done) => {
             config.systemClockOffset = 1000000;
             const client = new SignalingClient(config as SignalingClientConfig);
             client.on('open', () => {
@@ -236,14 +236,14 @@ describe('SignalingClient', () => {
         });
 
         it('should not open a connection to the signaling server if it is closed while opening', async () => {
-            config.requestSigner.getSignedURL = jest.fn().mockImplementation(endpoint => new Promise(resolve => setTimeout(() => resolve(endpoint), 5)));
+            config.requestSigner.getSignedURL = jest.fn().mockImplementation((endpoint) => new Promise((resolve) => setTimeout(() => resolve(endpoint), 5)));
             const client = new SignalingClient(config as SignalingClientConfig);
             client.on('open', () => {
                 expect('Should not have fired an event').toBeFalsy();
             });
             client.open();
             client.close();
-            return new Promise(resolve => setTimeout(resolve, 100));
+            return new Promise((resolve) => setTimeout(resolve, 100));
         });
 
         it('should throw an error when making multiple open requests', () => {
@@ -254,8 +254,8 @@ describe('SignalingClient', () => {
             }).toThrow('Client is already open, opening, or closing');
         });
 
-        it('should emit an error event if the connection cannot be started', done => {
-            signer.mockImplementation(endpoint => new Promise((_, reject) => reject(new Error(endpoint))));
+        it('should emit an error event if the connection cannot be started', (done) => {
+            signer.mockImplementation((endpoint) => new Promise((_, reject) => reject(new Error(endpoint))));
             const client = new SignalingClient(config as SignalingClientConfig);
             client.on('error', () => {
                 done();
@@ -265,7 +265,7 @@ describe('SignalingClient', () => {
     });
 
     describe('close', () => {
-        it('should close an open connection', done => {
+        it('should close an open connection', (done) => {
             const client = new SignalingClient(config as SignalingClientConfig);
 
             // Open a channel, close it, then wait for the close event.
@@ -279,7 +279,7 @@ describe('SignalingClient', () => {
             client.open();
         });
 
-        it('should do nothing if the connection is closing', done => {
+        it('should do nothing if the connection is closing', (done) => {
             const client = new SignalingClient(config as SignalingClientConfig);
 
             // Open a channel, close it, try to close it again, then wait for the close event.
@@ -301,12 +301,12 @@ describe('SignalingClient', () => {
                 expect('Should not have fired an event').toBeFalsy();
             });
             client.close();
-            return new Promise(resolve => setTimeout(resolve, 100));
+            return new Promise((resolve) => setTimeout(resolve, 100));
         });
     });
 
     describe('sendSdpOffer', () => {
-        it('should send the message as the viewer', done => {
+        it('should send the message as the viewer', (done) => {
             const client = new SignalingClient(config as SignalingClientConfig);
             client.open();
             client.on('open', () => {
@@ -316,7 +316,7 @@ describe('SignalingClient', () => {
             });
         });
 
-        it('should send the message as the master', done => {
+        it('should send the message as the master', (done) => {
             config.role = Role.MASTER;
             delete config.clientId;
             const client = new SignalingClient(config as SignalingClientConfig);
@@ -333,7 +333,7 @@ describe('SignalingClient', () => {
             expect(() => client.sendSdpOffer(SDP_OFFER)).toThrow('Could not send message because the connection to the signaling service is not open.');
         });
 
-        it('should throw an error if there is a recipient id as viewer', done => {
+        it('should throw an error if there is a recipient id as viewer', (done) => {
             const client = new SignalingClient(config as SignalingClientConfig);
             client.open();
             client.on('open', () => {
@@ -346,7 +346,7 @@ describe('SignalingClient', () => {
     });
 
     describe('sendSdpAnswer', () => {
-        it('should send the message as the viewer', done => {
+        it('should send the message as the viewer', (done) => {
             const client = new SignalingClient(config as SignalingClientConfig);
             client.open();
             client.on('open', () => {
@@ -356,7 +356,7 @@ describe('SignalingClient', () => {
             });
         });
 
-        it('should throw an error if the correlationId is invalid', done => {
+        it('should throw an error if the correlationId is invalid', (done) => {
             const client = new SignalingClient(config as SignalingClientConfig);
             client.open();
             client.on('open', () => {
@@ -365,7 +365,7 @@ describe('SignalingClient', () => {
             });
         });
 
-        it('should send the message as the master', done => {
+        it('should send the message as the master', (done) => {
             config.role = Role.MASTER;
             delete config.clientId;
             const client = new SignalingClient(config as SignalingClientConfig);
@@ -382,7 +382,7 @@ describe('SignalingClient', () => {
             expect(() => client.sendSdpAnswer(SDP_ANSWER)).toThrow('Could not send message because the connection to the signaling service is not open.');
         });
 
-        it('should throw an error if there is a recipient id as viewer', done => {
+        it('should throw an error if there is a recipient id as viewer', (done) => {
             const client = new SignalingClient(config as SignalingClientConfig);
             client.open();
             client.on('open', () => {
@@ -395,7 +395,7 @@ describe('SignalingClient', () => {
     });
 
     describe('sendIceCandidate', () => {
-        it('should send the message as the viewer', done => {
+        it('should send the message as the viewer', (done) => {
             const client = new SignalingClient(config as SignalingClientConfig);
             client.open();
             client.on('open', () => {
@@ -405,7 +405,7 @@ describe('SignalingClient', () => {
             });
         });
 
-        it('should send the message as the master', done => {
+        it('should send the message as the master', (done) => {
             config.role = Role.MASTER;
             delete config.clientId;
             const client = new SignalingClient(config as SignalingClientConfig);
@@ -422,7 +422,7 @@ describe('SignalingClient', () => {
             expect(() => client.sendIceCandidate(ICE_CANDIDATE)).toThrow('Could not send message because the connection to the signaling service is not open.');
         });
 
-        it('should throw an error if there is a recipient id as viewer', done => {
+        it('should throw an error if there is a recipient id as viewer', (done) => {
             const client = new SignalingClient(config as SignalingClientConfig);
             client.open();
             client.on('open', () => {
@@ -435,7 +435,7 @@ describe('SignalingClient', () => {
     });
 
     describe('events', () => {
-        it('should ignore non-parsable messages from the signaling service', done => {
+        it('should ignore non-parsable messages from the signaling service', (done) => {
             const client = new SignalingClient(config as SignalingClientConfig);
 
             // Open a connection, receive a faulty message, and then continue to receive and process a non-faulty message.
@@ -451,7 +451,7 @@ describe('SignalingClient', () => {
         });
 
         describe('sdpOffer', () => {
-            it('should parse sdpOffer messages from the master', done => {
+            it('should parse sdpOffer messages from the master', (done) => {
                 const client = new SignalingClient(config as SignalingClientConfig);
                 client.once('sdpOffer', (sdpOffer, senderClientId) => {
                     expect(sdpOffer).toEqual(SDP_OFFER_OBJECT);
@@ -464,7 +464,7 @@ describe('SignalingClient', () => {
                 client.open();
             });
 
-            it('should parse sdpOffer messages from the viewer', done => {
+            it('should parse sdpOffer messages from the viewer', (done) => {
                 config.role = Role.MASTER;
                 delete config.clientId;
                 const client = new SignalingClient(config as SignalingClientConfig);
@@ -479,7 +479,7 @@ describe('SignalingClient', () => {
                 client.open();
             });
 
-            it('should parse sdpOffer messages from the master and release pending ICE candidates', done => {
+            it('should parse sdpOffer messages from the master and release pending ICE candidates', (done) => {
                 const client = new SignalingClient(config as SignalingClientConfig);
                 let count = 0;
                 client.once('sdpOffer', (sdpOffer, senderClientId) => {
@@ -504,7 +504,7 @@ describe('SignalingClient', () => {
         });
 
         describe('sdpAnswer', () => {
-            it('should parse sdpAnswer messages from the master', done => {
+            it('should parse sdpAnswer messages from the master', (done) => {
                 const client = new SignalingClient(config as SignalingClientConfig);
                 client.once('sdpAnswer', (sdpAnswer, senderClientId) => {
                     expect(sdpAnswer).toEqual(SDP_ANSWER_OBJECT);
@@ -517,7 +517,7 @@ describe('SignalingClient', () => {
                 client.open();
             });
 
-            it('should parse sdpAnswer messages from the viewer', done => {
+            it('should parse sdpAnswer messages from the viewer', (done) => {
                 config.role = Role.MASTER;
                 delete config.clientId;
                 const client = new SignalingClient(config as SignalingClientConfig);
@@ -532,7 +532,7 @@ describe('SignalingClient', () => {
                 client.open();
             });
 
-            it('should parse sdpAnswer messages from the master and release pending ICE candidates', done => {
+            it('should parse sdpAnswer messages from the master and release pending ICE candidates', (done) => {
                 const client = new SignalingClient(config as SignalingClientConfig);
                 client.once('sdpAnswer', (sdpAnswer, senderClientId) => {
                     expect(sdpAnswer).toEqual(SDP_ANSWER_OBJECT);
@@ -557,7 +557,7 @@ describe('SignalingClient', () => {
         });
 
         describe('iceCandidate', () => {
-            it('should parse iceCandidate messages from the master', done => {
+            it('should parse iceCandidate messages from the master', (done) => {
                 const client = new SignalingClient(config as SignalingClientConfig);
                 client.on('iceCandidate', (iceCandidate, senderClientId) => {
                     expect(iceCandidate).toEqual(ICE_CANDIDATE_OBJECT);
@@ -571,7 +571,7 @@ describe('SignalingClient', () => {
                 client.open();
             });
 
-            it('should parse iceCandidate messages from the viewer', done => {
+            it('should parse iceCandidate messages from the viewer', (done) => {
                 config.role = Role.MASTER;
                 delete config.clientId;
                 const client = new SignalingClient(config as SignalingClientConfig);
@@ -589,7 +589,7 @@ describe('SignalingClient', () => {
         });
 
         describe('statusResponse', () => {
-            it('should parse statusResponse message from signaling', done => {
+            it('should parse statusResponse message from signaling', (done) => {
                 config.role = Role.MASTER;
                 delete config.clientId;
                 const client = new SignalingClient(config as SignalingClientConfig);
@@ -607,10 +607,10 @@ describe('SignalingClient', () => {
     });
 
     describe('outsideBrowser', () => {
-        it('parseJSONObjectFromBase64String', done => {
+        it('parseJSONObjectFromBase64String', (done) => {
             global.atob = undefined;
             const client = new SignalingClient(config as SignalingClientConfig);
-            client.once('sdpAnswer', sdpAnswer => {
+            client.once('sdpAnswer', (sdpAnswer) => {
                 expect(sdpAnswer).toEqual(SDP_ANSWER_OBJECT);
                 done();
             });
@@ -620,7 +620,7 @@ describe('SignalingClient', () => {
             client.open();
         });
 
-        it('serializeJSONObjectAsBase64String', done => {
+        it('serializeJSONObjectAsBase64String', (done) => {
             global.btoa = undefined;
             const client = new SignalingClient(config as SignalingClientConfig);
             client.open();
