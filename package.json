@@ -38,7 +38,7 @@
         "@typescript-eslint/parser": "^8.18.0",
         "codecov": "^3.7.1",
         "eslint": "^9.16.0",
-        "eslint-config-prettier": "^6.3.0",
+        "eslint-config-prettier": "^9.1.0",
         "eslint-plugin-kvs-webrtc": "file:eslint",
         "eslint-plugin-prettier": "^5.2.1",
         "fork-ts-checker-webpack-plugin": "^9.0.2",
