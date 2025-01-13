@@ -55,8 +55,8 @@
     "dependencies": {
         "isomorphic-webcrypto": "^2.3.6",
         "jsdom": "^26.0.0",
-        "ws": "^8.14.2",
-        "tslib": "^2.8.1"
+        "tslib": "^2.8.1",
+        "ws": "^8.14.2"
     },
     "overrides": {
         "qs": "6.7.3",
