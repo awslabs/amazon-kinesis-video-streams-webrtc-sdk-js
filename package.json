@@ -31,12 +31,10 @@
     "author": "Divya Sampath Kumar <divku@amazon.com>",
     "license": "Apache-2.0",
     "devDependencies": {
-        "@trust/webcrypto": "^0.9.2",
         "@types/jest": "^29.5.14",
         "@types/node": "^22.10.5",
         "@typescript-eslint/eslint-plugin": "^8.18.0",
         "@typescript-eslint/parser": "^8.18.0",
-        "codecov": "^3.7.1",
         "eslint": "^9.16.0",
         "eslint-config-prettier": "^9.1.0",
         "eslint-plugin-kvs-webrtc": "file:eslint",
@@ -57,12 +55,8 @@
     "dependencies": {
         "isomorphic-webcrypto": "^2.3.6",
         "jsdom": "^26.0.0",
-        "json-schema": "^0.4.0",
-        "json5": "^2.2.3",
         "tslib": "^2.8.1",
-        "ua-parser-js": "^2.0.0",
-        "ws": "^8.14.2",
-        "xml2js": "^0.5.0"
+        "ws": "^8.14.2"
     },
     "overrides": {
         "qs": "6.7.3",
