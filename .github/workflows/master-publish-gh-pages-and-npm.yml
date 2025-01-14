@@ -4,7 +4,6 @@ on:
     push:
         branches:
             - master
-            - remove-examples-publishing
 jobs:
     publish-ubuntu-build:
         runs-on: ubuntu-latest
@@ -32,4 +31,3 @@ jobs:
               uses: JS-DevTools/npm-publish@v1
               with:
                   token: '${{ secrets.NPM_TOKEN }}'
-                  dry-run: true
