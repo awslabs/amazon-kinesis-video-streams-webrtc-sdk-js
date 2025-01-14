@@ -25,6 +25,8 @@ jobs:
                   branch: gh-pages
                   clean: true
                   clean-exclude: develop/
+            - name: Delete examples directories
+              run: rm -rf examples dist/examples
             - name: Deploy to npm packages
               uses: JS-DevTools/npm-publish@v1
               with:
