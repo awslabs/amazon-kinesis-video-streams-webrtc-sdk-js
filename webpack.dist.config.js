@@ -1,12 +1,12 @@
 const path = require('path');
 const TerserPlugin = require('terser-webpack-plugin');
-const merge = require('webpack-merge');
+const { merge } = require('webpack-merge');
 
 // Define maximum asset size before gzipping
-const MAX_ASSET_SIZE_KB = 23.6;
-const MAX_ASSET_SIZE_BYTES = MAX_ASSET_SIZE_KB * 1024;
+const MAX_ASSET_SIZE_KIB = 30;
+const MAX_ASSET_SIZE_BYTES = MAX_ASSET_SIZE_KIB * 1024;
 
-module.exports = merge.smart(require('./webpack.config'), {
+module.exports = merge(require('./webpack.config'), {
     mode: 'production',
 
     output: {

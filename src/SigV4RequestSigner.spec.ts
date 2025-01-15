@@ -43,7 +43,7 @@ describe('SigV4RequestSigner', () => {
                 accessKeyId: null,
                 secretAccessKey: null,
                 getPromise(): Promise<void> {
-                    return new Promise<void>(resolve => {
+                    return new Promise<void>((resolve) => {
                         credentials.accessKeyId = 'AKIA4F7WJQR7FMMWMNXI';
                         credentials.secretAccessKey = 'FakeSecretKey';
                         credentials.sessionToken = 'FakeSessionToken';
