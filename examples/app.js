@@ -226,15 +226,18 @@ $('#viewer-button').click(async () => {
         channelHelper = new ChannelHelper(formValues.channelName,
             {
                 region: formValues.region,
-                accessKeyId: formValues.accessKeyId,
-                secretAccessKey: formValues.secretAccessKey,
-                sessionToken: formValues.sessionToken,
+                credentials: {
+                    accessKeyId: formValues.accessKeyId,
+                    secretAccessKey: formValues.secretAccessKey,
+                    sessionToken: formValues.sessionToken,
+                },
             },
             formValues.endpoint,
             KVSWebRTC.Role.VIEWER,
             ChannelHelper.IngestionMode.DETERMINE_THROUGH_DESCRIBE,
             '[VIEWER]',
-            formValues.clientId);
+            formValues.clientId,
+            formValues.logAwsSdkCalls ? console : undefined);
         await channelHelper.determineMediaIngestionPath();
 
         if (channelHelper.isIngestionEnabled()) {
@@ -833,16 +836,6 @@ function updateIngestMediaPrompt() {
 }
 
 updateIngestMediaPrompt();
-
-function configureAwsSdkLogs() {
-    if ($('#log-aws-sdk-calls').is(':checked')) {
-        AWS.config.logger = console;
-    } else {
-        AWS.config.logger = undefined;
-    }
-}
-
-configureAwsSdkLogs();
 
 // Enable tooltips
 $(document).ready(function () {

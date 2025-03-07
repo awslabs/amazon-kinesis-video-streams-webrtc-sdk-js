@@ -25,8 +25,12 @@ jobs:
                   branch: gh-pages
                   clean: true
                   clean-exclude: develop/
-            - name: Delete examples directories
-              run: rm -rf examples dist/examples
+            - name: Delete extra directories
+              run: |
+                  # Delete the examples
+                  rm -rf examples dist/examples
+                  # Remove the infra to build the AWS SDK v3 browser script
+                  rm -rf aws-sdk-build
             - name: Deploy to npm packages
               uses: JS-DevTools/npm-publish@v1
               with:

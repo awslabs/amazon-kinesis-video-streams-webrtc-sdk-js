@@ -357,11 +357,13 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
         metrics.viewer.signaling.startTime = Date.now();
 
         // Create KVS client
-        const kinesisVideoClient = new AWS.KinesisVideo({
+        const kinesisVideoClient = new AWS.KinesisVideo.KinesisVideoClient({
             region: formValues.region,
-            accessKeyId: formValues.accessKeyId,
-            secretAccessKey: formValues.secretAccessKey,
-            sessionToken: formValues.sessionToken,
+            credentials: {
+                accessKeyId: formValues.accessKeyId,
+                secretAccessKey: formValues.secretAccessKey,
+                sessionToken: formValues.sessionToken,
+            },
             endpoint: formValues.endpoint,
             correctClockSkew: true,
         });
@@ -370,10 +372,9 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
         metrics.viewer.describeChannel.startTime = Date.now();
 
         const describeSignalingChannelResponse = await kinesisVideoClient
-            .describeSignalingChannel({
+            .send(new AWS.KinesisVideo.DescribeSignalingChannelCommand({
                 ChannelName: formValues.channelName,
-            })
-            .promise();
+            }));
 
         metrics.viewer.describeChannel.endTime = Date.now();
 
@@ -386,10 +387,9 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
             metrics.viewer.describeMediaStorageConfiguration.startTime = Date.now();
 
             const mediaStorageConfiguration = await kinesisVideoClient
-                .describeMediaStorageConfiguration({
+                .send(new AWS.KinesisVideo.DescribeMediaStorageConfigurationCommand({
                     ChannelName: formValues.channelName,
-                })
-                .promise();
+                }));
 
             metrics.viewer.describeMediaStorageConfiguration.endTime = Date.now();
 
@@ -408,14 +408,13 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
         metrics.viewer.channelEndpoint.startTime = Date.now();
 
         const getSignalingChannelEndpointResponse = await kinesisVideoClient
-            .getSignalingChannelEndpoint({
+            .send(new AWS.KinesisVideo.GetSignalingChannelEndpointCommand({
                 ChannelARN: channelARN,
                 SingleMasterChannelEndpointConfiguration: {
                     Protocols: ['WSS', 'HTTPS'],
                     Role: KVSWebRTC.Role.VIEWER,
                 },
-            })
-            .promise();
+            }));
 
         metrics.viewer.channelEndpoint.endTime = Date.now();
 
@@ -425,11 +424,13 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
         }, {});
         console.log('[VIEWER] Endpoints:', endpointsByProtocol);
 
-        const kinesisVideoSignalingChannelsClient = new AWS.KinesisVideoSignalingChannels({
+        const kinesisVideoSignalingChannelsClient = new AWS.KinesisVideoSignaling.KinesisVideoSignalingClient({
             region: formValues.region,
-            accessKeyId: formValues.accessKeyId,
-            secretAccessKey: formValues.secretAccessKey,
-            sessionToken: formValues.sessionToken,
+            credentials: {
+                accessKeyId: formValues.accessKeyId,
+                secretAccessKey: formValues.secretAccessKey,
+                sessionToken: formValues.sessionToken,
+            },
             endpoint: endpointsByProtocol.HTTPS,
             correctClockSkew: true,
         });
@@ -439,10 +440,9 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
         metrics.viewer.iceServerConfig.startTime = Date.now();
 
         const getIceServerConfigResponse = await kinesisVideoSignalingChannelsClient
-            .getIceServerConfig({
+            .send(new AWS.KinesisVideoSignaling.GetIceServerConfigCommand({
                 ChannelARN: channelARN,
-            })
-            .promise();
+            }));
 
         metrics.viewer.iceServerConfig.endTime = Date.now();
 
