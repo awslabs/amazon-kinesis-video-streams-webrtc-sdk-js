@@ -367,6 +367,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
             },
             endpoint: formValues.endpoint,
             correctClockSkew: true,
+            useDualstackEndpoint: formValues.useDualStackEndpoints,
         });
 
         // Get signaling channel ARN
