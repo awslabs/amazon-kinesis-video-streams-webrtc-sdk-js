@@ -25,14 +25,14 @@
     <div class="row loader"></div>
     <div id="main" class="d-none">
         <form id="form" onsubmit="return false">
-            <h4>KVS Endpoint</h4>
+            <h4 id="subheader">KVS Endpoint</h4>
             <div class="form-group has-validation" style="position: relative;">
                 <label for="region">Region</label>
                 <input type="text" class="form-control valid" id="region" placeholder="Region" value="us-west-2" autocomplete="off" required>
                 <datalist id="regionList"></datalist>
                 <div id="region-invalid-feedback" class="invalid-feedback"></div>
             </div>
-            <div class="form-check-inline" style="margin-bottom:30px;">
+            <div class="form-check-inline">
                 <input class="form-check-input" type="checkbox" id="useDualStackEndpoints" value="useDualStackEndpoints">
                 <label for="useDualStackEndpoints" class="form-check-label">Use dual-stack endpoints</label>
                 <span data-delay="{ &quot;hide&quot;: 1500 }" data-position="auto" tabindex="0" class="text-info ml-1" data-toggle="tooltip" data-html="true"
@@ -40,7 +40,7 @@
                     "><sup>&#9432;</sup>
                 </span>
             </div>
-            <h4>AWS Credentials</h4>
+            <h4 id="subheader">AWS Credentials</h4>
             <div class="form-group">
                 <label for="accessKeyId">Access Key ID</label>
                 <input type="text" class="form-control" id="accessKeyId" placeholder="Access key id" required>
@@ -53,7 +53,7 @@
                 <label for="sessionToken">Session Token <small>(optional)</small></label>
                 <input type="password" class="form-control" id="sessionToken" placeholder="Session token">
             </div>
-            <h4>Signaling Channel</h4>
+            <h4 id="subheader">Signaling Channel</h4>
             <div>
                 <label for="channelName">Channel Name</label>
                 <div class="form-group input-group">
@@ -71,7 +71,7 @@
                     "><sup>&#9432;</sup></span>
                 <input type="text" class="form-control" id="clientId" placeholder="Client id">
             </div>
-            <h4>Tracks</h4>
+            <h4 id="subheader">Tracks</h4>
             <p><small>Control which media types are transmitted to the remote client. For WebRTC Ingestion and Storage master, both audio and video must be sent, and viewers cannot not send video and optional audio.</small></p>
             <div class="form-group">
                 <div class="form-check-inline">
@@ -91,7 +91,7 @@
                     "><sup>&#9432;</sup></span>
                 </div>
             </div>
-            <details id="webrtc-ingestion-and-storage-group"><summary class="h4">WebRTC Ingestion and Storage</summary>
+            <details id="webrtc-ingestion-and-storage-group"><summary class="h4" id="subheader">WebRTC Ingestion and Storage</summary>
             <div>
                 <p><small>Configure which stream to ingest and store media to. Call update media storage configuration with an empty Stream name to disable this feature.</small></p>
                 <div class="form-group input-group">
@@ -145,7 +145,7 @@
                 </div>
             </div>
             </details>
-            <h4>Video Resolution</h4>
+            <h4 id="subheader">Video Resolution</h4>
             <p><small>Set the desired video resolution and aspect ratio.</small></p>
             <div class="form-group">
                 <div class="form-check">
@@ -157,7 +157,7 @@
                     <label class="form-check-label" for="fullscreen">640x480 <small>(4:3 fullscreen)</small></label>
                 </div>
             </div>
-            <h4>NAT Traversal</h4>
+            <h4 id="subheader">NAT Traversal</h4>
             <p><small>Control settings for ICE candidate generation.</small>
             <span data-delay="{ &quot;hide&quot;: 1500 }" data-position="auto" tabindex="0" class="text-info" data-toggle="tooltip" data-html="true" title="
                     <p>Determines the types of <code>ICE candidates</code> that are generated.<br/><br/>STUN/TURN = host, server reflexive, and relay<br/>STUN only = server reflexive<br/>TURN only = relay<br/>Disabled = host</p>
@@ -191,7 +191,7 @@
                 "><sup>&#9432;</sup></span>
                 </div>
             </div>
-            <h4>Amazon KVS WebRTC DQP</h4>
+            <h4 id="subheader">Amazon KVS WebRTC DQP</h4>
             <div class="form-group">
                 <div class="form-check-inline">
                     <input class="form-check-input" type="checkbox" id="enableDQPmetrics" value="enableDQPmetrics">
@@ -203,7 +203,7 @@
                 </div>
             </div>
 
-            <h4>Amazon KVS WebRTC Profiling Timeline chart</h4>
+            <h4 id="subheader">Amazon KVS WebRTC Profiling Timeline chart</h4>
             <div class="form-group">
                 <div class="form-check-inline">
                     <input class="form-check-input" type="checkbox" id="enableProfileTimeline" value="enableProfileTimeline">
@@ -215,8 +215,8 @@
                 </div>
             </div>
 
-            <details><summary class="h4">Advanced</summary>
-                <p class="mt-3"><small>Filter settings for which ICE candidates are sent to and received from the peer.</small></p>
+            <details><summary class="h4" id="subheader">Advanced</summary>
+                <p><small>Filter settings for which ICE candidates are sent to and received from the peer.</small></p>
                 <div class="container">
                     <div class="row">
                         <div class="col-sm">
@@ -353,7 +353,7 @@
             </details>
 
             <hr>
-            <div>
+            <div style="margin-top: 30px;">
                 <button id="master-button" type="submit" class="btn btn-primary">Start Master</button>
                 <button id="viewer-button" type="submit" class="btn btn-primary">Start Viewer</button>
             </div>
