@@ -16,6 +16,7 @@ async function listStorageChannels(formValues) {
             secretAccessKey: formValues.secretAccessKey,
             sessionToken: formValues.sessionToken,
             endpoint: formValues.endpoint,
+            useDualstackEndpoint: formValues.useDualStackEndpoints,
         });
 
         // Get all signaling channels

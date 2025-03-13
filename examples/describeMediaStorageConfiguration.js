@@ -16,6 +16,7 @@ async function describeMediaStorageConfiguration(formValues) {
             secretAccessKey: formValues.secretAccessKey,
             sessionToken: formValues.sessionToken,
             endpoint: formValues.endpoint,
+            useDualstackEndpoint: formValues.useDualStackEndpoints,
         });
 
         const mediaStorageConfiguration = await kinesisVideoClient.describeMediaStorageConfiguration({ ChannelName: formValues.channelName }).promise();
