@@ -4,6 +4,6 @@ updates:
       directory: /
       target-branch: develop
       schedule:
-          interval: daily
+          interval: weekly
       labels:
           - dependencies
