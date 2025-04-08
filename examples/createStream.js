@@ -17,6 +17,7 @@ async function createStream(formValues) {
             secretAccessKey: formValues.secretAccessKey,
             sessionToken: formValues.sessionToken,
             endpoint: formValues.endpoint,
+            useDualstackEndpoint: formValues.useDualStackEndpoints,
         });
 
         const createStreamResponse = await kinesisVideoClient

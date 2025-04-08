@@ -22,6 +22,7 @@ async function updateMediaStorageConfiguration(formValues) {
             secretAccessKey: formValues.secretAccessKey,
             sessionToken: formValues.sessionToken,
             endpoint: formValues.endpoint,
+            useDualstackEndpoint: formValues.useDualStackEndpoints,
         });
 
         if (formValues.streamName) {

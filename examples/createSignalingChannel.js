@@ -15,6 +15,7 @@ async function createSignalingChannel(formValues) {
             secretAccessKey: formValues.secretAccessKey,
             sessionToken: formValues.sessionToken,
             endpoint: formValues.endpoint,
+            useDualstackEndpoint: formValues.useDualStackEndpoints,
         });
 
         // Get signaling channel ARN
