@@ -14,6 +14,13 @@ jobs:
               uses: actions/setup-node@v2
               with:
                   node-version: 22
+            - name: Build AWS SDK
+              working-directory: ./aws-sdk-build
+              run: |
+                  npm install
+                  npm run build
+                  rm -rf ../examples/*-kvswebrtc.js
+                  mv dist/*-kvswebrtc.js ../examples
             - name: Install dependencies
               run: npm install
             - name: Run release
