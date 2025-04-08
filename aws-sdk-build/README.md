@@ -57,7 +57,7 @@ Then, rebuild the bundle:
 npm run build
 ```
 
-You can now use it to the `examples`:
+You can now move it to the `examples` to use it:
 ```shell
 mv ./dist/aws-sdk-*-kvswebrtc.js ../examples
 ```
