@@ -10,16 +10,19 @@ async function listStorageChannels(formValues) {
         console.log('[LIST_STORAGE_CHANNELS] Attempting to list all storage-configured signaling channels and their associated stream');
 
         // Create KVS client
-        const kinesisVideoClient = new AWS.KinesisVideo({
+        const kinesisVideoClient = new AWS.KinesisVideo.KinesisVideoClient({
             region: formValues.region,
-            accessKeyId: formValues.accessKeyId,
-            secretAccessKey: formValues.secretAccessKey,
-            sessionToken: formValues.sessionToken,
+            credentials: {
+                accessKeyId: formValues.accessKeyId,
+                secretAccessKey: formValues.secretAccessKey,
+                sessionToken: formValues.sessionToken,
+            },
             endpoint: formValues.endpoint,
+            logger: formValues.logAwsSdkCalls ? console : undefined,
         });
 
         // Get all signaling channels
-        const result = await kinesisVideoClient.listSignalingChannels().promise();
+        const result = await kinesisVideoClient.send(new AWS.KinesisVideo.ListSignalingChannelsCommand());
         const allChannels = result.ChannelInfoList;
 
         // Grab channel ARNs
@@ -34,7 +37,7 @@ async function listStorageChannels(formValues) {
             const request = {
                 ChannelARN: channelARN,
             };
-            const storageResult = await kinesisVideoClient.describeMediaStorageConfiguration(request).promise();
+            const storageResult = await kinesisVideoClient.send(new AWS.KinesisVideo.DescribeMediaStorageConfigurationCommand(request));
             if (storageResult.MediaStorageConfiguration.Status === 'ENABLED') {
                 output.push({
                     ChannelARN: channelARN,

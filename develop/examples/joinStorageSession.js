@@ -10,39 +10,41 @@ async function joinStorageSessionManually(formValues) {
         console.log('[JOIN_STORAGE_SESSION] Calling JoinStorageSession for channel', formValues.channelName);
 
         // Create KVS client
-        const kinesisVideoClient = new AWS.KinesisVideo({
+        const kinesisVideoClient = new AWS.KinesisVideo.KinesisVideoClient({
             region: formValues.region,
-            accessKeyId: formValues.accessKeyId,
-            secretAccessKey: formValues.secretAccessKey,
-            sessionToken: formValues.sessionToken,
+            credentials: {
+                accessKeyId: formValues.accessKeyId,
+                secretAccessKey: formValues.secretAccessKey,
+                sessionToken: formValues.sessionToken,
+            },
             endpoint: formValues.endpoint,
         });
 
         // Step 1: Obtain the ARN of the Signaling Channel
         const describeSignalingChannelResponse = await kinesisVideoClient
-            .describeSignalingChannel({
+            .send(new AWS.KinesisVideo.DescribeSignalingChannelCommand({
                 ChannelName: formValues.channelName,
-            })
-            .promise();
+            }));
         const channelARN = describeSignalingChannelResponse.ChannelInfo.ChannelARN;
 
         // Step 2: Obtain the WEBRTC endpoint
         const getSignalingChannelEndpointResponse = await kinesisVideoClient
-            .getSignalingChannelEndpoint({
+            .send(new AWS.KinesisVideo.GetSignalingChannelEndpointCommand({
                 ChannelARN: channelARN,
                 SingleMasterChannelEndpointConfiguration: {
                     Protocols: ['WEBRTC'],
                     Role: KVSWebRTC.Role.MASTER,
                 },
-            })
-            .promise();
+            }));
         const webrtcEndpoint = getSignalingChannelEndpointResponse.ResourceEndpointList[0].ResourceEndpoint;
 
-        const kinesisVideoWebRTCStorageClient = new AWS.KinesisVideoWebRTCStorage({
+        const kinesisVideoWebRTCStorageClient = new AWS.KinesisVideoWebRTCStorage.KinesisVideoWebRTCStorageClient({
             region: formValues.region,
-            accessKeyId: formValues.accessKeyId,
-            secretAccessKey: formValues.secretAccessKey,
-            sessionToken: formValues.sessionToken,
+            credentials: {
+                accessKeyId: formValues.accessKeyId,
+                secretAccessKey: formValues.secretAccessKey,
+                sessionToken: formValues.sessionToken,
+            },
             endpoint: webrtcEndpoint,
             maxRetries: 0,
             httpOptions: {
@@ -52,10 +54,9 @@ async function joinStorageSessionManually(formValues) {
 
         // Step 3. Call JoinStorageSession
         await kinesisVideoWebRTCStorageClient
-            .joinStorageSession({
+            .send(new AWS.KinesisVideoWebRTCStorage.JoinStorageSessionCommand({
                 channelArn: channelARN,
-            })
-            .promise();
+            }));
 
         console.log('[JOIN_STORAGE_SESSION] Finished invoking JoinStorageSession for channel', formValues.channelName);
     } catch (e) {

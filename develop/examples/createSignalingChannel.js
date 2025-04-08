@@ -9,29 +9,30 @@ async function createSignalingChannel(formValues) {
     try {
         console.log('[CREATE_SIGNALING_CHANNEL] Attempting to create signaling channel with name', formValues.channelName);
         // Create KVS client
-        const kinesisVideoClient = new AWS.KinesisVideo({
+        const kinesisVideoClient = new AWS.KinesisVideo.KinesisVideoClient({
             region: formValues.region,
-            accessKeyId: formValues.accessKeyId,
-            secretAccessKey: formValues.secretAccessKey,
-            sessionToken: formValues.sessionToken,
+            credentials: {
+                accessKeyId: formValues.accessKeyId,
+                secretAccessKey: formValues.secretAccessKey,
+                sessionToken: formValues.sessionToken,
+            },
             endpoint: formValues.endpoint,
+            logger: formValues.logAwsSdkCalls ? console : undefined,
         });
 
-        // Get signaling channel ARN
+        // Create signaling channel
         const createSignalingChannelResponse = await kinesisVideoClient
-            .createSignalingChannel({
+            .send(new AWS.KinesisVideo.CreateSignalingChannelCommand({
                 ChannelName: formValues.channelName,
-            })
-            .promise();
+            }));
 
         console.debug(createSignalingChannelResponse.ChannelARN);
 
         // Get signaling channel ARN
         const describeSignalingChannelResponse = await kinesisVideoClient
-            .describeSignalingChannel({
+            .send(new AWS.KinesisVideo.DescribeSignalingChannelCommand({
                 ChannelName: formValues.channelName,
-            })
-            .promise();
+            }));
         const channelARN = describeSignalingChannelResponse.ChannelInfo.ChannelARN;
         console.log('[CREATE_SIGNALING_CHANNEL] Success! Channel ARN:', channelARN);
     } catch (e) {
