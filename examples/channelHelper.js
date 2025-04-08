@@ -12,7 +12,7 @@ class ChannelHelper {
         DETERMINE_THROUGH_DESCRIBE: 2,
     };
 
-    constructor(channelName, clientArgs, endpoint, role, ingestionMode, loggingPrefix, clientId) {
+    constructor(channelName, clientArgs, endpoint, role, ingestionMode, loggingPrefix, clientId, logger) {
         this._channelName = channelName;
         this._clientArgs = clientArgs;
         this._role = role;
@@ -20,6 +20,7 @@ class ChannelHelper {
         this._ingestionMode = ingestionMode;
         this._loggingPrefix = loggingPrefix;
         this._clientId = clientId;
+        this._logger = logger;
     }
 
     // Must be called first
@@ -79,7 +80,10 @@ class ChannelHelper {
     // Fetch and return TURN servers
     // Only available after init()
     fetchTurnServers = async () => {
-        return (await this._signalingChannelsClient.getIceServerConfig({ ChannelARN: this._channelArn }).promise()).IceServerList.flatMap(iceServer => ({
+        return (await this._signalingChannelsClient.send(
+                new AWS.KinesisVideoSignaling.GetIceServerConfigCommand({ChannelARN: this._channelArn})
+            )
+        ).IceServerList.flatMap(iceServer => ({
             urls: iceServer.Uris,
             username: iceServer.Username,
             credential: iceServer.Password,
@@ -114,24 +118,22 @@ class ChannelHelper {
 
         // Kinesis Video Signaling Channels Client
         // Used to invoke APIs under https://docs.aws.amazon.com/kinesisvideostreams/latest/dg/API_Operations_Amazon_Kinesis_Video_Signaling_Channels.html
-        this._signalingChannelsClient = new AWS.KinesisVideoSignalingChannels({
+        this._signalingChannelsClient = new AWS.KinesisVideoSignaling.KinesisVideoSignalingClient({
             ...this._clientArgs,
+            logger: this._logger,
             endpoint: this._endpoints['HTTPS'],
             correctClockSkew: true,
         });
 
+        console.log(this._clientArgs);
+
         // Kinesis Video Signaling Client
         // Used to invoke APIs under https://docs.aws.amazon.com/kinesisvideostreams-webrtc-dg/latest/devguide/kvswebrtc-websocket-apis.html
         this._signalingClient = new KVSWebRTC.SignalingClient({
+            ...this._clientArgs,
             channelARN: this._channelArn,
             channelEndpoint: this._endpoints['WSS'],
             role: this._role,
-            region: this._clientArgs.region,
-            credentials: {
-                accessKeyId: this._clientArgs.accessKeyId,
-                secretAccessKey: this._clientArgs.secretAccessKey,
-                sessionToken: this._clientArgs.sessionToken,
-            },
             clientId: this._clientId,
             requestSigner: {
                 // We override the default requestSigner to add timing information.
@@ -139,11 +141,7 @@ class ChannelHelper {
                 // not the surrounding object where _clientArgs is defined.
                 // Arrow function preserves the lexical scope.
                 getSignedURL: async (signalingEndpoint, queryParams, date) => {
-                    const signer = new KVSWebRTC.SigV4RequestSigner(this._clientArgs.region, {
-                        accessKeyId: this._clientArgs.accessKeyId,
-                        secretAccessKey: this._clientArgs.secretAccessKey,
-                        sessionToken: this._clientArgs.sessionToken,
-                    });
+                    const signer = new KVSWebRTC.SigV4RequestSigner(this._clientArgs.region, this._clientArgs.credentials);
 
                     const signingStart = new Date();
                     console.debug(this._loggingPrefix, 'Signing the url started at', signingStart);
@@ -167,8 +165,14 @@ class ChannelHelper {
         if (this._ingestionMode === ChannelHelper.IngestionMode.ON) {
             // Kinesis Video WebRTC Storage Client
             // Used to invoke APIs under https://docs.aws.amazon.com/kinesisvideostreams/latest/dg/API_Operations_Amazon_Kinesis_Video_WebRTC_Storage.html
-            this._webrtcStorageClient = new AWS.KinesisVideoWebRTCStorage({
+            this._webrtcStorageClient = new AWS.KinesisVideoWebRTCStorage.KinesisVideoWebRTCStorageClient({
                 ...this._clientArgs,
+                maxRetries: 0,
+                httpOptions: {
+                    timeout: retryIntervalForJoinStorageSession,
+                },
+                correctClockSkew: true,
+                logger: this._logger,
                 endpoint: this._endpoints['WEBRTC'],
             });
         }
@@ -178,8 +182,9 @@ class ChannelHelper {
     // After calling this, call isIngestionEnabled() to check the outcome.
     async _checkWebRTCIngestionPath() {
         if (!this._kinesisVideoClient) {
-            this._kinesisVideoClient = new AWS.KinesisVideo({
+            this._kinesisVideoClient = new AWS.KinesisVideo.KinesisVideoClient({
                 ...this._clientArgs,
+                logger: this._logger,
                 endpoint: this._endpoint,
                 correctClockSkew: true,
             });
@@ -187,10 +192,9 @@ class ChannelHelper {
 
         if (!this._channelArn) {
             const describeSignalingChannelResponse = await this._kinesisVideoClient
-                .describeSignalingChannel({
+                .send(new AWS.KinesisVideo.DescribeSignalingChannelCommand({
                     ChannelName: this._channelName,
-                })
-                .promise();
+                }));
 
             this._channelArn = describeSignalingChannelResponse.ChannelInfo.ChannelARN;
             console.log(this._loggingPrefix, 'Channel ARN:', this._channelArn);
@@ -198,10 +202,9 @@ class ChannelHelper {
 
         if (this._ingestionMode === ChannelHelper.IngestionMode.DETERMINE_THROUGH_DESCRIBE) {
             const describeMediaStorageConfigurationResponse = await this._kinesisVideoClient
-                .describeMediaStorageConfiguration({
+                .send(new AWS.KinesisVideo.DescribeMediaStorageConfigurationCommand({
                     ChannelARN: this._channelArn,
-                })
-                .promise();
+                }));
             const mediaStorageConfiguration = describeMediaStorageConfigurationResponse.MediaStorageConfiguration;
             console.log(this._loggingPrefix, 'Media storage configuration:', mediaStorageConfiguration);
             if (mediaStorageConfiguration.Status === 'ENABLED' && mediaStorageConfiguration.StreamARN !== null) {
@@ -220,14 +223,13 @@ class ChannelHelper {
         // This API will throw an error if WEBRTC protocol is specified but
         // the channel is not configured for ingestion
         const getSignalingChannelEndpointResponse = await kinesisVideoClient
-            .getSignalingChannelEndpoint({
+            .send(new AWS.KinesisVideo.GetSignalingChannelEndpointCommand({
                 ChannelARN: arn,
                 SingleMasterChannelEndpointConfiguration: {
                     Protocols: protocols,
                     Role: role,
                 },
-            })
-            .promise();
+            }));
         const endpointsByProtocol = getSignalingChannelEndpointResponse.ResourceEndpointList.reduce((endpoints, endpoint) => {
             endpoints[endpoint.Protocol] = endpoint.ResourceEndpoint;
             return endpoints;

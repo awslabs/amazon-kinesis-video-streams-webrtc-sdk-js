@@ -64,15 +64,18 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             formValues.channelName,
             {
                 region: formValues.region,
-                accessKeyId: formValues.accessKeyId,
-                secretAccessKey: formValues.secretAccessKey,
-                sessionToken: formValues.sessionToken,
+                credentials: {
+                    accessKeyId: formValues.accessKeyId,
+                    secretAccessKey: formValues.secretAccessKey,
+                    sessionToken: formValues.sessionToken,
+                },
             },
             formValues.endpoint,
             role,
             ingestionMode,
             `[${role}]`,
             role === 'VIEWER' ? formValues.clientId : undefined,
+            formValues.logAwsSdkCalls ? console : undefined,
         );
 
         await master.channelHelper.init();
@@ -92,8 +95,6 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
                 $('.datachannel').addClass('d-none');
             }
 
-            master.channelHelper.getWebRTCStorageClient().config.maxRetries = 0;
-            master.channelHelper.getWebRTCStorageClient().config.httpOptions.timeout = retryIntervalForJoinStorageSession;
         } else {
             console.log(`[${role}] Not using media ingestion feature.`);
         }
@@ -407,18 +408,16 @@ async function callJoinStorageSessionUntilSDPOfferReceived(runId) {
             if (ROLE === 'MASTER') {
                 await master.channelHelper
                     .getWebRTCStorageClient()
-                    .joinStorageSession({
+                    .send(new AWS.KinesisVideoWebRTCStorage.JoinStorageSessionCommand({
                         channelArn: master.channelHelper.getChannelArn(),
-                    })
-                    .promise();
+                    }));
             } else {
                 await master.channelHelper
                     .getWebRTCStorageClient()
-                    .joinStorageSessionAsViewer({
+                    .send(AWS.KinesisVideoWebRTCStorage.JoinStorageSessionAsViewerCommand({
                         channelArn: master.channelHelper.getChannelArn(),
                         clientId: master.clientId,
-                    })
-                    .promise();
+                    }));
             }
         } catch (e) {
             console.error(e);

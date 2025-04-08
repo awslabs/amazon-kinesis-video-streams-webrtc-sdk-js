@@ -3,8 +3,8 @@
     <br />
 </h1>
 
-<div align="center"> 
-    
+<div align="center">
+
 [![NPM version](https://img.shields.io/npm/v/amazon-kinesis-video-streams-webrtc.svg?style=flat-square)](https://www.npmjs.com/package/amazon-kinesis-video-streams-webrtc)
 [![NPM downloads](https://img.shields.io/npm/dm/amazon-kinesis-video-streams-webrtc.svg?style=flat-square)](https://www.npmjs.com/package/amazon-kinesis-video-streams-webrtc)
 [![NPM version](https://img.shields.io/npm/l/amazon-kinesis-video-streams-webrtc?style=flat-square)](https://www.npmjs.com/package/amazon-kinesis-video-streams-webrtc)
@@ -475,6 +475,10 @@ You will need to provide an AWS region, AWS credentials, and a Channel Name.
 The source code for the test page is in the [`examples`](examples) directory.
 
 For advanced debugging, use the `WebRTC Internals` tool your browser provides.
+
+#### Building AWS SDK for JS v3
+
+Refer to the [aws-sdk-build](./aws-sdk-build) directory for more details.
 
 ## License
 
