@@ -14,7 +14,7 @@ const masterDefaults = {
     websocketOpened: false,
     connectionFailures: [], // Dates of when PeerConnection transitions to failed state.
     currentJoinStorageSessionRetries: 0,
-    turnServerExpiry: 0, // Epoch millis when the TURN servers expire minus grace period
+    turnServerExpiryTs: 0, // Epoch millis when the TURN servers expire minus grace period
     iceServers: [], // Cached list of ICE servers (STUN and TURN, depending on formValues)
 };
 
@@ -328,13 +328,19 @@ function onPeerConnectionFailed(remoteClientId, printLostConnectionLog = true, h
  * Fetches ICE servers, caching them to prevent redundant API calls.
  * If the cached TURN servers are still valid, it returns them instead of making a new request.
  * @param {Object} formValues - Configuration settings from the UI.
- * @returns {Array} List of ICE servers.
+ * @param {boolean} formValues.natTraversalDisabled - No ICE (STUN or TURN) servers at all setting.
+ * @param {boolean} formValues.forceTURN - TURN servers only setting.
+ * @param {boolean} formValues.forceSTUN - STUN servers only setting.
+ * @param {boolean} formValues.sendSrflxCandidates - Send STUN candidates setting.
+ * @param {boolean} formValues.sendRelayCandidates - Send TURN candidates setting.
+ * @param {string} formValues.region - AWS region used to construct the STUN server URL.
+ * @returns {Promise<RTCIceServer[]>} List of ICE servers.
  */
 async function getIceServersWithCaching(formValues) {
     const role = ROLE;
 
     // Check if cached TURN servers are still valid
-    if (Date.now() < master.turnServerExpiry) {
+    if (Date.now() < master.turnServerExpiryTs) {
         return master.iceServers;
     }
     console.log(`[${role}]`, 'Fetch new ICE servers');
@@ -349,14 +355,14 @@ async function getIceServersWithCaching(formValues) {
 
     // Add the TURN servers unless it is disabled
     if (!formValues.natTraversalDisabled && !formValues.forceSTUN && formValues.sendRelayCandidates) {
-        const [turnServers, turnServerExpiryMillis] = await master.channelHelper.fetchTurnServers();
-        master.turnServerExpiry = turnServerExpiryMillis - iceServerRefreshGracePeriodSec * 1000;
+        const [turnServers, turnServerExpiryTsMillis] = await master.channelHelper.fetchTurnServers();
+        master.turnServerExpiryTs = turnServerExpiryTsMillis - iceServerRefreshGracePeriodSec * 1000;
         iceServers.push(...turnServers);
     }
     console.log(`[${role}]`, 'ICE servers:', iceServers);
 
     master.iceServers = iceServers;
-    return iceServers;
+    return master.iceServers;
 }
 
 function stopMaster() {
@@ -365,7 +371,7 @@ function stopMaster() {
         console.log(`[${role}] Stopping ${role} connection`);
         master.sdpOfferReceived = true;
 
-        // Prevent it from reopening when trying to close
+        // Remove the callback that reopens the connection on 'close' before attempting to close the connection
         master.channelHelper?.getSignalingClient()?.removeListener('close', master.reopenChannelCallback);
         master.channelHelper?.getSignalingClient()?.close();
 
