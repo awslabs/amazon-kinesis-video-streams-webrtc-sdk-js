@@ -106,6 +106,7 @@ function getFormValues() {
         sendUdpCandidates: $('#send-udp').is(':checked'),
         acceptUdpCandidates: $('#accept-udp').is(':checked'),
         mediaIngestionModeOverride: $('#ingest-media-manual-on').attr('data-selected') === 'true',
+        signalingReconnect: $('#signaling-reconnect').is(':checked'),
         logAwsSdkCalls: $('#log-aws-sdk-calls').is(':checked'),
     };
 }
@@ -547,6 +548,7 @@ const fields = [
     {field: 'accept-tcp', type: 'checkbox'},
     {field: 'send-udp', type: 'checkbox'},
     {field: 'accept-udp', type: 'checkbox'},
+    {field: 'signaling-reconnect', type: 'checkbox'},
     {field: 'log-aws-sdk-calls', type: 'checkbox'},
 ];
 

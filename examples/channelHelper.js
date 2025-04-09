@@ -77,17 +77,21 @@ class ChannelHelper {
         return this._streamArn;
     };
 
-    // Fetch and return TURN servers
+    // Fetch and return TURN servers with expiry time
     // Only available after init()
     fetchTurnServers = async () => {
-        return (await this._signalingChannelsClient.send(
-                new AWS.KinesisVideoSignaling.GetIceServerConfigCommand({ChannelARN: this._channelArn})
-            )
-        ).IceServerList.flatMap(iceServer => ({
+        const iceServerResponse = await this._signalingChannelsClient.send(
+            new AWS.KinesisVideoSignaling.GetIceServerConfigCommand({ ChannelARN: this._channelArn }),
+        );
+        const iceServers = iceServerResponse.IceServerList.flatMap((iceServer) => ({
             urls: iceServer.Uris,
             username: iceServer.Username,
             credential: iceServer.Password,
         }));
+
+        const minExpirySec = iceServerResponse.IceServerList.reduce((minExpiry, iceServer) => Math.min(minExpiry, iceServer.Ttl), 500);
+        const expiryDateMillis = Date.now() + minExpirySec * 1000;
+        return [iceServers, expiryDateMillis];
     };
 
     // Returns the date immediately after the SigV4 Signer finishes signing the Connect to
@@ -124,8 +128,6 @@ class ChannelHelper {
             endpoint: this._endpoints['HTTPS'],
             correctClockSkew: true,
         });
-
-        console.log(this._clientArgs);
 
         // Kinesis Video Signaling Client
         // Used to invoke APIs under https://docs.aws.amazon.com/kinesisvideostreams-webrtc-dg/latest/devguide/kvswebrtc-websocket-apis.html
