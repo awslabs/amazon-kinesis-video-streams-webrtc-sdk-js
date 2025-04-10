@@ -268,12 +268,11 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
         viewer.localView = localView;
         viewer.remoteView = remoteView;
 
-        viewer.remoteView.addEventListener('loadeddata', () => {
+        viewer.loadedDataCallback = () => {
             metrics.viewer.ttff.endTime = Date.now();
             if (formValues.enableProfileTimeline) {
                 metrics.viewer.ttffAfterPc.endTime = metrics.viewer.ttff.endTime;
                 metrics.master.ttffAfterPc.endTime = metrics.viewer.ttff.endTime;
-
 
                 // if the ice-gathering on the master side is not complete by the time the metrics are sent, the endTime > startTime
                 // in order to plot it, we can show it as an ongoing process
@@ -281,11 +280,13 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
                     metrics.master.iceGathering.endTime = metrics.viewer.ttff.endTime;
                 }
             }
-            if(formValues.enableDQPmetrics) {
+            if (formValues.enableDQPmetrics) {
                 timeToFirstFrameFromOffer = metrics.viewer.ttff.endTime - metrics.viewer.offAnswerTime.startTime;
                 timeToFirstFrameFromViewerStart = metrics.viewer.ttff.endTime - viewerButtonPressed.getTime();
             }
-        });
+        };
+
+        viewer.remoteView.addEventListener('loadeddata', viewer.loadedDataCallback);
 
         if (formValues.enableProfileTimeline) {
             metrics.viewer.ttff.startTime = viewerButtonPressed.getTime();
@@ -818,6 +819,7 @@ function stopViewer() {
         }
 
         if (viewer.remoteView) {
+            viewer.remoteView.removeEventListener('loadeddata');
             viewer.remoteView.srcObject = null;
         }
 
