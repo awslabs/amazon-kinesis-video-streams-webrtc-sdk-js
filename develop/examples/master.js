@@ -349,7 +349,7 @@ async function getIceServersWithCaching(formValues) {
     const iceServers = [];
 
     // Add the STUN server unless it is disabled
-    if (!formValues.natTraversalDisabled && !formValues.forceTURN && (formValues.sendSrflxCandidates || formValues.sendPrflxCandidates)) {
+    if (!formValues.natTraversalDisabled && !formValues.forceTURN && formValues.sendSrflxCandidates) {
         iceServers.push({ urls: `stun:stun.kinesisvideo.${formValues.region}.amazonaws.com:443` });
     }
 
