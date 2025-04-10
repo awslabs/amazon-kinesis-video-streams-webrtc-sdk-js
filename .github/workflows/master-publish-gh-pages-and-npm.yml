@@ -14,6 +14,13 @@ jobs:
               uses: actions/setup-node@v2
               with:
                   node-version: 22
+            - name: Build AWS SDK
+              working-directory: ./aws-sdk-build
+              run: |
+                  npm install
+                  npm run build
+                  rm -rf ../examples/*-kvswebrtc.js
+                  mv dist/*-kvswebrtc.js ../examples
             - name: Install dependencies
               run: npm install
             - name: Run release
@@ -25,8 +32,12 @@ jobs:
                   branch: gh-pages
                   clean: true
                   clean-exclude: develop/
-            - name: Delete examples directories
-              run: rm -rf examples dist/examples
+            - name: Delete extra directories
+              run: |
+                  # Delete the examples
+                  rm -rf examples dist/examples
+                  # Remove the infra to build the AWS SDK v3 browser script
+                  rm -rf aws-sdk-build
             - name: Deploy to npm packages
               uses: JS-DevTools/npm-publish@v1
               with:

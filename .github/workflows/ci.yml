@@ -28,3 +28,22 @@ jobs:
         run: npm install
       - name: Run release
         run: npm run release
+
+  dependabot-auto-merge-after-ci-passes:
+    needs: nodejs-ubuntu-build
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: write
+    if: >-
+      github.actor == 'dependabot[bot]' &&
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.base.ref == 'develop'
+    env:
+      PR_URL: ${{ github.event.pull_request.html_url }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Approve Dependabot PR
+        run: gh pr review --approve "$PR_URL"
+      - name: Auto-merge Dependabot PR
+        run: gh pr merge --squash --auto "$PR_URL"
