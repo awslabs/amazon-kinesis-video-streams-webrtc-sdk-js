@@ -1,7 +1,7 @@
 const path = require('path');
 
 // 1.8 MB approximately for development build with sourcemap
-// about 330 KB for the optimized build
+// about 162 KB for the optimized build
 const isProduction = process.env.CI === 'true';
 
 module.exports = {
