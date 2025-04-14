@@ -39,14 +39,13 @@ async function updateMediaStorageConfiguration(formValues) {
 
             // Finally, update the media storage configuration.
             await kinesisVideoClient
-                .updateMediaStorageConfiguration({
+                .send(new AWS.KinesisVideo.UpdateMediaStorageConfigurationCommand({
                     ChannelARN: channelARN,
                     MediaStorageConfiguration: {
                         Status: 'ENABLED',
                         StreamARN: streamARN,
                     },
-                })
-                .promise();
+                }));
 
             console.log('[UPDATE_MEDIA_STORAGE_CONFIGURATION] Success! Media for', channelARN, 'will be ingested and stored in', streamARN);
         } else {
