@@ -16,6 +16,7 @@ const masterDefaults = {
     currentJoinStorageSessionRetries: 0,
     turnServerExpiryTs: 0, // Epoch millis when the TURN servers expire minus grace period
     iceServers: [], // Cached list of ICE servers (STUN and TURN, depending on formValues)
+    reopenChannelCallback: null,
 };
 
 let master = {};
@@ -372,7 +373,9 @@ function stopMaster() {
         master.sdpOfferReceived = true;
 
         // Remove the callback that reopens the connection on 'close' before attempting to close the connection
-        master.channelHelper?.getSignalingClient()?.removeListener('close', master.reopenChannelCallback);
+        if (master.reopenChannelCallback) {
+            master.channelHelper?.getSignalingClient()?.removeListener('close', master.reopenChannelCallback);
+        }
         master.channelHelper?.getSignalingClient()?.close();
 
         Object.keys(master.peerByClientId).forEach(clientId => {

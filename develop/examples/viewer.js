@@ -819,7 +819,7 @@ function stopViewer() {
         }
 
         if (viewer.remoteView) {
-            viewer.remoteView.removeEventListener('loadeddata');
+            viewer.remoteView.removeEventListener('loadeddata', viewer.loadedDataCallback);
             viewer.remoteView.srcObject = null;
         }
 
