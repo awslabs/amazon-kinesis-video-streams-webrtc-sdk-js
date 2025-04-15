@@ -1,0 +1,23 @@
+{
+    "name": "aws-sdk-build",
+    "version": "1.0.0",
+    "description": "Bundled AWS SDK v3 for script import",
+    "private": true,
+    "main": "index.js",
+    "scripts": {
+        "build": "webpack",
+        "postbuild": "node rename-output-file.js"
+    },
+    "dependencies": {
+        "@aws-sdk/client-kinesis-video": "^3.x",
+        "@aws-sdk/client-kinesis-video-signaling": "^3.x",
+        "@aws-sdk/client-kinesis-video-webrtc-storage": "^3.x"
+    },
+    "devDependencies": {
+        "webpack": "^5.x",
+        "webpack-cli": "^5.x"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "Apache-2.0"
+}

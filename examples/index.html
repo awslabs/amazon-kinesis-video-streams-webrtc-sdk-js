@@ -9,11 +9,11 @@
     <link rel="stylesheet" href="./app.css">
     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js"></script>
-    <script src="aws-sdk-all-2.1646.0.js"></script>
     <script src="https://unpkg.com/@ungap/url-search-params"></script>
     <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.2.1/dist/chart.umd.min.js"></script>
     <script src="https://www.gstatic.com/charts/loader.js"></script>
+    <script src="./aws-sdk-3.758.0-kvswebrtc.js"></script>
     <link rel="icon" type="image/png" href="favicon.ico">
 </head>
 <body>
@@ -208,7 +208,7 @@
             </div>
 
             <details><summary class="h4">Advanced</summary>
-                <p><small>Filter settings for which ICE candidates are sent to and received from the peer.</small></p>
+                <p class="mt-3"><small>Filter settings for which ICE candidates are sent to and received from the peer.</small></p>
                 <div class="container">
                     <div class="row">
                         <div class="col-sm">
@@ -261,6 +261,18 @@
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" id="accept-udp" checked />
                                 <label for="accept-udp" class="form-check-label">Accept <code>udp</code> candidates from peer</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <p class="mt-3"><small>Signaling reconnect</small></p>
+                <div class="container">
+                    <div class="row">
+                        <div class="col-sm">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="signaling-reconnect" checked/>
+                                <label for="signaling-reconnect" class="form-check-label">Reopen signaling connection
+                                    after idle timeout <small>(Master only, non WebRTC ingestion)</small></label>
                             </div>
                         </div>
                     </div>
@@ -443,6 +455,7 @@
 <div id="test"></div>
 
 <script src="../kvs-webrtc.js"></script>
+<script src="./app.js"></script>
 <script src="./channelHelper.js"></script>
 <script src="./mediaHelper.js"></script>
 <script src="./answerer.js"></script>
@@ -455,7 +468,6 @@
 <script src="./createStream.js"></script>
 <script src="./joinStorageSession.js"></script>
 <script src="./joinStorageSessionAsViewer.js"></script>
-<script src="./app.js"></script>
 
 </body>
 </html>

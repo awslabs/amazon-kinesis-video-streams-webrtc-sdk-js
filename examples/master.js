@@ -14,6 +14,9 @@ const masterDefaults = {
     websocketOpened: false,
     connectionFailures: [], // Dates of when PeerConnection transitions to failed state.
     currentJoinStorageSessionRetries: 0,
+    turnServerExpiryTs: 0, // Epoch millis when the TURN servers expire minus grace period
+    iceServers: [], // Cached list of ICE servers (STUN and TURN, depending on formValues)
+    reopenChannelCallback: null,
 };
 
 let master = {};
@@ -27,6 +30,14 @@ const ingestionWithMultiViewerSupportPreviewRegions = ['us-east-1'];
  * @default
  */
 const retryIntervalForJoinStorageSession = 6000;
+
+/**
+ * Seconds to start refreshing the TURN servers before the credentials expire
+ * @constant
+ * @type {number}
+ * @default
+ */
+const iceServerRefreshGracePeriodSec = 15;
 
 /**
  * Maximum number of times we will attempt to establish Peer connection (perform
@@ -64,15 +75,18 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             formValues.channelName,
             {
                 region: formValues.region,
-                accessKeyId: formValues.accessKeyId,
-                secretAccessKey: formValues.secretAccessKey,
-                sessionToken: formValues.sessionToken,
+                credentials: {
+                    accessKeyId: formValues.accessKeyId,
+                    secretAccessKey: formValues.secretAccessKey,
+                    sessionToken: formValues.sessionToken,
+                },
             },
             formValues.endpoint,
             role,
             ingestionMode,
             `[${role}]`,
             role === 'VIEWER' ? formValues.clientId : undefined,
+            formValues.logAwsSdkCalls ? console : undefined,
         );
 
         await master.channelHelper.init();
@@ -92,29 +106,12 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
                 $('.datachannel').addClass('d-none');
             }
 
-            master.channelHelper.getWebRTCStorageClient().config.maxRetries = 0;
-            master.channelHelper.getWebRTCStorageClient().config.httpOptions.timeout = retryIntervalForJoinStorageSession;
         } else {
             console.log(`[${role}] Not using media ingestion feature.`);
         }
 
-        const iceServers = [];
-
-        // Add the STUN server unless it is disabled
-        if (!formValues.natTraversalDisabled && !formValues.forceTURN && (formValues.sendSrflxCandidates || formValues.sendPrflxCandidates)) {
-            iceServers.push({urls: `stun:stun.kinesisvideo.${formValues.region}.amazonaws.com:443`});
-        }
-
-        // Add the TURN servers unless it is disabled
-        if (!formValues.natTraversalDisabled && !formValues.forceSTUN && formValues.sendRelayCandidates) {
-            iceServers.push(...(await master.channelHelper.fetchTurnServers()));
-        }
-        console.log(`[${role}]`, 'ICE servers:', iceServers);
-
-        const configuration = {
-            iceServers,
-            iceTransportPolicy: formValues.forceTURN ? 'relay' : 'all',
-        };
+        // Kickoff fetching ICE servers
+        getIceServersWithCaching(formValues);
 
         // Get a stream from the webcam and display it in the local view.
         // If no video/audio needed, no need to request for the sources.
@@ -138,7 +135,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             }
         }
 
-        registerMasterSignalingClientCallbacks(master.channelHelper.getSignalingClient(), formValues, configuration, onStatsReport, onRemoteDataMessage);
+        registerMasterSignalingClientCallbacks(master.channelHelper.getSignalingClient(), formValues, onStatsReport, onRemoteDataMessage);
         console.log(`[${role}] Starting ${role.toLowerCase()} connection`);
         master.channelHelper.getSignalingClient().open();
     } catch (e) {
@@ -147,7 +144,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
     }
 }
 
-registerMasterSignalingClientCallbacks = (signalingClient, formValues, configuration, onStatsReport, onRemoteDataMessage) => {
+registerMasterSignalingClientCallbacks = (signalingClient, formValues, onStatsReport, onRemoteDataMessage) => {
     const role = ROLE;
 
     signalingClient.on('open', async () => {
@@ -195,6 +192,11 @@ registerMasterSignalingClientCallbacks = (signalingClient, formValues, configura
             master.peerByClientId[remoteClientId].close();
             console.log(`[${role}] Close previous connection`);
         }
+
+        const configuration = {
+            iceServers: await getIceServersWithCaching(formValues),
+            iceTransportPolicy: formValues.forceTURN ? 'relay' : 'all',
+        };
 
         const answerer = new Answerer(
             configuration,
@@ -271,6 +273,15 @@ registerMasterSignalingClientCallbacks = (signalingClient, formValues, configura
     signalingClient.on('error', error => {
         console.error(`[${role}] Signaling client error`, error);
     });
+
+    if (formValues.signalingReconnect && !master.channelHelper?.isIngestionEnabled()) {
+        master.reopenChannelCallback = () => {
+            console.log(`[${role}] Automatically reconnecting to signaling channel`);
+            signalingClient.open();
+        };
+
+        signalingClient.on('close', master.reopenChannelCallback);
+    }
 };
 
 function onPeerConnectionFailed(remoteClientId, printLostConnectionLog = true, hasConnectedAlready = true) {
@@ -314,12 +325,57 @@ function onPeerConnectionFailed(remoteClientId, printLostConnectionLog = true, h
     }
 }
 
+/**
+ * Fetches ICE servers, caching them to prevent redundant API calls.
+ * If the cached TURN servers are still valid, it returns them instead of making a new request.
+ * @param {Object} formValues - Configuration settings from the UI.
+ * @param {boolean} formValues.natTraversalDisabled - No ICE (STUN or TURN) servers at all setting.
+ * @param {boolean} formValues.forceTURN - TURN servers only setting.
+ * @param {boolean} formValues.forceSTUN - STUN servers only setting.
+ * @param {boolean} formValues.sendSrflxCandidates - Send STUN candidates setting.
+ * @param {boolean} formValues.sendRelayCandidates - Send TURN candidates setting.
+ * @param {string} formValues.region - AWS region used to construct the STUN server URL.
+ * @returns {Promise<RTCIceServer[]>} List of ICE servers.
+ */
+async function getIceServersWithCaching(formValues) {
+    const role = ROLE;
+
+    // Check if cached TURN servers are still valid
+    if (Date.now() < master.turnServerExpiryTs) {
+        return master.iceServers;
+    }
+    console.log(`[${role}]`, 'Fetch new ICE servers');
+
+    /** @type {RTCIceServer[]} */
+    const iceServers = [];
+
+    // Add the STUN server unless it is disabled
+    if (!formValues.natTraversalDisabled && !formValues.forceTURN && formValues.sendSrflxCandidates) {
+        iceServers.push({ urls: `stun:stun.kinesisvideo.${formValues.region}.amazonaws.com:443` });
+    }
+
+    // Add the TURN servers unless it is disabled
+    if (!formValues.natTraversalDisabled && !formValues.forceSTUN && formValues.sendRelayCandidates) {
+        const [turnServers, turnServerExpiryTsMillis] = await master.channelHelper.fetchTurnServers();
+        master.turnServerExpiryTs = turnServerExpiryTsMillis - iceServerRefreshGracePeriodSec * 1000;
+        iceServers.push(...turnServers);
+    }
+    console.log(`[${role}]`, 'ICE servers:', iceServers);
+
+    master.iceServers = iceServers;
+    return master.iceServers;
+}
+
 function stopMaster() {
     const role = ROLE;
     try {
         console.log(`[${role}] Stopping ${role} connection`);
         master.sdpOfferReceived = true;
 
+        // Remove the callback that reopens the connection on 'close' before attempting to close the connection
+        if (master.reopenChannelCallback) {
+            master.channelHelper?.getSignalingClient()?.removeListener('close', master.reopenChannelCallback);
+        }
         master.channelHelper?.getSignalingClient()?.close();
 
         Object.keys(master.peerByClientId).forEach(clientId => {
@@ -407,18 +463,16 @@ async function callJoinStorageSessionUntilSDPOfferReceived(runId) {
             if (ROLE === 'MASTER') {
                 await master.channelHelper
                     .getWebRTCStorageClient()
-                    .joinStorageSession({
+                    .send(new AWS.KinesisVideoWebRTCStorage.JoinStorageSessionCommand({
                         channelArn: master.channelHelper.getChannelArn(),
-                    })
-                    .promise();
+                    }));
             } else {
                 await master.channelHelper
                     .getWebRTCStorageClient()
-                    .joinStorageSessionAsViewer({
+                    .send(AWS.KinesisVideoWebRTCStorage.JoinStorageSessionAsViewerCommand({
                         channelArn: master.channelHelper.getChannelArn(),
                         clientId: master.clientId,
-                    })
-                    .promise();
+                    }));
             }
         } catch (e) {
             console.error(e);
