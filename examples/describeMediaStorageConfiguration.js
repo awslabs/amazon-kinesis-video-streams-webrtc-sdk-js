@@ -10,15 +10,18 @@ async function describeMediaStorageConfiguration(formValues) {
         console.log('[DESCRIBE_MEDIA_STORAGE_CONFIGURATION] Fetching the media storage configuration for', formValues.channelName);
 
         // Create KVS client
-        const kinesisVideoClient = new AWS.KinesisVideo({
+        const kinesisVideoClient = new AWS.KinesisVideo.KinesisVideoClient({
             region: formValues.region,
-            accessKeyId: formValues.accessKeyId,
-            secretAccessKey: formValues.secretAccessKey,
-            sessionToken: formValues.sessionToken,
+            credentials: {
+                accessKeyId: formValues.accessKeyId,
+                secretAccessKey: formValues.secretAccessKey,
+                sessionToken: formValues.sessionToken,
+            },
             endpoint: formValues.endpoint,
+            logger: formValues.logAwsSdkCalls ? console : undefined,
         });
 
-        const mediaStorageConfiguration = await kinesisVideoClient.describeMediaStorageConfiguration({ ChannelName: formValues.channelName }).promise();
+        const mediaStorageConfiguration = await kinesisVideoClient.send(new AWS.KinesisVideo.DescribeMediaStorageConfigurationCommand({ ChannelName: formValues.channelName }));
 
         console.log('[DESCRIBE_MEDIA_STORAGE_CONFIGURATION]', mediaStorageConfiguration);
     } catch (e) {

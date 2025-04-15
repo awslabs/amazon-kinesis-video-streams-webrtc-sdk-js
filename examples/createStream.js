@@ -11,20 +11,22 @@ async function createStream(formValues) {
             'hours of retention.',
         );
         // Create KVS client
-        const kinesisVideoClient = new AWS.KinesisVideo({
+        const kinesisVideoClient = new AWS.KinesisVideo.KinesisVideoClient({
+            credentials: {
+                accessKeyId: formValues.accessKeyId,
+                secretAccessKey: formValues.secretAccessKey,
+                sessionToken: formValues.sessionToken,
+            },
             region: formValues.region,
-            accessKeyId: formValues.accessKeyId,
-            secretAccessKey: formValues.secretAccessKey,
-            sessionToken: formValues.sessionToken,
             endpoint: formValues.endpoint,
+            logger: formValues.logAwsSdkCalls ? console : undefined,
         });
 
         const createStreamResponse = await kinesisVideoClient
-            .createStream({
+            .send(new AWS.KinesisVideo.CreateStreamCommand({
                 StreamName: formValues.streamName,
-                DataRetentionInHours: formValues.retentionInHours,
-            })
-            .promise();
+                DataRetentionInHours: parseInt(formValues.retentionInHours),
+            }));
 
         console.log('[CREATE_STREAM] Success! Stream ARN:', createStreamResponse.StreamARN);
     } catch (e) {

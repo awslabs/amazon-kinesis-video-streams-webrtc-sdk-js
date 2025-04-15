@@ -16,11 +16,13 @@ async function updateMediaStorageConfiguration(formValues) {
         );
 
         // Create KVS client
-        const kinesisVideoClient = new AWS.KinesisVideo({
+        const kinesisVideoClient = new AWS.KinesisVideo.KinesisVideoClient({
             region: formValues.region,
-            accessKeyId: formValues.accessKeyId,
-            secretAccessKey: formValues.secretAccessKey,
-            sessionToken: formValues.sessionToken,
+            credentials: {
+                accessKeyId: formValues.accessKeyId,
+                secretAccessKey: formValues.secretAccessKey,
+                sessionToken: formValues.sessionToken,
+            },
             endpoint: formValues.endpoint,
         });
 
@@ -28,42 +30,40 @@ async function updateMediaStorageConfiguration(formValues) {
             // We want to update the media storage configuration
 
             // First, grab the Stream ARN
-            const describeStreamResponse = await kinesisVideoClient.describeStream({ StreamName: formValues.streamName }).promise();
+            const describeStreamResponse = await kinesisVideoClient.send(new AWS.KinesisVideo.DescribeStreamCommand({ StreamName: formValues.streamName }));
             const streamARN = describeStreamResponse.StreamInfo.StreamARN;
 
             // Then, grab the Channel ARN
-            const describeSignalingChannelResponse = await kinesisVideoClient.describeSignalingChannel({ ChannelName: formValues.channelName }).promise();
+            const describeSignalingChannelResponse = await kinesisVideoClient.send(new AWS.KinesisVideo.DescribeSignalingChannelCommand({ ChannelName: formValues.channelName }));
             const channelARN = describeSignalingChannelResponse.ChannelInfo.ChannelARN;
 
             // Finally, update the media storage configuration.
             await kinesisVideoClient
-                .updateMediaStorageConfiguration({
+                .send(new AWS.KinesisVideo.UpdateMediaStorageConfigurationCommand({
                     ChannelARN: channelARN,
                     MediaStorageConfiguration: {
                         Status: 'ENABLED',
                         StreamARN: streamARN,
                     },
-                })
-                .promise();
+                }));
 
             console.log('[UPDATE_MEDIA_STORAGE_CONFIGURATION] Success! Media for', channelARN, 'will be ingested and stored in', streamARN);
         } else {
             // We want to disable the media storage configuration
 
             // First, grab the Channel ARN
-            const describeSignalingChannelResponse = await kinesisVideoClient.describeSignalingChannel({ ChannelName: formValues.channelName }).promise();
+            const describeSignalingChannelResponse = await kinesisVideoClient.send(new AWS.KinesisVideo.DescribeSignalingChannelCommand({ ChannelName: formValues.channelName }));
             const channelARN = describeSignalingChannelResponse.ChannelInfo.ChannelARN;
 
             // Then, update the media storage configuration.
             await kinesisVideoClient
-                .updateMediaStorageConfiguration({
+                .send(new AWS.KinesisVideo.UpdateMediaStorageConfigurationCommand({
                     ChannelARN: channelARN,
                     MediaStorageConfiguration: {
                         Status: 'DISABLED',
                         StreamARN: null,
                     },
-                })
-                .promise();
+                }));
 
             console.log('[UPDATE_MEDIA_STORAGE_CONFIGURATION] Success! Media for', channelARN, 'will be no longer be ingested and stored');
         }
