@@ -26,21 +26,31 @@
     <div id="main" class="d-none">
         <form id="form" onsubmit="return false">
             <h4 id="subheader">KVS Endpoint</h4>
+            <div class="d-flex align-items-center">
+                <!-- Left label -->
+                <label class="mr-2" for="useDualStackEndpoints">IPv4</label>
+                
+                <!-- Switch -->
+                <div class="custom-control custom-switch" style="margin-top: -6px;">
+                    <input class="custom-control-input" type="checkbox" id="useDualStackEndpoints" value="useDualStackEndpoints">
+                    <label class="custom-control-label" for="useDualStackEndpoints"></label>
+                </div>
+                
+                <!-- Right label -->
+                <label class="ml-0" for="useDualStackEndpoints">Dual-stack</label>
+                
+                <!-- Tooltip icon -->
+                <span data-delay="{ &quot;hide&quot;: 1500 }" data-position="auto" tabindex="0" class="text-info ml-1" data-toggle="tooltip" data-html="true"
+                    title="<p>Use dual-stack KVS endpoints, else will use legacy IPv4-only endpoints.</p>
+                    <a href=&quot;https://docs.aws.amazon.com/sdkref/latest/guide/feature-endpoints.html&quot;>Additional information</a>">
+                    <sup>&#9432;</sup>
+                </span>
+            </div>
             <div class="form-group has-validation" style="position: relative;">
                 <label for="region">Region</label>
                 <input type="text" class="form-control valid" id="region" placeholder="Region" value="us-west-2" autocomplete="off" required>
                 <datalist id="regionList"></datalist>
                 <div id="region-invalid-feedback" class="invalid-feedback"></div>
-            </div>
-            <div class="form-check-inline">
-                <input class="form-check-input" type="checkbox" id="useDualStackEndpoints" value="useDualStackEndpoints">
-                <label for="useDualStackEndpoints" class="form-check-label">Use dual-stack endpoints</label>
-                <span data-delay="{ &quot;hide&quot;: 1500 }" data-position="auto" tabindex="0" class="text-info ml-1" data-toggle="tooltip" data-html="true"
-                    title="<p>Use dual-stack AWS endpoints, else will use legacy IPv4-only endpoints.</p>
-                    <a href=&quot;https://docs.aws.amazon.com/sdkref/latest/guide/feature-endpoints.html&quot;>Additional information</a>
-
-                    "><sup>&#9432;</sup>
-                </span>
             </div>
             <h4 id="subheader">AWS Credentials</h4>
             <div class="form-group">
