@@ -40,5 +40,7 @@ jobs:
                   rm -rf aws-sdk-build
             - name: Deploy to npm packages
               uses: JS-DevTools/npm-publish@v1
+              # Don't run this step for forks, only in the original repo
+              if: github.repository == 'awslabs/amazon-kinesis-video-streams-webrtc-sdk-js'
               with:
                   token: '${{ secrets.NPM_TOKEN }}'
