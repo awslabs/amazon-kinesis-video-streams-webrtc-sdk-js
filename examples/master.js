@@ -469,7 +469,7 @@ async function callJoinStorageSessionUntilSDPOfferReceived(runId) {
             } else {
                 await master.channelHelper
                     .getWebRTCStorageClient()
-                    .send(AWS.KinesisVideoWebRTCStorage.JoinStorageSessionAsViewerCommand({
+                    .send(new AWS.KinesisVideoWebRTCStorage.JoinStorageSessionAsViewerCommand({
                         channelArn: master.channelHelper.getChannelArn(),
                         clientId: master.clientId,
                     }));
