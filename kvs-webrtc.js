@@ -1,4 +1,4 @@
-/* Amazon Kinesis Video Streams WebRTC SDK for JavaScript v2.4.0
+/* Amazon Kinesis Video Streams WebRTC SDK for JavaScript v2.4.1
 Copyright 2019-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
 This product includes software developed at
@@ -1777,7 +1777,7 @@ var QueryParams_1 = __webpack_require__(/*! ./QueryParams */ "./src/QueryParams.
 Object.defineProperty(exports, "QueryParams", ({ enumerable: true, get: function () { return QueryParams_1.QueryParams; } }));
 var RequestSigner_1 = __webpack_require__(/*! ./RequestSigner */ "./src/RequestSigner.ts");
 Object.defineProperty(exports, "RequestSigner", ({ enumerable: true, get: function () { return RequestSigner_1.RequestSigner; } }));
-exports.VERSION = "2.4.0";
+exports.VERSION = "2.4.1";
 
 })();
 

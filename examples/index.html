@@ -288,6 +288,35 @@
                         </div>
                     </div>
                 </div>
+                <p class="mt-3"><small>Filter received media types</small><span data-delay="{ &quot;hide&quot;: 1500 }" data-position="auto" tabindex="0" class="text-info ml-1" data-toggle="tooltip" data-html="true" title="
+                                <p>Advertise support for a subset of media codecs, reducing the size of the SDP messages.</p>"><sup>&#9432;</sup></span></p>
+                <div class="mt-3 container">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="codec-filter-toggle" checked>
+                            <label class="form-check-label" for="codec-filter-toggle"><strong>Enable codec filter</strong></label>
+                        </div>
+                    </div>
+
+                    <div id="codecOptions" class="row">
+                        <div class="col">
+                            <button type="button"
+                                    id="reset-codecs"
+                                    class="btn btn-primary mt-2"
+                                    onclick="resetCodecPreferences()">
+                                Reset to Default Codecs
+                            </button>
+                        </div>
+                        <div class="col-sm">
+                            <h6>Video Codecs Allowed</h6>
+                            <div id="videoCodecs"></div>
+                        </div>
+                        <div class="col-sm">
+                            <h6>Audio Codecs Allowed</h6>
+                            <div id="audioCodecs"></div>
+                        </div>
+                    </div>
+                </div>
                 <p class="mt-3"><small>Endpoint Override</small></p>
                 <div class="form-group">
                     <input type="text" class="form-control" id="endpoint" placeholder="Endpoint">
