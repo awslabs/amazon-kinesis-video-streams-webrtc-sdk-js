@@ -683,6 +683,15 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
                 }
             }
 
+            const [videoCodecs, audioCodecs] = getCodecFilters();
+            viewer.peerConnection.getTransceivers().map((transceiver) => {
+                if (transceiver.receiver.track.kind === 'video' && videoCodecs) {
+                    transceiver.setCodecPreferences(videoCodecs);
+                } else if (transceiver.receiver.track.kind === 'audio' && audioCodecs) {
+                    transceiver.setCodecPreferences(audioCodecs);
+                }
+            });
+
             metrics.viewer.setupMediaPlayer.endTime = Date.now();
             timeToSetUpViewerMedia = metrics.viewer.setupMediaPlayer.endTime - metrics.viewer.setupMediaPlayer.startTime;
 
