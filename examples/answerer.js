@@ -138,6 +138,15 @@ class Answerer {
 
         await this._peerConnection.setRemoteDescription(this._offer);
 
+        const [videoCodecs, audioCodecs] = getCodecFilters();
+        this._peerConnection.getTransceivers().map(async (transceiver) => {
+            if (transceiver.receiver.track.kind === 'video' && videoCodecs) {
+                transceiver.setCodecPreferences(videoCodecs);
+            } else if (transceiver.receiver.track.kind === 'audio' && audioCodecs) {
+                transceiver.setCodecPreferences(audioCodecs);
+            }
+        });
+
         // Create an SDP answer to send back to the client
         console.log(this._loggingPrefix, 'Creating SDP answer for', this._remoteClientId || 'remote');
         await this._peerConnection.setLocalDescription(
