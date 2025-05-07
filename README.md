@@ -70,6 +70,9 @@ Also refer to the [`examples`](examples) directory for examples on how to write 
 This section demonstrates how to use this SDK along with the [AWS SDK for JS](https://github.com/aws/aws-sdk-js) (version 2.585.0+) to build a web-based viewer application.
 Refer to the [`examples`](examples) directory for an example of a complete application including both a master and viewer role.
 
+### Note:
+   Codecs can be filtered in the sample application to selectively enable support for specific camera capabilities (e.g. H264 or H265).
+
 #### Viewer Example With Audio/Video From Local Webcam
 These code snippets demonstrate how to build a viewer application that receives audio and video and also sends audio and video from a webcam back to the master.
 
