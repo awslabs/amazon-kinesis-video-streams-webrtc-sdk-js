@@ -4,6 +4,18 @@ let LOG_LEVEL = 'info'; // Possible values: any value of LOG_LEVELS
 let randomClientId = getRandomClientId(); // Holder for randomly-generated client id
 let channelHelper = null; // Holder for channelHelper
 
+// All supported codecs
+const allVCodecs = RTCRtpSender.getCapabilities('video').codecs;
+const allACodecs = RTCRtpSender.getCapabilities('audio').codecs;
+const uniqueVMimeTypes = [...new Set(allVCodecs.map((codec) => codec.mimeType))].sort();
+const uniqueAMimeTypes = [...new Set(allACodecs.map((codec) => codec.mimeType))].sort();
+
+// Default-enabled codecs
+const DEFAULT_CODECS = {
+    video: ['video/H264'].sort(),
+    audio: ['audio/opus'].sort(),
+};
+
 function configureLogging() {
     function log(level, messages) {
         const text = messages
@@ -550,6 +562,7 @@ const fields = [
     {field: 'accept-udp', type: 'checkbox'},
     {field: 'signaling-reconnect', type: 'checkbox'},
     {field: 'log-aws-sdk-calls', type: 'checkbox'},
+    {field: 'codec-filter-toggle', type: 'checkbox'},
 ];
 
 fields.forEach(({field, type, name}) => {
@@ -847,8 +860,166 @@ $(document).ready(function () {
     $('#copy-tooltip').tooltip({trigger: 'manual'});
 });
 
+function saveCodecPreferences() {
+    const videoCodecs = [];
+    const audioCodecs = [];
+
+    $('input[name="vcodec"]:checked').each(function () {
+        videoCodecs.push($(this).val());
+    });
+
+    $('input[name="acodec"]:checked').each(function () {
+        audioCodecs.push($(this).val());
+    });
+
+    localStorage.setItem('videoCodecs', JSON.stringify(videoCodecs));
+    localStorage.setItem('audioCodecs', JSON.stringify(audioCodecs));
+
+    /** @type {string[]} */
+    const selectedVideoMimeTypes = Array.from($('input[name="vcodec"]:checked')).map((selectElement) => $(selectElement).val()).sort();
+
+    /** @type {string[]} */
+    const selectedAudioMimeTypes = Array.from($('input[name="acodec"]:checked')).map((selectElement) => $(selectElement).val()).sort();
+
+    $('#reset-codecs').prop(
+        'disabled',
+        JSON.stringify(selectedVideoMimeTypes) === JSON.stringify(DEFAULT_CODECS.video) &&
+            JSON.stringify(selectedAudioMimeTypes) === JSON.stringify(DEFAULT_CODECS.audio),
+    );
+}
+
+function loadCodecPreferences() {
+    const savedVideoCodecs = JSON.parse(localStorage.getItem('videoCodecs')) || DEFAULT_CODECS.video;
+    const savedAudioCodecs = JSON.parse(localStorage.getItem('audioCodecs')) || DEFAULT_CODECS.audio;
+
+    $('input[name="vcodec"]').each(function () {
+        $(this).prop('checked', savedVideoCodecs.includes($(this).val()));
+    });
+
+    $('input[name="acodec"]').each(function () {
+        $(this).prop('checked', savedAudioCodecs.includes($(this).val()));
+    });
+
+    if ($('#codec-filter-toggle').is(':checked')) {
+        $('#codecOptions').removeClass('d-none');
+    } else {
+        $('#codecOptions').addClass('d-none');
+    }
+
+    saveCodecPreferences();
+}
+
+async function resetCodecPreferences() {
+    $('input[name="vcodec"]').each(function() {
+        $(this).prop('checked', DEFAULT_CODECS.video.includes($(this).val()));
+    });
+
+    $('input[name="acodec"]').each(function() {
+        $(this).prop('checked', DEFAULT_CODECS.audio.includes($(this).val()));
+    });
+
+    saveCodecPreferences();
+
+    $('#reset-codecs').removeClass('btn-primary');
+    $('#reset-codecs').addClass('btn-success');
+    await new Promise((r) => setTimeout(r, 200));
+    $('#reset-codecs').removeClass('btn-success');
+    $('#reset-codecs').addClass('btn-primary');
+}
+
+// Create codec checkboxes
+uniqueVMimeTypes.forEach((codec) => {
+    $('#videoCodecs').append(`
+                <div class="form-check">
+                    <label class="form-check-label">
+                        <input class="form-check-input"
+                               type="checkbox"
+                               name="vcodec"
+                               onchange="saveCodecPreferences()"
+                               value="${codec}"
+                               ${DEFAULT_CODECS.video.includes(codec) ? 'checked' : ''}>
+                        ${codec}
+                    </label>
+                </div>
+            `);
+});
+
+uniqueAMimeTypes.forEach((codec) => {
+    $('#audioCodecs').append(`
+                <div class="form-check">
+                    <label class="form-check-label">
+                        <input class="form-check-input"
+                               type="checkbox"
+                               name="acodec"
+                               onchange="saveCodecPreferences()"
+                               value="${codec}"
+                               ${DEFAULT_CODECS.audio.includes(codec) ? 'checked' : ''}>
+                        ${codec}
+                    </label>
+                </div>
+            `);
+});
+
+$('#codec-filter-toggle').on('change', (event) => {
+    if (event.target.checked) {
+        $('#codecOptions').removeClass('d-none');
+    } else {
+        $('#codecOptions').addClass('d-none');
+    }
+});
+
+$(document).ready(() => {
+    loadCodecPreferences();
+});
+
+/**
+ * Returns the selected codec filters. The results can be passed to setCodecPreferences.
+ * Calling setCodecPreferences with an empty array is equivalent to specifying no filter.
+ *
+ * @returns {[RTCRtpCodec[], RTCRtpCodec[]]} filtered codecs. Video comes first, then audio.
+ * @see {@link https://chromium.googlesource.com/chromium/src/+/HEAD/third_party/blink/web_tests/external/wpt/webrtc/RTCRtpTransceiver-setCodecPreferences.html}
+ */
+function getCodecFilters() {
+    const role = ROLE;
+
+    if (!$('#codec-filter-toggle').is(':checked')) {
+        // Filter is disabled - enable everything
+        return [[], []];
+    }
+
+    /** @type {string[]} */
+    const selectedVideoMimeTypes = Array.from($('input[name="vcodec"]:checked')).map((selectElement) => $(selectElement).val());
+
+    /** @type {RTCRtpCodec[]} */
+    const filteredVideoCodecs = selectedVideoMimeTypes.flatMap((mimeType) => {
+        return allVCodecs.filter((codec) => codec.mimeType === mimeType);
+    });
+
+    /** @type {string[]} */
+    const selectedAudioMimeTypes = Array.from($('input[name="acodec"]:checked')).map((selectElement) => $(selectElement).val());
+
+    /** @type {RTCRtpCodec[]} */
+    const filteredAudioCodecs = selectedAudioMimeTypes.flatMap((mimeType) => {
+        return allACodecs.filter((codec) => codec.mimeType === mimeType);
+    });
+
+    console.log(
+        `[${role}]`,
+        `Filters: Video: ${selectedVideoMimeTypes.length ? selectedVideoMimeTypes : 'No filter'}, Audio: ${selectedAudioMimeTypes.length ? selectedAudioMimeTypes : 'No filter'}`,
+    );
+
+    console.debug(
+        `[${role}]`,
+        `All accepted codecs: Video:`,
+        filteredVideoCodecs.length ? filteredVideoCodecs : 'ALL',
+        'Audio:',
+        filteredAudioCodecs.length ? filteredAudioCodecs : 'ALL',
+    );
+
+    return [filteredVideoCodecs, filteredAudioCodecs];
+}
+
 // The page is all setup. Hide the loading spinner and show the page content.
 $('.loader').addClass('d-none');
 $('#main').removeClass('d-none');
 console.log('Page loaded');
-
