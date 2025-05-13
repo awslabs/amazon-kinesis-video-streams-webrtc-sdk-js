@@ -335,6 +335,10 @@ function onPeerConnectionFailed(remoteClientId, printLostConnectionLog = true, h
  * @param {boolean} formValues.sendSrflxCandidates - Send STUN candidates setting.
  * @param {boolean} formValues.sendRelayCandidates - Send TURN candidates setting.
  * @param {string} formValues.region - AWS region used to construct the STUN server URL.
+ * @param {boolean} formValues.turnWithUdp - If this particular TURN server should be used for the connection.
+ * @param {boolean} formValues.turnsWithUdp - If this particular TURN server should be used for the connection.
+ * @param {boolean} formValues.turnsWithTcp - If this particular TURN server should be used for the connection.
+ * @param {boolean} formValues.oneTurnServerSetOnly - If only one of the sets of TURN servers should be considered.
  * @returns {Promise<RTCIceServer[]>} List of ICE servers.
  */
 async function getIceServersWithCaching(formValues) {
@@ -356,7 +360,30 @@ async function getIceServersWithCaching(formValues) {
 
     // Add the TURN servers unless it is disabled
     if (!formValues.natTraversalDisabled && !formValues.forceSTUN && formValues.sendRelayCandidates) {
-        const [turnServers, turnServerExpiryTsMillis] = await master.channelHelper.fetchTurnServers();
+        let [turnServers, turnServerExpiryTsMillis] = await master.channelHelper.fetchTurnServers();
+
+        if (!formValues.turnWithUdp || !formValues.turnsWithUdp || !formValues.turnsWithTcp) {
+            turnServers = turnServers.map((config) => {
+                return {
+                    urls: config.urls.filter((url) => {
+                        if (url.startsWith('turn:') && url.endsWith('?transport=udp')) {
+                            return formValues.turnWithUdp;
+                        } else if (url.startsWith('turns:') && url.endsWith('?transport=udp')) {
+                            return formValues.turnsWithUdp;
+                        } else if (url.startsWith('turns:') && url.endsWith('?transport=tcp')) {
+                            return formValues.turnsWithTcp;
+                        }
+                    }),
+                    username: config.username,
+                    credential: config.credential,
+                };
+            });
+        }
+
+        if (formValues.oneTurnServerSetOnly) {
+            turnServers = [turnServers[Math.floor(Math.random() * turnServers.length)]];
+        }
+
         master.turnServerExpiryTs = turnServerExpiryTsMillis - iceServerRefreshGracePeriodSec * 1000;
         iceServers.push(...turnServers);
     }
