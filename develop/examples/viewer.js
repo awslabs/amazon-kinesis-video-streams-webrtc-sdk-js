@@ -774,7 +774,16 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
 
         // As remote tracks are received, add them to the remote view
         viewer.peerConnection.addEventListener('track', event => {
-            console.log('[VIEWER] Received remote track with id:', event?.streams[0]?.id ?? '[Error retrieving track ID]');
+            console.log(
+                '[VIEWER] Received',
+                event.track.kind || 'unknown',
+                'track from',
+                this._remoteClientId || 'remote',
+                'in mediaStream:',
+                event?.streams[0]?.id ?? '[Error retrieving stream ID]',
+                'with track id:',
+                event.track.id,
+            );
             if (remoteView.srcObject) {
                 return;
             }
