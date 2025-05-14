@@ -775,8 +775,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
         // As remote tracks are received, add them to the remote view
         viewer.peerConnection.addEventListener('track', event => {
             console.log(
-                this._loggingPrefix,
-                'Received',
+                '[VIEWER] Received',
                 event.track.kind || 'unknown',
                 'track from',
                 this._remoteClientId || 'remote',
