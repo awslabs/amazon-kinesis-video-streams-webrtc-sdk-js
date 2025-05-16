@@ -120,6 +120,10 @@ function getFormValues() {
         mediaIngestionModeOverride: $('#ingest-media-manual-on').attr('data-selected') === 'true',
         signalingReconnect: $('#signaling-reconnect').is(':checked'),
         logAwsSdkCalls: $('#log-aws-sdk-calls').is(':checked'),
+        turnWithUdp: $('#turn-with-udp').is(':checked'),
+        turnsWithUdp: $('#turns-with-udp').is(':checked'),
+        turnsWithTcp: $('#turns-with-tcp').is(':checked'),
+        oneTurnServerSetOnly: $('#turn-one-set-only').is(':checked'),
     };
 }
 
@@ -563,6 +567,10 @@ const fields = [
     {field: 'signaling-reconnect', type: 'checkbox'},
     {field: 'log-aws-sdk-calls', type: 'checkbox'},
     {field: 'codec-filter-toggle', type: 'checkbox'},
+    {field: 'turn-with-udp', type: 'checkbox'},
+    {field: 'turns-with-udp', type: 'checkbox'},
+    {field: 'turns-with-tcp', type: 'checkbox'},
+    {field: 'turn-one-set-only', type: 'checkbox'},
 ];
 
 fields.forEach(({field, type, name}) => {
