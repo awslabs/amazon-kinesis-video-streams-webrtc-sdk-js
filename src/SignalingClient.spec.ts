@@ -188,7 +188,7 @@ describe('SignalingClient', () => {
         it('should open a connection to the signaling server as the viewer', (done) => {
             const client = new SignalingClient(config as SignalingClientConfig);
             client.on('open', () => {
-                expect(signer).toBeCalledWith(
+                expect(signer).toHaveBeenCalledWith(
                     ENDPOINT,
                     {
                         'X-Amz-ChannelARN': CHANNEL_ARN,
@@ -206,7 +206,7 @@ describe('SignalingClient', () => {
             delete config.clientId;
             const client = new SignalingClient(config as SignalingClientConfig);
             client.on('open', () => {
-                expect(signer).toBeCalledWith(
+                expect(signer).toHaveBeenCalledWith(
                     ENDPOINT,
                     {
                         'X-Amz-ChannelARN': CHANNEL_ARN,
@@ -222,7 +222,7 @@ describe('SignalingClient', () => {
             config.systemClockOffset = 1000000;
             const client = new SignalingClient(config as SignalingClientConfig);
             client.on('open', () => {
-                expect(signer).toBeCalledWith(
+                expect(signer).toHaveBeenCalledWith(
                     ENDPOINT,
                     {
                         'X-Amz-ChannelARN': CHANNEL_ARN,
@@ -360,7 +360,7 @@ describe('SignalingClient', () => {
             const client = new SignalingClient(config as SignalingClientConfig);
             client.open();
             client.on('open', () => {
-                expect(() => client.sendSdpAnswer(SDP_ANSWER, null, '?????')).toThrowError();
+                expect(() => client.sendSdpAnswer(SDP_ANSWER, null, '?????')).toThrow();
                 done();
             });
         });
