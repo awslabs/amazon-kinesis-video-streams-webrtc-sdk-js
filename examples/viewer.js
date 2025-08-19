@@ -455,13 +455,39 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
 
         // Don't add turn if user selects STUN only or NAT traversal disabled
         if (!formValues.natTraversalDisabled && !formValues.forceSTUN) {
+            let turnServers = [];
             getIceServerConfigResponse.IceServerList.forEach(iceServer =>
-                iceServers.push({
+                turnServers.push({
                     urls: iceServer.Uris,
                     username: iceServer.Username,
                     credential: iceServer.Password,
                 }),
             );
+
+            // Filter TURN servers
+            if (!formValues.turnWithUdp || !formValues.turnsWithUdp || !formValues.turnsWithTcp) {
+                turnServers = turnServers.map((config) => {
+                    return {
+                        urls: config.urls.filter((url) => {
+                            if (url.startsWith('turn:') && url.endsWith('?transport=udp')) {
+                                return formValues.turnWithUdp;
+                            } else if (url.startsWith('turns:') && url.endsWith('?transport=udp')) {
+                                return formValues.turnsWithUdp;
+                            } else if (url.startsWith('turns:') && url.endsWith('?transport=tcp')) {
+                                return formValues.turnsWithTcp;
+                            }
+                        }),
+                        username: config.username,
+                        credential: config.credential,
+                    };
+                });
+            }
+
+            if (formValues.oneTurnServerSetOnly) {
+                turnServers = [turnServers[Math.floor(Math.random() * turnServers.length)]];
+            }
+
+            iceServers.push(...turnServers);
         }
         console.log('[VIEWER] ICE servers:', iceServers);
 
@@ -774,7 +800,16 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
 
         // As remote tracks are received, add them to the remote view
         viewer.peerConnection.addEventListener('track', event => {
-            console.log('[VIEWER] Received remote track with id:', event?.streams[0]?.id ?? '[Error retrieving track ID]');
+            console.log(
+                '[VIEWER] Received',
+                event.track.kind || 'unknown',
+                'track from',
+                this._remoteClientId || 'remote',
+                'in mediaStream:',
+                event?.streams[0]?.id ?? '[Error retrieving stream ID]',
+                'with track id:',
+                event.track.id,
+            );
             if (remoteView.srcObject) {
                 return;
             }
