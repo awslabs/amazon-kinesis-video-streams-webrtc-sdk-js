@@ -113,7 +113,7 @@ describe('SignalingClient', () => {
     const mockDate = new Date('2020-05-01T00:00:00.000Z');
     const mockClockSkewedDate = new Date('2020-05-01T00:16:40.000Z');
 
-    global.TextEncoder = util.TextEncoder;
+    global.TextEncoder = util.TextEncoder as any;
 
     beforeEach(() => {
         mockDateClass(mockDate);
