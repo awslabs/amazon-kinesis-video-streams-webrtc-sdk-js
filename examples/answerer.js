@@ -127,7 +127,17 @@ class Answerer {
         // We receive this event when the remote peer adds a new track to the PeerConnection
         // https://webrtc.org/getting-started/remote-streams#adding_remote_tracks
         this._peerConnection.addEventListener('track', event => {
-            console.log(this._loggingPrefix, 'Received track from', this._remoteClientId || 'remote', 'with track id:', event?.streams[0]?.id ?? '[Error retrieving track ID]');
+            console.log(
+                this._loggingPrefix,
+                'Received',
+                event.track.kind || 'unknown',
+                'track from',
+                this._remoteClientId || 'remote',
+                'in mediaStream:',
+                event?.streams[0]?.id ?? '[Error retrieving stream ID]',
+                'with track id:',
+                event.track.id,
+            );
             this._onMediaStreamsUpdated(event.streams);
         });
 
