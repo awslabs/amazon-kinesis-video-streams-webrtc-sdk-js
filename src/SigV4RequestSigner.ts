@@ -172,7 +172,7 @@ export class SigV4RequestSigner implements RequestSigner {
     }
 
     private static async sha256(message: string): Promise<string> {
-        const hashBuffer = await crypto.subtle.digest({ name: 'SHA-256' }, this.toUint8Array(message));
+        const hashBuffer = await crypto.subtle.digest({ name: 'SHA-256' }, this.toUint8Array(message).buffer as ArrayBuffer);
         return this.toHex(hashBuffer);
     }
 
@@ -181,7 +181,7 @@ export class SigV4RequestSigner implements RequestSigner {
         const messageBuffer = this.toUint8Array(message).buffer;
         const cryptoKey = await crypto.subtle.importKey(
             'raw',
-            keyBuffer,
+            keyBuffer as ArrayBuffer,
             {
                 name: 'HMAC',
                 hash: {
@@ -191,7 +191,7 @@ export class SigV4RequestSigner implements RequestSigner {
             false,
             ['sign'],
         );
-        return await crypto.subtle.sign({ name: 'HMAC', hash: { name: 'SHA-256' } }, cryptoKey, messageBuffer);
+        return await crypto.subtle.sign({ name: 'HMAC', hash: { name: 'SHA-256' } }, cryptoKey, messageBuffer as ArrayBuffer);
     }
 
     /**
