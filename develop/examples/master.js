@@ -21,7 +21,6 @@ const masterDefaults = {
 
 let master = {};
 
-const ingestionWithMultiViewerSupportPreviewRegions = ['us-east-1'];
 
 /**
  * Base milliseconds between retries of joinStorageSession API calls.
