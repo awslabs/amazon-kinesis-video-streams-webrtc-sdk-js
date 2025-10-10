@@ -21,7 +21,6 @@ const masterDefaults = {
 
 let master = {};
 
-const ingestionWithMultiViewerSupportPreviewRegions = ['us-east-1'];
 
 /**
  * Base milliseconds between retries of joinStorageSession API calls.
@@ -166,15 +165,6 @@ registerMasterSignalingClientCallbacks = (signalingClient, formValues, onStatsRe
             $('#join-storage-session-as-viewer-button').removeClass('d-none');
             console.log(`[VIEWER] Waiting for media ingestion and storage peer to join... (click the button!)`);
         } else if (master.channelHelper.isIngestionEnabled()) {
-            if (role === 'VIEWER' && !ingestionWithMultiViewerSupportPreviewRegions.includes(formValues.region) && !formValues.endpoint) {
-                console.error(
-                    `WebRTC ingestion with multi-viewer support is not supported in ${
-                        formValues.region
-                    }. It is available for preview in ${ingestionWithMultiViewerSupportPreviewRegions.join(',')}!`,
-                );
-                onStop();
-                return;
-            }
             await connectToMediaServer(runId, master.channelHelper.getChannelArn(), master.channelHelper.getWebRTCStorageClient());
         } else {
             console.log(`[${role}] Waiting for peers to join...`);
