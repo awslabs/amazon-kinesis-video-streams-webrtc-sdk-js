@@ -225,7 +225,8 @@ registerMasterSignalingClientCallbacks = (signalingClient, formValues, onStatsRe
             }
         });
 
-        // If in WebRTC ingestion mode, retry if no connection was established within 5 seconds.
+        // If in WebRTC ingestion mode, retry if no connection was established within 30 seconds.
+        // Note: This is an interim setting - the viewer application will retry after 30 seconds if the connection through the WebRTC Ingestion mode is not successful.
         if (master.channelHelper.isIngestionEnabled()) {
             setTimeout(function () {
                 // We check that it's not failed because if the state transitioned to failed,
@@ -235,10 +236,10 @@ registerMasterSignalingClientCallbacks = (signalingClient, formValues, onStatsRe
                     answerer.getPeerConnection().connectionState !== 'failed' &&
                     answerer.getPeerConnection().connectionState !== 'closed'
                 ) {
-                    console.error(`[${role}] Connection failed to establish within 5 seconds. Retrying...`);
+                    console.error(`[${role}] Connection was not successful - Will retry after 30 seconds.`);
                     onPeerConnectionFailed(remoteClientId, false, false);
                 }
-            }, 5000);
+            }, 30000);
         }
     });
 
