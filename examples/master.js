@@ -225,20 +225,27 @@ registerMasterSignalingClientCallbacks = (signalingClient, formValues, onStatsRe
             }
         });
 
-        // If in WebRTC ingestion mode, retry if no connection was established within 5 seconds.
+        // If in WebRTC ingestion mode, retry if no connection was established within 30 seconds.
+        // Note: This is an interim setting - the viewer application will retry after 30 seconds if the connection through the WebRTC Ingestion mode is not successful.
         if (master.channelHelper.isIngestionEnabled()) {
-            setTimeout(function () {
-                // We check that it's not failed because if the state transitioned to failed,
-                // the state change callback would handle this already
-                if (
-                    answerer.getPeerConnection().connectionState !== 'connected' &&
-                    answerer.getPeerConnection().connectionState !== 'failed' &&
-                    answerer.getPeerConnection().connectionState !== 'closed'
-                ) {
-                    console.error(`[${role}] Connection failed to establish within 5 seconds. Retrying...`);
-                    onPeerConnectionFailed(remoteClientId, false, false);
-                }
-            }, 5000);
+            for (let i = 5; i <= 30; i += 5) {
+                setTimeout(function () {
+                    // check the state each 5 seconds
+                    //enter retry if still connecting after 30 seconds
+                    if (
+                        answerer.getPeerConnection().connectionState !== 'connected' &&
+                        answerer.getPeerConnection().connectionState !== 'failed' &&
+                        answerer.getPeerConnection().connectionState !== 'closed'
+                    ) {
+                        if (i < 30) {
+                            console.log(`[${role}] Still connecting after ${i} seconds.`);
+                        } else {
+                            console.error(`[${role}] Connection was not successful - Will retry after 30 seconds.`);
+                            onPeerConnectionFailed(remoteClientId, false, false);
+                        }
+                    }
+                }, i* 1000);
+            }
         }
     });
 
