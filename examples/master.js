@@ -244,7 +244,7 @@ registerMasterSignalingClientCallbacks = (signalingClient, formValues, onStatsRe
                             console.log(`[${role}] Still connecting after ${i} seconds.`);
                         } else {
                             console.error(`[${role}] Connection was not successful - Will retry after ${RETRY_TIMEOUT_SECONDS} seconds.`);
-                            onPeerConnectionFailed(remoteClientId, false, false);
+                            onPeerConnectionFailed(remoteClientId, false);
                         }
                     }
                 }, i * 1000);
@@ -284,17 +284,13 @@ registerMasterSignalingClientCallbacks = (signalingClient, formValues, onStatsRe
     }
 };
 
-function onPeerConnectionFailed(remoteClientId, printLostConnectionLog = true, hasConnectedAlready = true) {
+function onPeerConnectionFailed(remoteClientId, printLostConnectionLog = true) {
     const role = ROLE;
     if (master?.channelHelper.isIngestionEnabled()) {
         if (printLostConnectionLog) {
             console.warn(`[${ROLE}] Lost connection to the storage session.`);
         }
         master?.connectionFailures?.push(new Date().getTime());
-        if (hasConnectedAlready && role === 'VIEWER') {
-            $('#stop-master-button').click();
-            return;
-        }
         if (shouldStopRetryingJoinStorageSession()) {
             console.error(
                 `[${role}] Stopping the application after`,
