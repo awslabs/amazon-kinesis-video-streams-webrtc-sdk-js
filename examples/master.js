@@ -241,9 +241,9 @@ registerMasterSignalingClientCallbacks = (signalingClient, formValues, onStatsRe
                         answerer.getPeerConnection().connectionState !== 'closed'
                     ) {
                         if (i < RETRY_TIMEOUT_SECONDS) {
-                            console.log(`[${role}] Still connecting after ${i} seconds.`);
+                            console.log(`[${role}] Waiting for connection, time out in ${RETRY_TIMEOUT_SECONDS - i} seconds.`);
                         } else {
-                            console.error(`[${role}] Connection was not successful - Will retry after ${RETRY_TIMEOUT_SECONDS} seconds.`);
+                            console.error(`[${role}] Connection failed after ${RETRY_TIMEOUT_SECONDS} seconds, will enter retry.`);
                             onPeerConnectionFailed(remoteClientId, false);
                         }
                     }
