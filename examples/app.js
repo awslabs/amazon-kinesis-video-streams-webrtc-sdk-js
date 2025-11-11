@@ -978,6 +978,16 @@ $('#codec-filter-toggle').on('change', (event) => {
 
 $(document).ready(() => {
     loadCodecPreferences();
+    
+    // click start based on the url params
+    if (urlParams.has('view')) {
+        const viewMode = urlParams.get('view');
+        if (viewMode === 'master') {
+            $('#master-button').click();
+        } else if (viewMode === 'viewer') {
+            $('#viewer-button').click();
+        }
+    }
 });
 
 /**
