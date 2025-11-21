@@ -1,7 +1,6 @@
 let ROLE = null; // Possible values: 'MASTER', 'VIEWER', null
 const LOG_LEVELS = ['debug', 'info', 'warn', 'error'];
 let LOG_LEVEL = 'info'; // Possible values: any value of LOG_LEVELS
-let randomClientId = getRandomClientId(); // Holder for randomly-generated client id
 let channelHelper = null; // Holder for channelHelper
 
 // All supported codecs
@@ -75,17 +74,30 @@ function configureLogging() {
 }
 
 function getRandomClientId() {
-    return Math.random()
-        .toString(36)
-        .substring(2)
-        .toUpperCase();
+    const timestamp = Date.now().toString(36);
+    const random = Math.random().toString(36).substring(2);
+    const uaBase64 = btoa(navigator.userAgent).replace(/\//g, '_').replace(/\+/g, '-').replace(/=/g, '');
+    return `${timestamp}-${random}-${uaBase64}`;
+}
+
+function getTabScopedClientID() {
+    try {
+        let stored_ID = sessionStorage.getItem('viewer-client-id');
+        if(!stored_ID) {
+            stored_ID = getRandomClientId(); //if no client ID acquired before
+            sessionStorage.setItem('viewer-client-id', stored_ID);
+        }
+        return stored_ID;
+    } catch (e) {
+        return getRandomClientId();
+    }
 }
 
 function getFormValues() {
     return {
         region: $('#region').val(),
         channelName: $('#channelName').val(),
-        clientId: $('#clientId').val() || randomClientId,
+        clientId: $('#clientId').val() || getTabScopedClientID(),
         sendVideo: $('#sendVideo').is(':checked'),
         sendAudio: $('#sendAudio').is(':checked'),
         streamName: $('#streamName').val(),
@@ -236,7 +248,6 @@ $('#viewer-button').click(async () => {
     if (!form[0].checkValidity()) {
         return;
     }
-    randomClientId = getRandomClientId();
     const formValues = getFormValues();
 
     if (formValues.autoDetermineMediaIngestMode) {
