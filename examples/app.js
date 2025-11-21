@@ -1,7 +1,6 @@
 let ROLE = null; // Possible values: 'MASTER', 'VIEWER', null
 const LOG_LEVELS = ['debug', 'info', 'warn', 'error'];
 let LOG_LEVEL = 'info'; // Possible values: any value of LOG_LEVELS
-let randomClientId = getRandomClientId(); // Holder for randomly-generated client id
 let channelHelper = null; // Holder for channelHelper
 
 // All supported codecs
@@ -75,17 +74,30 @@ function configureLogging() {
 }
 
 function getRandomClientId() {
-    return Math.random()
-        .toString(36)
-        .substring(2)
-        .toUpperCase();
+    const timestamp = Date.now().toString(36);
+    const random = Math.random().toString(36).substring(2);
+    const uaBase64 = btoa(navigator.userAgent).replace(/\//g, '_').replace(/\+/g, '-').replace(/=/g, '');
+    return `${timestamp}-${random}-${uaBase64}`;
+}
+
+function getTabScopedClientID() {
+    try {
+        let stored_ID = sessionStorage.getItem('viewer-client-id');
+        if(!stored_ID) {
+            stored_ID = getRandomClientId(); //if no client ID acquired before
+            sessionStorage.setItem('viewer-client-id', stored_ID);
+        }
+        return stored_ID;
+    } catch (e) {
+        return getRandomClientId();
+    }
 }
 
 function getFormValues() {
     return {
         region: $('#region').val(),
         channelName: $('#channelName').val(),
-        clientId: $('#clientId').val() || randomClientId,
+        clientId: $('#clientId').val() || getTabScopedClientID(),
         sendVideo: $('#sendVideo').is(':checked'),
         sendAudio: $('#sendAudio').is(':checked'),
         streamName: $('#streamName').val(),
@@ -236,7 +248,6 @@ $('#viewer-button').click(async () => {
     if (!form[0].checkValidity()) {
         return;
     }
-    randomClientId = getRandomClientId();
     const formValues = getFormValues();
 
     if (formValues.autoDetermineMediaIngestMode) {
@@ -464,11 +475,44 @@ async function printPeerConnectionStateInfo(event, logPrefix, remoteClientId) {
             const trackType = sender.track?.kind;
             if (sender.transport) {
                 const iceTransport = sender.transport.iceTransport;
-                if (iceTransport) {
+                if (iceTransport && typeof iceTransport.getSelectedCandidatePair === 'function') {
                     const logSelectedCandidate = () =>
                         console.debug(`Chosen candidate pair (${trackType || 'unknown'}):`, iceTransport.getSelectedCandidatePair());
                     iceTransport.onselectedcandidatepairchange = logSelectedCandidate;
                     logSelectedCandidate();
+                } else {
+                    // Find nominated candidate pair
+                    const nominatedPair = Array.from(stats.values()).find(report => 
+                    report.type === 'candidate-pair' && 
+                    report.nominated === true
+                    );
+            
+                    if (nominatedPair) {
+                        // Get local and remote candidate detailsl;                     
+                        const localCandidate = stats.get(nominatedPair.localCandidateId);
+                        const remoteCandidate = stats.get(nominatedPair.remoteCandidateId);
+                        
+                        if (localCandidate && remoteCandidate) {
+                            console.debug(`Chosen candidate pair (${trackType || 'unknown'}):`, {
+                                local: {
+                                    id: localCandidate.id,
+                                    address: localCandidate.address,
+                                    port: localCandidate.port,
+                                    type: localCandidate.candidateType,
+                                    protocol: localCandidate.protocol,
+                                    priority: localCandidate.priority
+                                },
+                                remote: {
+                                    id: remoteCandidate.id,
+                                    address: remoteCandidate.address,
+                                    port: remoteCandidate.port,
+                                    type: remoteCandidate.candidateType,
+                                    protocol: remoteCandidate.protocol,
+                                    priority: remoteCandidate.priority
+                                }
+                            });
+                        }
+                    }
                 }
             } else {
                 console.error('Failed to fetch the candidate pair!');
@@ -479,9 +523,7 @@ async function printPeerConnectionStateInfo(event, logPrefix, remoteClientId) {
             removeViewerTrackFromMaster(remoteClientId);
         }
         console.error(logPrefix, `Connection to ${remoteClientId || 'peer'} failed!`);
-        if (ROLE === 'MASTER') {
-            onPeerConnectionFailed(remoteClientId);
-        }
+        onPeerConnectionFailed(remoteClientId);
     }
 }
 
@@ -978,6 +1020,16 @@ $('#codec-filter-toggle').on('change', (event) => {
 
 $(document).ready(() => {
     loadCodecPreferences();
+    
+    // click start based on the url params
+    if (urlParams.has('view')) {
+        const viewMode = urlParams.get('view');
+        if (viewMode === 'master') {
+            $('#master-button').click();
+        } else if (viewMode === 'viewer') {
+            $('#viewer-button').click();
+        }
+    }
 });
 
 /**

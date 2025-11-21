@@ -769,7 +769,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
 
         // Send any ICE candidates to the other peer
         viewer.peerConnection.addEventListener('icecandidate', ({ candidate }) => {
-            if (candidate) {
+            if (candidate && candidate.candidate) {
                 console.log('[VIEWER] Generated ICE candidate');
                 console.debug('ICE candidate:', candidate);
 
@@ -782,6 +782,8 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
                         console.log('[VIEWER] Not sending ICE candidate');
                     }
                 }
+            } else if (candidate && !candidate.candidate) {
+                //firefox special case, candidate with null candidate field
             } else {
                 console.log('[VIEWER] All ICE candidates have been generated');
 
