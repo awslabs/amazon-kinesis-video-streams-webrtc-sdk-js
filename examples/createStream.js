@@ -20,6 +20,7 @@ async function createStream(formValues) {
             region: formValues.region,
             endpoint: formValues.endpoint,
             logger: formValues.logAwsSdkCalls ? console : undefined,
+            useDualstackEndpoint: formValues.useDualStackEndpoints,
         });
 
         const createStreamResponse = await kinesisVideoClient
