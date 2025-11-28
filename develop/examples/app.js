@@ -76,8 +76,7 @@ function configureLogging() {
 function getRandomClientId() {
     const timestamp = Date.now().toString(36);
     const random = Math.random().toString(36).substring(2);
-    const uaBase64 = btoa(navigator.userAgent).replace(/\//g, '_').replace(/\+/g, '-').replace(/=/g, '');
-    return `${timestamp}-${random}-${uaBase64}`;
+    return `${timestamp}-${random}`;
 }
 
 function getTabScopedClientID() {
