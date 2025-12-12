@@ -286,7 +286,7 @@ registerMasterSignalingClientCallbacks = (signalingClient, formValues, onStatsRe
 
 function onPeerConnectionFailed(remoteClientId, printLostConnectionLog = true) {
     const role = ROLE;
-    if (master?.channelHelper.isIngestionEnabled()) {
+    if (master?.channelHelper?.isIngestionEnabled()) {
         if (printLostConnectionLog) {
             console.warn(`[${ROLE}] Lost connection to the storage session.`);
         }
