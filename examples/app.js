@@ -364,7 +364,7 @@ async function logLevelSelected(event) {
 }
 
 // Fetch regions
-fetch('https://api.regional-table.region-services.aws.a2z.com/index.jsons')
+fetch('https://api.regional-table.region-services.aws.a2z.com/index.json')
     .then(res => {
         if (res.ok) {
             return res.json();
