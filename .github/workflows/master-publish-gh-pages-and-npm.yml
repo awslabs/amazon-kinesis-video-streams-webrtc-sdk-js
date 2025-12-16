@@ -7,13 +7,16 @@ on:
 jobs:
     publish-ubuntu-build:
         runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            id-token: write  # Needed for OIDC publishing
         steps:
             - name: Checkout repository
               uses: actions/checkout@master
             - name: Use Node.js
-              uses: actions/setup-node@v2
+              uses: actions/setup-node@v5
               with:
-                  node-version: 22
+                  node-version: 24
             - name: Build AWS SDK
               working-directory: ./aws-sdk-build
               run: |
@@ -39,8 +42,6 @@ jobs:
                   # Remove the infra to build the AWS SDK v3 browser script
                   rm -rf aws-sdk-build
             - name: Deploy to npm packages
-              uses: JS-DevTools/npm-publish@v1
+              uses: JS-DevTools/npm-publish@v4
               # Don't run this step for forks, only in the original repo
               if: github.repository == 'awslabs/amazon-kinesis-video-streams-webrtc-sdk-js'
-              with:
-                  token: '${{ secrets.NPM_TOKEN }}'
