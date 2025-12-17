@@ -1,0 +1,67 @@
+name: Check Version Mismatch between PR branch and master.
+
+on:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+
+      - name: Get version from PR
+        id: pr_version
+        run: |
+          PR_VERSION=$(grep -Po '"version": "\K[0-9]+\.[0-9]+\.[0-9]+' package.json)
+          PR_LOCK_VERSION=$(grep -Po '"version": "\K[0-9]+\.[0-9]+\.[0-9]+' package-lock.json | head -1)
+          PR_INDEX_VERSION=$(grep -Po "VERSION = '\K[0-9]+\.[0-9]+\.[0-9]+" src/index.ts || echo "$PR_VERSION")
+          echo "PR_VERSION=$PR_VERSION" >> "$GITHUB_ENV"
+          echo "PR_LOCK_VERSION=$PR_LOCK_VERSION" >> "$GITHUB_ENV"
+          echo "PR_INDEX_VERSION=$PR_INDEX_VERSION" >> "$GITHUB_ENV"
+          echo "PR Version: $PR_VERSION"
+          echo "PR Lock Version: $PR_LOCK_VERSION"
+          echo "PR Index Version: $PR_INDEX_VERSION"
+
+      - name: Checkout master branch
+        uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - name: Get version from master
+        id: master_version
+        run: |
+          MASTER_VERSION=$(grep -Po '"version": "\K[0-9]+\.[0-9]+\.[0-9]+' package.json)
+          MASTER_LOCK_VERSION=$(grep -Po '"version": "\K[0-9]+\.[0-9]+\.[0-9]+' package-lock.json | head -1)
+          MASTER_INDEX_VERSION=$(grep -Po "VERSION = '\K[0-9]+\.[0-9]+\.[0-9]+" src/index.ts || echo "$MASTER_VERSION")
+          echo "MASTER_VERSION=$MASTER_VERSION" >> "$GITHUB_ENV"
+          echo "MASTER_LOCK_VERSION=$MASTER_LOCK_VERSION" >> "$GITHUB_ENV"
+          echo "MASTER_INDEX_VERSION=$MASTER_INDEX_VERSION" >> "$GITHUB_ENV"
+          echo "Master version: $MASTER_VERSION"
+          echo "Master lock version: $MASTER_LOCK_VERSION"
+          echo "Master index version: $MASTER_INDEX_VERSION"
+
+      - name: Compare versions
+        run: |
+          echo "Comparing versions:"
+          echo "  package.json - Master: $MASTER_VERSION, PR: $PR_VERSION"
+          echo "  package-lock.json - Master: $MASTER_LOCK_VERSION, PR: $PR_LOCK_VERSION"
+          echo "  src/index.ts - Master: $MASTER_INDEX_VERSION, PR: $PR_INDEX_VERSION"
+          
+          if [ "$MASTER_VERSION" == "$PR_VERSION" ]; then
+            echo "Please update the version in package.json file. Any PR getting merged to master requires a version update"
+            exit 1
+          elif [ "$MASTER_LOCK_VERSION" == "$PR_LOCK_VERSION" ]; then
+            echo "Please update the version in package-lock.json file. Run 'npm install' after updating package.json"
+            exit 1
+          elif [ "$MASTER_INDEX_VERSION" == "$PR_INDEX_VERSION" ]; then
+            echo "Please update the version in src/index.ts file to match package.json version"
+            exit 1
+          elif [ "$PR_VERSION" != "$PR_LOCK_VERSION" ]; then
+            echo "Version mismatch between package.json ($PR_VERSION) and package-lock.json ($PR_LOCK_VERSION). Run 'npm install' to sync"
+            exit 1
+          else
+            echo "Version update detected and all the files are in sync."
+          fi
