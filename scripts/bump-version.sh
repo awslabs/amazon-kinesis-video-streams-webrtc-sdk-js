@@ -37,9 +37,6 @@ echo "Updating src/index.ts..."
 if grep -q "VERSION = '" src/index.ts; then
     # If VERSION is already hardcoded, update it
     sed -i.bak "s/VERSION = '[0-9]\+\.[0-9]\+\.[0-9]\+'/VERSION = '$NEW_VERSION'/" src/index.ts
-else
-    # If VERSION uses process.env.PACKAGE_VERSION, replace it with hardcoded version
-    sed -i.bak "s/VERSION = process\.env\.PACKAGE_VERSION/VERSION = '$NEW_VERSION'/" src/index.ts
 fi
 
 # Clean up backup files
