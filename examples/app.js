@@ -82,6 +82,8 @@ function getRandomClientId() {
 }
 
 function getFormValues() {
+    const endpoint = $('#endpoint').val() || null;
+
     return {
         region: $('#region').val(),
         channelName: $('#channelName').val(),
@@ -100,8 +102,8 @@ function getFormValues() {
         forceSTUN: $('#forceSTUN').is(':checked'),
         forceTURN: $('#forceTURN').is(':checked'),
         accessKeyId: $('#accessKeyId').val(),
-        useDualStackEndpoints: $('#dual-stack').is(':checked'),
-        endpoint: $('#endpoint').val() || null,
+        useDualStackEndpoints: endpoint === null && $('#dual-stack').is(':checked'),
+        endpoint: endpoint,
         secretAccessKey: $('#secretAccessKey').val(),
         sessionToken: $('#sessionToken').val() || null,
         enableDQPmetrics: $('#enableDQPmetrics').is(':checked'),
