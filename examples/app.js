@@ -94,6 +94,9 @@ function getTabScopedClientID() {
 }
 
 function getFormValues() {
+    const endpointInput = $('#endpoint').val();
+    const endpoint = endpointInput?.trim() || undefined;
+
     return {
         region: $('#region').val(),
         channelName: $('#channelName').val(),
@@ -112,7 +115,8 @@ function getFormValues() {
         forceSTUN: $('#forceSTUN').is(':checked'),
         forceTURN: $('#forceTURN').is(':checked'),
         accessKeyId: $('#accessKeyId').val(),
-        endpoint: $('#endpoint').val() || null,
+        useDualStackEndpoints: endpoint === undefined && $('#dual-stack').is(':checked'),
+        endpoint: endpoint,
         secretAccessKey: $('#secretAccessKey').val(),
         sessionToken: $('#sessionToken').val() || null,
         enableDQPmetrics: $('#enableDQPmetrics').is(':checked'),
@@ -265,7 +269,8 @@ $('#viewer-button').click(async () => {
             ChannelHelper.IngestionMode.DETERMINE_THROUGH_DESCRIBE,
             '[VIEWER]',
             formValues.clientId,
-            formValues.logAwsSdkCalls ? console : undefined);
+            formValues.logAwsSdkCalls ? console : undefined,
+            formValues.useDualStackEndpoints,);
         await channelHelper.determineMediaIngestionPath();
 
         if (channelHelper.isIngestionEnabled()) {
@@ -576,6 +581,8 @@ const fields = [
     {field: 'secretAccessKey', type: 'text'},
     {field: 'sessionToken', type: 'text'},
     {field: 'endpoint', type: 'text'},
+    {field: 'legacy', type: 'radio', name: 'endpoint-type'},
+    {field: 'dual-stack', type: 'radio', name: 'endpoint-type'},
     {field: 'sendVideo', type: 'checkbox'},
     {field: 'sendAudio', type: 'checkbox'},
     {field: 'streamName', type: 'text'},

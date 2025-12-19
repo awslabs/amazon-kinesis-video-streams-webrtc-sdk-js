@@ -86,6 +86,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             `[${role}]`,
             role === 'VIEWER' ? formValues.clientId : undefined,
             formValues.logAwsSdkCalls ? console : undefined,
+            formValues.useDualStackEndpoints,
         );
 
         await master.channelHelper.init();
@@ -351,7 +352,11 @@ async function getIceServersWithCaching(formValues) {
 
     // Add the STUN server unless it is disabled
     if (!formValues.natTraversalDisabled && !formValues.forceTURN && formValues.sendSrflxCandidates) {
-        iceServers.push({ urls: `stun:stun.kinesisvideo.${formValues.region}.amazonaws.com:443` });
+        if (formValues.useDualStackEndpoints) {
+            iceServers.push({ urls: `stun:stun.kinesisvideo.${formValues.region}.api.aws:443` });
+        } else {
+            iceServers.push({ urls: `stun:stun.kinesisvideo.${formValues.region}.amazonaws.com:443` });
+        }
     }
 
     // Add the TURN servers unless it is disabled

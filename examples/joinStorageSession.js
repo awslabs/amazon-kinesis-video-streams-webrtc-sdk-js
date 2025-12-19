@@ -18,6 +18,7 @@ async function joinStorageSessionManually(formValues) {
                 sessionToken: formValues.sessionToken,
             },
             endpoint: formValues.endpoint,
+            useDualstackEndpoint: formValues.useDualStackEndpoints,
         });
 
         // Step 1: Obtain the ARN of the Signaling Channel
