@@ -269,28 +269,26 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
         viewer.localView = localView;
         viewer.remoteView = remoteView;
 
-        viewer.loadedDataCallback = () => {
-            console.error('Offer to first frame:', Date.now() - metrics.viewer.offAnswerTime.startTime);
-            metrics.viewer.ttff.endTime = Date.now();
-            if (formValues.enableProfileTimeline) {
-                metrics.viewer.ttffAfterPc.endTime = metrics.viewer.ttff.endTime;
-                metrics.master.ttffAfterPc.endTime = metrics.viewer.ttff.endTime;
-
-                // if the ice-gathering on the master side is not complete by the time the metrics are sent, the endTime > startTime
-                // in order to plot it, we can show it as an ongoing process
-                if (metrics.master.iceGathering.startTime > metrics.master.iceGathering.endTime) {
-                    metrics.master.iceGathering.endTime = metrics.viewer.ttff.endTime;
-                }
-            }
-            if (formValues.enableDQPmetrics) {
-                timeToFirstFrameFromOffer = metrics.viewer.ttff.endTime - metrics.viewer.offAnswerTime.startTime;
-                timeToFirstFrameFromViewerStart = metrics.viewer.ttff.endTime - viewerButtonPressed.getTime();
-            }
-        };
-
         if (!once) {
-            viewer.remoteView.addEventListener('loadeddata', viewer.loadedDataCallback);
-            once = true;
+            viewer.remoteView.addEventListener('loadeddata', () => {
+                console.error('Offer to first frame:', Date.now() - metrics.viewer.offAnswerTime.startTime);
+                metrics.viewer.ttff.endTime = Date.now();
+                if (formValues.enableProfileTimeline) {
+                    metrics.viewer.ttffAfterPc.endTime = metrics.viewer.ttff.endTime;
+                    metrics.master.ttffAfterPc.endTime = metrics.viewer.ttff.endTime;
+
+                    // if the ice-gathering on the master side is not complete by the time the metrics are sent, the endTime > startTime
+                    // in order to plot it, we can show it as an ongoing process
+                    if (metrics.master.iceGathering.startTime > metrics.master.iceGathering.endTime) {
+                        metrics.master.iceGathering.endTime = metrics.viewer.ttff.endTime;
+                    }
+                }
+                if (formValues.enableDQPmetrics) {
+                    timeToFirstFrameFromOffer = metrics.viewer.ttff.endTime - metrics.viewer.offAnswerTime.startTime;
+                    timeToFirstFrameFromViewerStart = metrics.viewer.ttff.endTime - viewerButtonPressed.getTime();
+                }
+            });
+                once = true;
         }
 
         if (formValues.enableProfileTimeline) {
