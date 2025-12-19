@@ -82,7 +82,7 @@ function getRandomClientId() {
 }
 
 function getFormValues() {
-    const endpoint = $('#endpoint').val() || null;
+    const endpoint = $('#endpoint').val() || undefined;
 
     return {
         region: $('#region').val(),
