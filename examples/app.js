@@ -82,7 +82,8 @@ function getRandomClientId() {
 }
 
 function getFormValues() {
-    const endpoint = $('#endpoint').val() || undefined;
+    const endpointInput = $('#endpoint').val();
+    const endpoint = endpointInput?.trim() || undefined;
 
     return {
         region: $('#region').val(),
@@ -102,7 +103,7 @@ function getFormValues() {
         forceSTUN: $('#forceSTUN').is(':checked'),
         forceTURN: $('#forceTURN').is(':checked'),
         accessKeyId: $('#accessKeyId').val(),
-        useDualStackEndpoints: endpoint === null && $('#dual-stack').is(':checked'),
+        useDualStackEndpoints: endpoint === undefined && $('#dual-stack').is(':checked'),
         endpoint: endpoint,
         secretAccessKey: $('#secretAccessKey').val(),
         sessionToken: $('#sessionToken').val() || null,

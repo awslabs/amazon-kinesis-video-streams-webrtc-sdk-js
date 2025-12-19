@@ -79,7 +79,6 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
                     secretAccessKey: formValues.secretAccessKey,
                     sessionToken: formValues.sessionToken,
                 },
-                useDualstackEndpoint: formValues.useDualStackEndpoints,
             },
             formValues.endpoint,
             role,
