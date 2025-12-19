@@ -86,6 +86,7 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             `[${role}]`,
             role === 'VIEWER' ? formValues.clientId : undefined,
             formValues.logAwsSdkCalls ? console : undefined,
+            formValues.useDualStackEndpoints,
         );
 
         await master.channelHelper.init();

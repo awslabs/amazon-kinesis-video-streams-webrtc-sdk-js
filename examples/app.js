@@ -258,7 +258,8 @@ $('#viewer-button').click(async () => {
             ChannelHelper.IngestionMode.DETERMINE_THROUGH_DESCRIBE,
             '[VIEWER]',
             formValues.clientId,
-            formValues.logAwsSdkCalls ? console : undefined);
+            formValues.logAwsSdkCalls ? console : undefined,
+            formValues.useDualStackEndpoints,);
         await channelHelper.determineMediaIngestionPath();
 
         if (channelHelper.isIngestionEnabled()) {

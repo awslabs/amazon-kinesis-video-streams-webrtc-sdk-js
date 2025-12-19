@@ -12,7 +12,7 @@ class ChannelHelper {
         DETERMINE_THROUGH_DESCRIBE: 2,
     };
 
-    constructor(channelName, clientArgs, endpoint, role, ingestionMode, loggingPrefix, clientId, logger) {
+    constructor(channelName, clientArgs, endpoint, role, ingestionMode, loggingPrefix, clientId, logger, useDualStackEndpoints) {
         this._channelName = channelName;
         this._clientArgs = clientArgs;
         this._role = role;
@@ -21,6 +21,7 @@ class ChannelHelper {
         this._loggingPrefix = loggingPrefix;
         this._clientId = clientId;
         this._logger = logger;
+        this._useDualStackEndpoints = useDualStackEndpoints;
     }
 
     // Must be called first
@@ -188,6 +189,7 @@ class ChannelHelper {
                 ...this._clientArgs,
                 logger: this._logger,
                 endpoint: this._endpoint,
+                useDualstackEndpoint: this._useDualStackEndpoints,
                 correctClockSkew: true,
             });
         }
