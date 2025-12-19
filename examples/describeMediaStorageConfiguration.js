@@ -19,6 +19,7 @@ async function describeMediaStorageConfiguration(formValues) {
             },
             endpoint: formValues.endpoint,
             logger: formValues.logAwsSdkCalls ? console : undefined,
+            useDualstackEndpoint: formValues.useDualStackEndpoints,
         });
 
         const mediaStorageConfiguration = await kinesisVideoClient.send(new AWS.KinesisVideo.DescribeMediaStorageConfigurationCommand({ ChannelName: formValues.channelName }));
