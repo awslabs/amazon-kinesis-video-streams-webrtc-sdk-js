@@ -34,6 +34,7 @@ enum MessageType {
     SDP_OFFER = 'SDP_OFFER',
     ICE_CANDIDATE = 'ICE_CANDIDATE',
     STATUS_RESPONSE = 'STATUS_RESPONSE',
+    GO_AWAY = 'GO_AWAY',
 }
 
 enum ReadyState {
@@ -272,7 +273,7 @@ export class SignalingClient extends EventEmitter {
             // TODO: Consider how to make it easier for users to be aware of dropped messages.
         }
         const { messageType, senderClientId, statusResponse } = parsedEventData;
-        if (!parsedMessagePayload && !statusResponse) {
+        if (!parsedMessagePayload && !statusResponse && messageType !== MessageType.GO_AWAY) {
             // TODO: Consider how to make it easier for users to be aware of dropped messages.
             return;
         }
@@ -291,6 +292,11 @@ export class SignalingClient extends EventEmitter {
                 return;
             case MessageType.STATUS_RESPONSE:
                 this.emit('statusResponse', statusResponse);
+                return;
+            case MessageType.GO_AWAY:
+                this.emit('goAway', parsedMessagePayload, senderClientId);
+                // Automatically close the connection when receiving a GO_AWAY message
+                this.close();
                 return;
         }
     }

@@ -772,6 +772,13 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
             console.error('[VIEWER] Signaling client error:', error);
         });
 
+        viewer.signalingClient.on('goAway', (message, senderClientId) => {
+            console.warn(`[VIEWER] Received GO_AWAY message from signaling service`);
+            console.log(`[VIEWER] Signaling service requested connection closure. Stopping viewer connection.`);
+            // The signaling client will automatically close, so we just need to clean up our resources
+            stopViewer();
+        });
+
         // Send any ICE candidates to the other peer
         viewer.peerConnection.addEventListener('icecandidate', ({ candidate }) => {
             if (candidate && candidate.candidate) {

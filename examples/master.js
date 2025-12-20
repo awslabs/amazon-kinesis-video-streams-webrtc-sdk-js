@@ -275,6 +275,13 @@ registerMasterSignalingClientCallbacks = (signalingClient, formValues, onStatsRe
         console.error(`[${role}] Signaling client error`, error);
     });
 
+    signalingClient.on('goAway', (message, senderClientId) => {
+        console.warn(`[${role}] Received GO_AWAY message from signaling service`);
+        console.log(`[${role}] Signaling service requested connection closure. Stopping master connection.`);
+        // The signaling client will automatically close, so we just need to clean up our resources
+        $('#stop-master-button').click();
+    });
+
     if (formValues.signalingReconnect && !master.channelHelper?.isIngestionEnabled()) {
         master.reopenChannelCallback = () => {
             console.log(`[${role}] Automatically reconnecting to signaling channel`);

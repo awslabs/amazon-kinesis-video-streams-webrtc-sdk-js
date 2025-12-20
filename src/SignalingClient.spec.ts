@@ -65,6 +65,9 @@ const STATUS_RESPONSE_MESSAGE =
     CORRELATION_ID +
     '","errorType": "InvalidArgumentException","statusCode": "400","success": false}}';
 
+const GO_AWAY_MESSAGE = '{"messageType":"GO_AWAY","messagePayload":"eyJyZWFzb24iOiJTZXJ2aWNlIHNodXRkb3duIn0=","senderClientId":"TestClientId"}';
+const GO_AWAY_MESSAGE_NO_PAYLOAD = '{"messageType":"GO_AWAY"}';
+
 const UNKNOWN_MESSAGE = '{"message": "Endpoint request timed out", "connectionId":"Jzo5lcQFtjvCJcq=", "requestId":"Jzo5vMzgNjZFb9Q="}';
 
 class MockWebSocket extends EventEmitter {
@@ -600,6 +603,62 @@ describe('SignalingClient', () => {
                 });
                 client.on('open', () => {
                     MockWebSocket.instance.emit('message', { data: STATUS_RESPONSE_MESSAGE });
+                });
+                client.open();
+            });
+        });
+
+        describe('goAway', () => {
+            it('should parse goAway message with payload and automatically close connection', (done) => {
+                const client = new SignalingClient(config as SignalingClientConfig);
+                let goAwayReceived = false;
+                let connectionClosed = false;
+
+                client.once('goAway', (message, senderClientId) => {
+                    expect(message).toEqual({ reason: 'Service shutdown' });
+                    expect(senderClientId).toEqual(CLIENT_ID);
+                    goAwayReceived = true;
+                    if (connectionClosed) {
+                        done();
+                    }
+                });
+
+                client.once('close', () => {
+                    connectionClosed = true;
+                    if (goAwayReceived) {
+                        done();
+                    }
+                });
+
+                client.on('open', () => {
+                    MockWebSocket.instance.emit('message', { data: GO_AWAY_MESSAGE });
+                });
+                client.open();
+            });
+
+            it('should parse goAway message without payload and automatically close connection', (done) => {
+                const client = new SignalingClient(config as SignalingClientConfig);
+                let goAwayReceived = false;
+                let connectionClosed = false;
+
+                client.once('goAway', (message, senderClientId) => {
+                    expect(message).toBeUndefined();
+                    expect(senderClientId).toBeUndefined();
+                    goAwayReceived = true;
+                    if (connectionClosed) {
+                        done();
+                    }
+                });
+
+                client.once('close', () => {
+                    connectionClosed = true;
+                    if (goAwayReceived) {
+                        done();
+                    }
+                });
+
+                client.on('open', () => {
+                    MockWebSocket.instance.emit('message', { data: GO_AWAY_MESSAGE_NO_PAYLOAD });
                 });
                 client.open();
             });
