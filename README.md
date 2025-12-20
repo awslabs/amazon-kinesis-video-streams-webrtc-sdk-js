@@ -136,7 +136,7 @@ const kinesisVideoSignalingChannelsClient = new AWS.KinesisVideoSignalingChannel
 ```
 
 ##### Get ICE server configuration
-For best performance, we collect STUN and TURN ICE server configurations. The KVS STUN endpoint is always `stun:stun.kinesisvideo.${region}.amazonaws.com:443`.
+For best performance, we collect STUN and TURN ICE server configurations. The KVS STUN endpoint is always `stun:stun.kinesisvideo.${region}.amazonaws.com:443` for legacy-IPv4 endpoint mode and `stun:stun.kinesisvideo.${region}.api.aws:443` for dual-stack endpoint mode.
 To get TURN servers, the `GetIceServerConfig` API is used.
 ```js
 const getIceServerConfigResponse = await kinesisVideoSignalingChannelsClient
