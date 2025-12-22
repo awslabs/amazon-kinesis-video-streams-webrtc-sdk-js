@@ -18,6 +18,7 @@ async function createSignalingChannel(formValues) {
             },
             endpoint: formValues.endpoint,
             logger: formValues.logAwsSdkCalls ? console : undefined,
+            useDualstackEndpoint: formValues.useDualStackEndpoints,
         });
 
         // Create signaling channel

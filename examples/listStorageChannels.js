@@ -19,6 +19,7 @@ async function listStorageChannels(formValues) {
             },
             endpoint: formValues.endpoint,
             logger: formValues.logAwsSdkCalls ? console : undefined,
+            useDualstackEndpoint: formValues.useDualStackEndpoints,
         });
 
         // Get all signaling channels
