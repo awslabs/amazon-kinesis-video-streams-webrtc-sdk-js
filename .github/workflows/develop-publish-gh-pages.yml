@@ -4,6 +4,9 @@ on:
     push:
         branches:
             - develop
+permissions:
+  contents: write
+  pages: write
 jobs:
     publish-ubuntu-build:
         runs-on: ubuntu-latest
