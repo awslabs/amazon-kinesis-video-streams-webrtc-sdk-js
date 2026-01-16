@@ -139,6 +139,7 @@ function getFormValues() {
         turnsWithUdp: $('#turns-with-udp').is(':checked'),
         turnsWithTcp: $('#turns-with-tcp').is(':checked'),
         oneTurnServerSetOnly: $('#turn-one-set-only').is(':checked'),
+        forceIPv6Candidates: $('#force-ipv6-candidates').is(':checked'),
     };
 }
 
@@ -619,6 +620,7 @@ const fields = [
     {field: 'turns-with-udp', type: 'checkbox'},
     {field: 'turns-with-tcp', type: 'checkbox'},
     {field: 'turn-one-set-only', type: 'checkbox'},
+    {field: 'force-ipv6-candidates', type: 'checkbox'},
 ];
 
 fields.forEach(({field, type, name}) => {
@@ -699,6 +701,11 @@ fields.forEach(({field, type, name}) => {
  */
 function shouldAcceptCandidate(formValues, candidate) {
     const {transport, type} = extractTransportAndType(candidate);
+
+    // Only accept IPv6 candidates if forced
+    if (formValues.forceIPv6Candidates && !isIPv6Candidate(candidate)) {
+        return false;
+    }
 
     if (!formValues.acceptUdpCandidates && transport === 'udp') {
         return false;
@@ -795,6 +802,11 @@ function saveAdvanced() {
 function shouldSendIceCandidate(formValues, candidate) {
     const {transport, type} = extractTransportAndType(candidate);
 
+    // Only send IPv6 candidates if forced
+    if (formValues.forceIPv6Candidates && !isIPv6Candidate(candidate)) {
+        return false;
+    }
+
     if (!formValues.sendUdpCandidates && transport === 'udp') {
         return false;
     }
@@ -832,6 +844,22 @@ function extractTransportAndType(candidate) {
 
     // https://datatracker.ietf.org/doc/html/rfc5245#section-15.1
     return {transport: words[2], type: words[7]};
+}
+
+/**
+ * Checks if an ICE candidate is IPv6.
+ * @param candidate {RTCIceCandidate} iceCandidate to check
+ * @returns true if the candidate is IPv6.
+ */
+function isIPv6Candidate(candidate) {
+    const words = candidate.candidate.split(' ');
+    if (words.length < 5) {
+        return false;
+    }
+    // The IP address is at index 4 in the candidate string
+    const ipAddress = words[4];
+    // IPv6 addresses contain colons
+    return ipAddress.includes(':');
 }
 
 $('#copy-logs').on('click', async function () {
