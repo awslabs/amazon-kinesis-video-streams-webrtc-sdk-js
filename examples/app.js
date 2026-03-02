@@ -115,6 +115,7 @@ function getFormValues() {
         forceTURN: $('#forceTURN').is(':checked'),
         accessKeyId: $('#accessKeyId').val(),
         useDualStackEndpoints: endpoint === undefined && $('#dual-stack').is(':checked'),
+        useFipsEndpoints: $('#enable-fips').is(':checked'),
         endpoint: endpoint,
         secretAccessKey: $('#secretAccessKey').val(),
         sessionToken: $('#sessionToken').val() || null,
@@ -269,7 +270,8 @@ $('#viewer-button').click(async () => {
             '[VIEWER]',
             formValues.clientId,
             formValues.logAwsSdkCalls ? console : undefined,
-            formValues.useDualStackEndpoints);
+            formValues.useDualStackEndpoints,
+            formValues.useFipsEndpoints);
         await channelHelper.determineMediaIngestionPath();
 
         if (channelHelper.isIngestionEnabled()) {
@@ -619,6 +621,7 @@ const fields = [
     {field: 'turns-with-udp', type: 'checkbox'},
     {field: 'turns-with-tcp', type: 'checkbox'},
     {field: 'turn-one-set-only', type: 'checkbox'},
+    {field: 'enable-fips', type: 'checkbox'},
 ];
 
 fields.forEach(({field, type, name}) => {
