@@ -86,13 +86,14 @@ async function startMaster(localView, remoteView, formValues, onStatsReport, onR
             `[${role}]`,
             role === 'VIEWER' ? formValues.clientId : undefined,
             formValues.logAwsSdkCalls ? console : undefined,
+            formValues.useDualStackEndpoints,
         );
 
         await master.channelHelper.init();
 
         if (master.channelHelper.isIngestionEnabled()) {
-            if (role === 'MASTER' && (!formValues.sendAudio || !formValues.sendVideo)) {
-                console.error(`[MASTER] Both Send Video and Send Audio checkboxes need to be checked to ingest and store media.`);
+            if (role === 'MASTER' && !formValues.sendVideo) {
+                console.error(`[MASTER] Sending video is required to ingest and store media.`);
                 return;
             } else if (role === 'VIEWER' && formValues.sendVideo) {
                 console.warn(`[VIEWER] Not allowed to send video. Overriding to false!`);
@@ -230,7 +231,7 @@ registerMasterSignalingClientCallbacks = (signalingClient, formValues, onStatsRe
         if (master.channelHelper.isIngestionEnabled()) {
             const CHECK_INTERVAL_SECONDS = 5;
             const RETRY_TIMEOUT_SECONDS = 30;
-            
+
             for (let i = CHECK_INTERVAL_SECONDS; i <= RETRY_TIMEOUT_SECONDS; i += CHECK_INTERVAL_SECONDS) {
                 setTimeout(function () {
                     // check the state each 5 seconds
@@ -351,7 +352,11 @@ async function getIceServersWithCaching(formValues) {
 
     // Add the STUN server unless it is disabled
     if (!formValues.natTraversalDisabled && !formValues.forceTURN && formValues.sendSrflxCandidates) {
-        iceServers.push({ urls: `stun:stun.kinesisvideo.${formValues.region}.amazonaws.com:443` });
+        if (formValues.useDualStackEndpoints) {
+            iceServers.push({ urls: `stun:stun.kinesisvideo.${formValues.region}.api.aws:443` });
+        } else {
+            iceServers.push({ urls: `stun:stun.kinesisvideo.${formValues.region}.amazonaws.com:443` });
+        }
     }
 
     // Add the TURN servers unless it is disabled
