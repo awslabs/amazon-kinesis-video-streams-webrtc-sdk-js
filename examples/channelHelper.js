@@ -129,7 +129,6 @@ class ChannelHelper {
             logger: this._logger,
             endpoint: this._endpoints['HTTPS'],
             correctClockSkew: true,
-            useFipsEndpoint: this._useFipsEndpoints,
         });
 
         // Kinesis Video Signaling Client
