@@ -368,7 +368,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
             endpoint: formValues.endpoint,
             correctClockSkew: true,
             useDualstackEndpoint: formValues.useDualStackEndpoints,
-            useFipsEndpoint: formValues.useFipsEndpoints,
+            useFipsEndpoint: formValues.endpoint ? undefined : formValues.useFipsEndpoints,
         });
 
         // Get signaling channel ARN
@@ -436,7 +436,6 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
             },
             endpoint: endpointsByProtocol.HTTPS,
             correctClockSkew: true,
-            useFipsEndpoint: formValues.useFipsEndpoints,
         });
 
         // Get ICE server configuration

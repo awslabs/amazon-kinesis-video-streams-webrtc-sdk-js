@@ -191,7 +191,7 @@ class ChannelHelper {
                 logger: this._logger,
                 endpoint: this._endpoint,
                 useDualstackEndpoint: this._useDualStackEndpoints,
-                useFipsEndpoint: this._useFipsEndpoints,
+                useFipsEndpoint: this._endpoint ? undefined : this._useFipsEndpoints,
                 correctClockSkew: true,
             });
         }
