@@ -33,4 +33,4 @@ jobs:
     # Add FIPS-Specific validation
     - name: FIPS Endpoint Validation
       if: matrix.node-version == '18.x'
-      run: npm test -- fips.spec.ts
+      run: npm test -- src/fips.spec.ts
