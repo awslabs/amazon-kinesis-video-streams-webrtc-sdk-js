@@ -213,6 +213,13 @@ $('#master-button').click(async () => {
         return;
     }
     const formValues = getFormValues();
+
+    // Check for FIPS + WebRTC ingestion incompatibility
+    if (formValues.useFipsEndpoints && (formValues.autoDetermineMediaIngestMode || formValues.mediaIngestionModeOverride)) {
+        console.error('FIPS endpoints are not supported with WebRTC Ingestion and Storage. Please disable FIPS endpoints or disable WebRTC ingestion.');
+        return;
+    }
+
     ROLE = $('#master-heading').text() === 'Viewer' ? 'VIEWER' : 'MASTER';
     form.addClass('d-none');
     $('#master').removeClass('d-none');
@@ -253,6 +260,12 @@ $('#viewer-button').click(async () => {
         return;
     }
     const formValues = getFormValues();
+
+    // Check for FIPS + WebRTC ingestion incompatibility
+    if (formValues.useFipsEndpoints && (formValues.autoDetermineMediaIngestMode || formValues.mediaIngestionModeOverride)) {
+        console.error('FIPS endpoints are not supported with WebRTC Ingestion and Storage. Please disable FIPS endpoints or disable WebRTC ingestion.');
+        return;
+    }
 
     if (formValues.autoDetermineMediaIngestMode) {
         channelHelper = new ChannelHelper(formValues.channelName,
@@ -433,6 +446,23 @@ $('#region').on('focusout', event => {
         regionElement.removeClass('is-valid');
     }
 });
+
+// Auto-enable FIPS for us-gov regions
+$('#region').on('input change', event => {
+    if (event.target.value.includes('us-gov-')) {
+        $('#enable-fips').prop('checked', true).trigger('change');
+    }
+});
+
+// Show/hide FIPS ingestion warning
+function updateFipsIngestionWarning() {
+    const fipsEnabled = $('#enable-fips').is(':checked');
+    const ingestionEnabled = $('#ingest-media').is(':checked') || $('#ingest-media-manual-on').attr('data-selected') === 'true';
+    $('#fips-ingestion-warning').toggleClass('d-none', !(fipsEnabled && ingestionEnabled));
+}
+
+$('#enable-fips, #ingest-media').on('change', updateFipsIngestionWarning);
+$('#ingest-media-manual-on, #ingest-media-manual-off').on('click', () => setTimeout(updateFipsIngestionWarning, 0));
 
 function addViewerMediaStreamToMaster(viewerId, track) {
     $('#empty-video-placeholder')?.remove();
