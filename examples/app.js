@@ -114,7 +114,7 @@ function getFormValues() {
         forceSTUN: $('#forceSTUN').is(':checked'),
         forceTURN: $('#forceTURN').is(':checked'),
         accessKeyId: $('#accessKeyId').val(),
-        useDualStackEndpoints: endpoint === undefined && $('#dual-stack').is(':checked'),
+        useDualStackEndpoints: $('#dual-stack').is(':checked'),
         useFipsEndpoints: $('#enable-fips').is(':checked'),
         endpoint: endpoint,
         secretAccessKey: $('#secretAccessKey').val(),
