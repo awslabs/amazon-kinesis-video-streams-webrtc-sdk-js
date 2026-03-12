@@ -135,6 +135,7 @@
                     </div>
                 </div>
             </div>
+            <small id="gov-ingestion-warning" class="text-danger d-none">Warning: GovCloud regions do not support WebRTC Ingestion and Storage</small>
             </details>
             <h4 id="subheader">Video Resolution</h4>
             <p><small>Set the desired video resolution and aspect ratio.</small></p>
@@ -391,8 +392,7 @@
                                 <input class="form-check-input" type="checkbox" id="enable-fips"/>
                                 <label for="enable-fips" class="form-check-label">Enable FIPS Endpoints</label>
                     </div>
-                    <small id="fips-ingestion-warning" class="text-danger d-none">Warning: us-gov regions do not support WebRTC Ingestion and Storage</small>
-                    <small id="fips-region-warning" class="text-danger d-none">FIPS endpoints are only supported in us-gov regions. Please select a us-gov region or disable FIPS.</small>
+                    <small id="fips-region-warning" class="text-danger d-none">FIPS endpoints not supported in this region.</small>
                 </div>
                                     
                 <p class="mt-3"><small>Endpoint Override</small></p>

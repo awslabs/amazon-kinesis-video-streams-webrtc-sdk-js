@@ -216,13 +216,13 @@ $('#master-button').click(async () => {
 
     // Check for FIPS + WebRTC ingestion incompatibility
     if (formValues.useFipsEndpoints && (formValues.autoDetermineMediaIngestMode || formValues.mediaIngestionModeOverride)) {
-        console.error('us-gov regions do not support WebRTC Ingestion and Storage. Please move to a supported region or disable WebRTC ingestion.');
+        console.error('GovCloud regions do not support WebRTC Ingestion and Storage. Please move to a supported region or disable WebRTC ingestion.');
         return;
     }
 
     // Check for FIPS + non-GovCloud region
     if (formValues.useFipsEndpoints && !formValues.region.startsWith('us-gov-')) {
-        console.error('FIPS endpoints are only supported in us-gov regions. Please select a us-gov region or disable FIPS.');
+        console.error('FIPS endpoints are not supported in this region.');
         return;
     }
 
@@ -269,13 +269,13 @@ $('#viewer-button').click(async () => {
 
     // Check for FIPS + WebRTC ingestion incompatibility
     if (formValues.useFipsEndpoints && (formValues.autoDetermineMediaIngestMode || formValues.mediaIngestionModeOverride)) {
-        console.error('us-gov regions do not support WebRTC Ingestion and Storage. Please move to a supported region or disable WebRTC ingestion.');
+        console.error('GovCloud regions do not support WebRTC Ingestion and Storage. Please move to a supported region or disable WebRTC ingestion.');
         return;
     }
 
     // Check for FIPS + non-GovCloud region
     if (formValues.useFipsEndpoints && !formValues.region.startsWith('us-gov-')) {
-        console.error('FIPS endpoints are only supported in us-gov regions. Please select a us-gov region or disable FIPS.');
+        console.error('FIPS endpoints are not supported in this region.');
         return;
     }
 
@@ -466,15 +466,17 @@ $('#region').on('input change', event => {
     }
 });
 
-// Show/hide FIPS ingestion warning
-function updateFipsIngestionWarning() {
-    const fipsEnabled = $('#enable-fips').is(':checked');
+// Show/hide ingestion warning for us-gov regions
+function updateGovIngestionWarning() {
+    const region = $('#region').val() || '';
+    const isGovRegion = region.includes('us-gov');
     const ingestionEnabled = $('#ingest-media').is(':checked') || $('#ingest-media-manual-on').attr('data-selected') === 'true';
-    $('#fips-ingestion-warning').toggleClass('d-none', !(fipsEnabled && ingestionEnabled));
+    $('#gov-ingestion-warning').toggleClass('d-none', !(isGovRegion && ingestionEnabled));
 }
 
-$('#enable-fips, #ingest-media').on('change', updateFipsIngestionWarning);
-$('#ingest-media-manual-on, #ingest-media-manual-off').on('click', () => setTimeout(updateFipsIngestionWarning, 0));
+$('#region').on('input change', updateGovIngestionWarning);
+$('#ingest-media').on('change', updateGovIngestionWarning);
+$('#ingest-media-manual-on, #ingest-media-manual-off').on('click', () => setTimeout(updateGovIngestionWarning, 0));
 
 // Show/hide FIPS region warning
 function updateFipsRegionWarning() {
