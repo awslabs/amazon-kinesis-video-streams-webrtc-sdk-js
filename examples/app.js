@@ -216,7 +216,13 @@ $('#master-button').click(async () => {
 
     // Check for FIPS + WebRTC ingestion incompatibility
     if (formValues.useFipsEndpoints && (formValues.autoDetermineMediaIngestMode || formValues.mediaIngestionModeOverride)) {
-        console.error('FIPS endpoints are not supported with WebRTC Ingestion and Storage. Please disable FIPS endpoints or disable WebRTC ingestion.');
+        console.error('us-gov regions do not support WebRTC Ingestion and Storage. Please move to a supported region or disable WebRTC ingestion.');
+        return;
+    }
+
+    // Check for FIPS + non-GovCloud region
+    if (formValues.useFipsEndpoints && !formValues.region.startsWith('us-gov-')) {
+        console.error('FIPS endpoints are only supported in us-gov regions. Please select a us-gov region or disable FIPS.');
         return;
     }
 
@@ -263,7 +269,13 @@ $('#viewer-button').click(async () => {
 
     // Check for FIPS + WebRTC ingestion incompatibility
     if (formValues.useFipsEndpoints && (formValues.autoDetermineMediaIngestMode || formValues.mediaIngestionModeOverride)) {
-        console.error('FIPS endpoints are not supported with WebRTC Ingestion and Storage. Please disable FIPS endpoints or disable WebRTC ingestion.');
+        console.error('us-gov regions do not support WebRTC Ingestion and Storage. Please move to a supported region or disable WebRTC ingestion.');
+        return;
+    }
+
+    // Check for FIPS + non-GovCloud region
+    if (formValues.useFipsEndpoints && !formValues.region.startsWith('us-gov-')) {
+        console.error('FIPS endpoints are only supported in us-gov regions. Please select a us-gov region or disable FIPS.');
         return;
     }
 
@@ -463,6 +475,16 @@ function updateFipsIngestionWarning() {
 
 $('#enable-fips, #ingest-media').on('change', updateFipsIngestionWarning);
 $('#ingest-media-manual-on, #ingest-media-manual-off').on('click', () => setTimeout(updateFipsIngestionWarning, 0));
+
+// Show/hide FIPS region warning
+function updateFipsRegionWarning() {
+    const fipsEnabled = $('#enable-fips').is(':checked');
+    const region = $('#region').val() || '';
+    $('#fips-region-warning').toggleClass('d-none', !(fipsEnabled && !region.startsWith('us-gov-')));
+}
+
+$('#enable-fips').on('change', updateFipsRegionWarning);
+$('#region').on('input change', updateFipsRegionWarning);
 
 function addViewerMediaStreamToMaster(viewerId, track) {
     $('#empty-video-placeholder')?.remove();
