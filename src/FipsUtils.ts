@@ -14,7 +14,7 @@ export interface FipsConfig {
 export function generateStunUrl(config: FipsConfig): string {
     const protocol = config.useFipsEndpoints ? 'stuns' : 'stun';
     const fipsSuffix = config.useFipsEndpoints ? '-fips' : '';
-    
+
     if (config.useDualStackEndpoints) {
         return `${protocol}:stun.kinesisvideo${fipsSuffix}.${config.region}.api.aws:443`;
     }
@@ -22,8 +22,10 @@ export function generateStunUrl(config: FipsConfig): string {
 }
 
 /**
- * Determines if useFipsEndpoint should be set for AWS SDK clients
+ * Determines if useFipsEndpoint should be set for AWS SDK clients.
+ * When a custom endpoint is provided, it is left unmodified, but the FIPS flag is still
+ * returned so that STUN URLs are generated with the correct protocol (stuns).
  */
-export function shouldSetFipsEndpoint(customEndpoint: string | null | undefined, useFipsEndpoints: boolean): boolean | undefined {
-    return customEndpoint ? undefined : useFipsEndpoints;
+export function shouldSetFipsEndpoint(_customEndpoint: string | null | undefined, useFipsEndpoints: boolean): boolean {
+    return useFipsEndpoints;
 }
