@@ -2,7 +2,7 @@
  * Unit tests for FIPS endpoint functionality
  */
 
-import { FipsConfig, generateStunUrl, shouldSetFipsEndpoint } from './FipsUtils';
+import { FipsConfig, generateStunUrl } from './FipsUtils';
 
 describe('FIPS Endpoint Configuration', () => {
     describe('generateStunUrl', () => {
@@ -52,26 +52,6 @@ describe('FIPS Endpoint Configuration', () => {
             const url = generateStunUrl(config);
 
             expect(url).toBe('stun:stun.kinesisvideo.us-west-1.api.aws:443');
-        });
-    });
-
-    describe('shouldSetFipsEndpoint', () => {
-        test('should return true when custom endpoint is provided with FIPS enabled', () => {
-            const result = shouldSetFipsEndpoint('https://custom.endpoint.com', true);
-
-            expect(result).toBe(true);
-        });
-
-        test('should return true when no custom endpoint and FIPS is enabled', () => {
-            const result = shouldSetFipsEndpoint(null, true);
-
-            expect(result).toBe(true);
-        });
-
-        test('should return false when no custom endpoint and FIPS is disabled', () => {
-            const result = shouldSetFipsEndpoint(null, false);
-
-            expect(result).toBe(false);
         });
     });
 });

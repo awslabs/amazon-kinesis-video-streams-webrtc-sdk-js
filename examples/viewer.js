@@ -367,7 +367,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
             },
             endpoint: formValues.endpoint,
             correctClockSkew: true,
-            useDualstackEndpoint: formValues.useDualStackEndpoints,
+            useDualstackEndpoint: formValues.endpoint ? undefined : formValues.useDualStackEndpoints,
             useFipsEndpoint: formValues.endpoint ? undefined : formValues.useFipsEndpoints,
         });
 

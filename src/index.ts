@@ -10,6 +10,6 @@ export { SignalingClient } from './SignalingClient';
 export { SigV4RequestSigner } from './SigV4RequestSigner';
 export { QueryParams } from './QueryParams';
 export { RequestSigner } from './RequestSigner';
-export { generateStunUrl, shouldSetFipsEndpoint, FipsConfig } from './FipsUtils';
+export { generateStunUrl, FipsConfig } from './FipsUtils';
 
 export const VERSION = process.env.PACKAGE_VERSION;

@@ -190,7 +190,7 @@ class ChannelHelper {
                 ...this._clientArgs,
                 logger: this._logger,
                 endpoint: this._endpoint,
-                useDualstackEndpoint: this._useDualStackEndpoints,
+                useDualstackEndpoint: this._endpoint ? undefined : this._useDualStackEndpoints,
                 useFipsEndpoint: this._endpoint ? undefined : this._useFipsEndpoints,
                 correctClockSkew: true,
             });
