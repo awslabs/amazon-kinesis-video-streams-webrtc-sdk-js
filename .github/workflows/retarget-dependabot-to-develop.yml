@@ -17,4 +17,13 @@ jobs:
       PR_URL: ${{ github.event.pull_request.html_url }}
     steps:
       - name: Change base branch to develop
-        run: gh pr edit "$PR_URL" --base develop
+        run: |
+          for attempt in 1 2 3; do
+            if gh pr edit "$PR_URL" --base develop; then
+              exit 0
+            fi
+            echo "Attempt $attempt failed. Retrying in 5 seconds..."
+            sleep 5
+          done
+          echo "All attempts failed."
+          exit 1
