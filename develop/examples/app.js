@@ -114,7 +114,8 @@ function getFormValues() {
         forceSTUN: $('#forceSTUN').is(':checked'),
         forceTURN: $('#forceTURN').is(':checked'),
         accessKeyId: $('#accessKeyId').val(),
-        useDualStackEndpoints: endpoint === undefined && $('#dual-stack').is(':checked'),
+        useDualStackEndpoints: $('#dual-stack').is(':checked'),
+        useFipsEndpoints: $('#enable-fips').is(':checked'),
         endpoint: endpoint,
         secretAccessKey: $('#secretAccessKey').val(),
         sessionToken: $('#sessionToken').val() || null,
@@ -212,6 +213,19 @@ $('#master-button').click(async () => {
         return;
     }
     const formValues = getFormValues();
+
+    // Check for FIPS + WebRTC ingestion incompatibility
+    if (formValues.useFipsEndpoints && (formValues.autoDetermineMediaIngestMode || formValues.mediaIngestionModeOverride)) {
+        console.error('GovCloud regions do not support WebRTC Ingestion and Storage. Please move to a supported region or disable WebRTC ingestion.');
+        return;
+    }
+
+    // Check for FIPS + non-GovCloud region
+    if (formValues.useFipsEndpoints && !formValues.region.startsWith('us-gov-')) {
+        console.error('FIPS endpoints are not supported in this region.');
+        return;
+    }
+
     ROLE = $('#master-heading').text() === 'Viewer' ? 'VIEWER' : 'MASTER';
     form.addClass('d-none');
     $('#master').removeClass('d-none');
@@ -253,6 +267,18 @@ $('#viewer-button').click(async () => {
     }
     const formValues = getFormValues();
 
+    // Check for FIPS + WebRTC ingestion incompatibility
+    if (formValues.useFipsEndpoints && (formValues.autoDetermineMediaIngestMode || formValues.mediaIngestionModeOverride)) {
+        console.error('GovCloud regions do not support WebRTC Ingestion and Storage. Please move to a supported region or disable WebRTC ingestion.');
+        return;
+    }
+
+    // Check for FIPS + non-GovCloud region
+    if (formValues.useFipsEndpoints && !formValues.region.startsWith('us-gov-')) {
+        console.error('FIPS endpoints are not supported in this region.');
+        return;
+    }
+
     if (formValues.autoDetermineMediaIngestMode) {
         channelHelper = new ChannelHelper(formValues.channelName,
             {
@@ -269,7 +295,8 @@ $('#viewer-button').click(async () => {
             '[VIEWER]',
             formValues.clientId,
             formValues.logAwsSdkCalls ? console : undefined,
-            formValues.useDualStackEndpoints);
+            formValues.useDualStackEndpoints,
+            formValues.useFipsEndpoints);
         await channelHelper.determineMediaIngestionPath();
 
         if (channelHelper.isIngestionEnabled()) {
@@ -431,6 +458,35 @@ $('#region').on('focusout', event => {
         regionElement.removeClass('is-valid');
     }
 });
+
+// Auto-enable FIPS for us-gov regions
+$('#region').on('input change', event => {
+    if (event.target.value.includes('us-gov-')) {
+        $('#enable-fips').prop('checked', true).trigger('change');
+    }
+});
+
+// Show/hide ingestion warning for us-gov regions
+function updateGovIngestionWarning() {
+    const region = $('#region').val() || '';
+    const isGovRegion = region.includes('us-gov');
+    const ingestionEnabled = $('#ingest-media').is(':checked') || $('#ingest-media-manual-on').attr('data-selected') === 'true';
+    $('#gov-ingestion-warning').toggleClass('d-none', !(isGovRegion && ingestionEnabled));
+}
+
+$('#region').on('input change', updateGovIngestionWarning);
+$('#ingest-media').on('change', updateGovIngestionWarning);
+$('#ingest-media-manual-on, #ingest-media-manual-off').on('click', () => setTimeout(updateGovIngestionWarning, 0));
+
+// Show/hide FIPS region warning
+function updateFipsRegionWarning() {
+    const fipsEnabled = $('#enable-fips').is(':checked');
+    const region = $('#region').val() || '';
+    $('#fips-region-warning').toggleClass('d-none', !(fipsEnabled && !region.startsWith('us-gov-')));
+}
+
+$('#enable-fips').on('change', updateFipsRegionWarning);
+$('#region').on('input change', updateFipsRegionWarning);
 
 function addViewerMediaStreamToMaster(viewerId, track) {
     $('#empty-video-placeholder')?.remove();
@@ -619,6 +675,7 @@ const fields = [
     {field: 'turns-with-udp', type: 'checkbox'},
     {field: 'turns-with-tcp', type: 'checkbox'},
     {field: 'turn-one-set-only', type: 'checkbox'},
+    {field: 'enable-fips', type: 'checkbox'},
 ];
 
 fields.forEach(({field, type, name}) => {
