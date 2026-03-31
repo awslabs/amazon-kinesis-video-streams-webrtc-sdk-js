@@ -12,7 +12,7 @@ class ChannelHelper {
         DETERMINE_THROUGH_DESCRIBE: 2,
     };
 
-    constructor(channelName, clientArgs, endpoint, role, ingestionMode, loggingPrefix, clientId, logger, useDualStackEndpoints) {
+    constructor(channelName, clientArgs, endpoint, role, ingestionMode, loggingPrefix, clientId, logger, useDualStackEndpoints, useFipsEndpoints) {
         this._channelName = channelName;
         this._clientArgs = clientArgs;
         this._role = role;
@@ -22,6 +22,7 @@ class ChannelHelper {
         this._clientId = clientId;
         this._logger = logger;
         this._useDualStackEndpoints = useDualStackEndpoints;
+        this._useFipsEndpoints = useFipsEndpoints;
     }
 
     // Must be called first
@@ -189,7 +190,8 @@ class ChannelHelper {
                 ...this._clientArgs,
                 logger: this._logger,
                 endpoint: this._endpoint,
-                useDualstackEndpoint: this._useDualStackEndpoints,
+                useDualstackEndpoint: this._endpoint ? undefined : this._useDualStackEndpoints,
+                useFipsEndpoint: this._endpoint ? undefined : this._useFipsEndpoints,
                 correctClockSkew: true,
             });
         }
