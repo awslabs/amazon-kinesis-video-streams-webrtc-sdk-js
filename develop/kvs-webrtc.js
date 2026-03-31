@@ -1,4 +1,4 @@
-/* Amazon Kinesis Video Streams WebRTC SDK for JavaScript v2.6.1
+/* Amazon Kinesis Video Streams WebRTC SDK for JavaScript v2.7.0
 Copyright 2019-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
 This product includes software developed at
@@ -1813,7 +1813,7 @@ Object.defineProperty(exports, "RequestSigner", ({ enumerable: true, get: functi
 var FipsUtils_1 = __webpack_require__(/*! ./FipsUtils */ "./src/FipsUtils.ts");
 Object.defineProperty(exports, "generateStunUrl", ({ enumerable: true, get: function () { return FipsUtils_1.generateStunUrl; } }));
 Object.defineProperty(exports, "FipsConfig", ({ enumerable: true, get: function () { return FipsUtils_1.FipsConfig; } }));
-exports.VERSION = "2.6.1";
+exports.VERSION = "2.7.0";
 
 })();
 
