@@ -1,21 +1,22 @@
 function isBlankLineBefore(context, node) {
-    return node.range[0] > 0 && !context.getSourceCode().getLocFromIndex(node.range[0] - 1).column;
+    return node.range[0] > 0 && !context.sourceCode.getLocFromIndex(node.range[0] - 1).column;
 }
 
 function getText(context, node) {
-    return context.getSourceCode().getText(node);
+    return context.sourceCode.getText(node);
 }
 
-module.exports = context => {
-    let previousImport = null;
-    let previousLocalImport = null;
+module.exports = {
+    meta: {
+        type: 'layout',
+        fixable: 'whitespace',
+    },
+    create(context) {
+        let previousImport = null;
+        let previousLocalImport = null;
 
-    return {
-        meta: {
-            type: 'layout',
-            fixable: 'whitespace',
-        },
-        ImportDeclaration(node) {
+        return {
+            ImportDeclaration(node) {
             const sourceValue = node.source.value;
 
             if (sourceValue.startsWith('.') || sourceValue.startsWith('/')) {
@@ -120,4 +121,5 @@ module.exports = context => {
             }
         },
     };
+    },
 };
