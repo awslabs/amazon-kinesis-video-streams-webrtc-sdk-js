@@ -367,7 +367,8 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
             },
             endpoint: formValues.endpoint,
             correctClockSkew: true,
-            useDualstackEndpoint: formValues.useDualStackEndpoints,
+            useDualstackEndpoint: formValues.endpoint ? undefined : formValues.useDualStackEndpoints,
+            useFipsEndpoint: formValues.endpoint ? undefined : formValues.useFipsEndpoints,
         });
 
         // Get signaling channel ARN
@@ -451,10 +452,12 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
         const iceServers = [];
         // Don't add stun if user selects TURN only or NAT traversal disabled
         if (!formValues.natTraversalDisabled && !formValues.forceTURN && formValues.sendSrflxCandidates) {
+            const protocol = formValues.useFipsEndpoints ? 'stuns' : 'stun';
+            const fipsSuffix = formValues.useFipsEndpoints ? '-fips' : '';
             if (formValues.useDualStackEndpoints) {
-                iceServers.push({ urls: `stun:stun.kinesisvideo.${formValues.region}.api.aws:443` });
+                iceServers.push({ urls: `${protocol}:stun.kinesisvideo${fipsSuffix}.${formValues.region}.api.aws:443` });
             } else {
-                iceServers.push({ urls: `stun:stun.kinesisvideo.${formValues.region}.amazonaws.com:443` });
+                iceServers.push({ urls: `${protocol}:stun.kinesisvideo${fipsSuffix}.${formValues.region}.amazonaws.com:443` });
             }
         }
 
