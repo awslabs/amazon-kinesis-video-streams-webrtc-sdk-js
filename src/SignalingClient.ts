@@ -27,6 +27,18 @@ export interface SignalingClientConfig {
     role: Role;
     clientId?: string;
     systemClockOffset?: number;
+    /**
+     * When true, ICE candidates that arrive before the SDP will be buffered and NOT automatically
+     * emitted after the SDP is received. The consumer must call `drainPendingIceCandidates()`
+     * after `setRemoteDescription` completes to release them.
+     *
+     * When false (default), ICE candidates are automatically emitted after the SDP event,
+     * preserving backward-compatible behavior.
+     *
+     * Set to true when connecting to a media server, where ICE candidates often arrive
+     * before the SDP and the consumer needs explicit control over when they are processed.
+     */
+    enableEarlyIceCandidateBuffering?: boolean;
 }
 
 enum MessageType {
@@ -209,6 +221,36 @@ export class SignalingClient extends EventEmitter {
     }
 
     /**
+     * Emits any pending ICE candidates for the given client. Call this after processing the remote SDP
+     * (e.g., after `setRemoteDescription` completes) to ensure ICE candidates are only emitted when the
+     * peer connection is ready to handle them.
+     *
+     * When using a media server, ICE candidates may arrive before or immediately after the SDP answer.
+     * This method gives the consumer explicit control over when those queued candidates are released.
+     *
+     * @param {string} [clientId] - The client ID to drain candidates for. Required for 'MASTER' role.
+     */
+    public drainPendingIceCandidates(clientId?: string): void {
+        this.emitPendingIceCandidates(clientId);
+    }
+
+    /**
+     * Returns the pending ICE candidates for the given client.
+     * Useful for debugging to check if candidates are stuck in the queue.
+     */
+    public getPendingIceCandidates(clientId?: string): object[] {
+        const clientIdKey = clientId || SignalingClient.DEFAULT_CLIENT_ID;
+        return this.pendingIceCandidatesByClientId[clientIdKey] || [];
+    }
+
+    /**
+     * Returns whether auto ICE candidate drain is disabled.
+     */
+    public isEarlyIceCandidateBufferingEnabled(): boolean {
+        return this.config.enableEarlyIceCandidateBuffering === true;
+    }
+
+    /**
      * Validates the WebSocket connection is open and that the recipient client id is present if sending as the 'MASTER'. Encodes the given message payload
      * and sends the message to the signaling service.
      */
@@ -279,12 +321,22 @@ export class SignalingClient extends EventEmitter {
 
         switch (messageType) {
             case MessageType.SDP_OFFER:
+                this.hasReceivedRemoteSDPByClientId[senderClientId || SignalingClient.DEFAULT_CLIENT_ID] = true;
+                console.log('[SignalingClient] SDP_OFFER received. Pending ICE candidates for', senderClientId || SignalingClient.DEFAULT_CLIENT_ID, ':',
+                    (this.pendingIceCandidatesByClientId[senderClientId || SignalingClient.DEFAULT_CLIENT_ID] || []).length);
                 this.emit('sdpOffer', parsedMessagePayload, senderClientId);
-                this.emitPendingIceCandidates(senderClientId);
+                if (!this.config.enableEarlyIceCandidateBuffering) {
+                    this.emitPendingIceCandidates(senderClientId);
+                }
                 return;
             case MessageType.SDP_ANSWER:
+                this.hasReceivedRemoteSDPByClientId[senderClientId || SignalingClient.DEFAULT_CLIENT_ID] = true;
+                console.log('[SignalingClient] SDP_ANSWER received. Pending ICE candidates for', senderClientId || SignalingClient.DEFAULT_CLIENT_ID, ':',
+                    (this.pendingIceCandidatesByClientId[senderClientId || SignalingClient.DEFAULT_CLIENT_ID] || []).length);
                 this.emit('sdpAnswer', parsedMessagePayload, senderClientId);
-                this.emitPendingIceCandidates(senderClientId);
+                if (!this.config.enableEarlyIceCandidateBuffering) {
+                    this.emitPendingIceCandidates(senderClientId);
+                }
                 return;
             case MessageType.ICE_CANDIDATE:
                 this.emitOrQueueIceCandidate(parsedMessagePayload, senderClientId);
@@ -326,12 +378,16 @@ export class SignalingClient extends EventEmitter {
     private emitOrQueueIceCandidate(iceCandidate: object, clientId?: string): void {
         const clientIdKey = clientId || SignalingClient.DEFAULT_CLIENT_ID;
         if (this.hasReceivedRemoteSDPByClientId[clientIdKey]) {
+            console.log('[SignalingClient] ICE candidate arrived AFTER SDP for', clientIdKey, '- emitting immediately');
             this.emit('iceCandidate', iceCandidate, clientId);
         } else {
             if (!this.pendingIceCandidatesByClientId[clientIdKey]) {
                 this.pendingIceCandidatesByClientId[clientIdKey] = [];
             }
             this.pendingIceCandidatesByClientId[clientIdKey].push(iceCandidate);
+            console.log('[SignalingClient] ICE candidate arrived before SDP for', clientIdKey,
+                '- buffered. Pending count:', this.pendingIceCandidatesByClientId[clientIdKey].length,
+                'Candidate:', JSON.stringify(iceCandidate));
         }
     }
 
@@ -345,6 +401,7 @@ export class SignalingClient extends EventEmitter {
         if (!pendingIceCandidates) {
             return;
         }
+        console.log('[SignalingClient] DRAINING', pendingIceCandidates.length, 'pending ICE candidates for', clientIdKey);
         delete this.pendingIceCandidatesByClientId[clientIdKey];
         pendingIceCandidates.forEach((iceCandidate) => {
             this.emit('iceCandidate', iceCandidate, clientId);

@@ -139,6 +139,7 @@ class ChannelHelper {
             channelEndpoint: this._endpoints['WSS'],
             role: this._role,
             clientId: this._clientId,
+            enableEarlyIceCandidateBuffering: this.isIngestionEnabled(),
             requestSigner: {
                 // We override the default requestSigner to add timing information.
                 // Inside the function, `this` refers to the function itself,
