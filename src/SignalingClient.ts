@@ -293,17 +293,11 @@ export class SignalingClient extends EventEmitter {
 
         switch (messageType) {
             case MessageType.SDP_OFFER:
-                console.log(
-                    `[${new Date().toISOString()}] [DEBUG] Received SDP_OFFER from ${senderClientId || 'MASTER'}, pending ICE candidates: ${(this.pendingIceCandidatesByClientId[senderClientId || SignalingClient.DEFAULT_CLIENT_ID] || []).length}`,
-                );
-                this.hasReceivedRemoteSDPByClientId[senderClientId || SignalingClient.DEFAULT_CLIENT_ID] = true;
+                this.resetRemoteSDPState(senderClientId);
                 this.emit('sdpOffer', parsedMessagePayload, senderClientId);
                 return;
             case MessageType.SDP_ANSWER:
-                console.log(
-                    `[${new Date().toISOString()}] [DEBUG] Received SDP_ANSWER from ${senderClientId || 'MASTER'}, pending ICE candidates: ${(this.pendingIceCandidatesByClientId[senderClientId || SignalingClient.DEFAULT_CLIENT_ID] || []).length}`,
-                );
-                this.hasReceivedRemoteSDPByClientId[senderClientId || SignalingClient.DEFAULT_CLIENT_ID] = true;
+                this.resetRemoteSDPState(senderClientId);
                 this.emit('sdpAnswer', parsedMessagePayload, senderClientId);
                 return;
             case MessageType.ICE_CANDIDATE:
@@ -337,6 +331,20 @@ export class SignalingClient extends EventEmitter {
         } catch (e) {
             return Buffer.from(JSON.stringify(object)).toString('base64');
         }
+    }
+
+    /**
+     * Resets the remote SDP state for the given client. Called when a new SDP offer or answer is received,
+     * ensuring that ICE candidates are properly queued until the consumer explicitly drains them.
+     * This is critical for retry scenarios where a new SDP may arrive for a clientId that already had one.
+     */
+    private resetRemoteSDPState(clientId?: string): void {
+        const clientIdKey = clientId || SignalingClient.DEFAULT_CLIENT_ID;
+        const pendingCount = (this.pendingIceCandidatesByClientId[clientIdKey] || []).length;
+        console.log(
+            `[${new Date().toISOString()}] [DEBUG] Received SDP from ${clientIdKey}, resetting state (had ${pendingCount} pending ICE candidates)`,
+        );
+        this.hasReceivedRemoteSDPByClientId[clientIdKey] = false;
     }
 
     /**

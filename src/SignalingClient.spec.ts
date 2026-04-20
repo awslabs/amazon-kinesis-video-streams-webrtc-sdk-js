@@ -571,7 +571,7 @@ describe('SignalingClient', () => {
                 client.open();
             });
 
-            it('should parse iceCandidate messages from the master', (done) => {
+            it('should parse iceCandidate messages from the master after drain', (done) => {
                 const client = new SignalingClient(config as SignalingClientConfig);
                 client.on('iceCandidate', (iceCandidate, senderClientId) => {
                     expect(iceCandidate).toEqual(ICE_CANDIDATE_OBJECT);
@@ -581,11 +581,27 @@ describe('SignalingClient', () => {
                 client.on('open', () => {
                     MockWebSocket.instance.emit('message', { data: SDP_ANSWER_MASTER_MESSAGE });
                     MockWebSocket.instance.emit('message', { data: ICE_CANDIDATE_MASTER_MESSAGE });
+                    client.drainPendingIceCandidates();
                 });
                 client.open();
             });
 
-            it('should parse iceCandidate messages from the viewer', (done) => {
+            it('should emit iceCandidate immediately after drain has been called', (done) => {
+                const client = new SignalingClient(config as SignalingClientConfig);
+                client.on('iceCandidate', (iceCandidate, senderClientId) => {
+                    expect(iceCandidate).toEqual(ICE_CANDIDATE_OBJECT);
+                    expect(senderClientId).toBeFalsy();
+                    done();
+                });
+                client.on('open', () => {
+                    MockWebSocket.instance.emit('message', { data: SDP_ANSWER_MASTER_MESSAGE });
+                    client.drainPendingIceCandidates();
+                    MockWebSocket.instance.emit('message', { data: ICE_CANDIDATE_MASTER_MESSAGE });
+                });
+                client.open();
+            });
+
+            it('should parse iceCandidate messages from the viewer after drain', (done) => {
                 config.role = Role.MASTER;
                 delete config.clientId;
                 const client = new SignalingClient(config as SignalingClientConfig);
@@ -597,6 +613,31 @@ describe('SignalingClient', () => {
                 client.on('open', () => {
                     MockWebSocket.instance.emit('message', { data: SDP_ANSWER_VIEWER_MESSAGE });
                     MockWebSocket.instance.emit('message', { data: ICE_CANDIDATE_VIEWER_MESSAGE });
+                    client.drainPendingIceCandidates(CLIENT_ID);
+                });
+                client.open();
+            });
+
+            it('should re-queue ICE candidates after a new SDP resets state', (done) => {
+                const client = new SignalingClient(config as SignalingClientConfig);
+                let drainCount = 0;
+                client.on('iceCandidate', () => {
+                    drainCount++;
+                });
+                client.on('open', () => {
+                    // First SDP + ICE + drain
+                    MockWebSocket.instance.emit('message', { data: SDP_ANSWER_MASTER_MESSAGE });
+                    MockWebSocket.instance.emit('message', { data: ICE_CANDIDATE_MASTER_MESSAGE });
+                    client.drainPendingIceCandidates();
+                    expect(drainCount).toBe(1);
+
+                    // Second SDP resets state, so new ICE candidate is queued
+                    MockWebSocket.instance.emit('message', { data: SDP_ANSWER_MASTER_MESSAGE });
+                    MockWebSocket.instance.emit('message', { data: ICE_CANDIDATE_MASTER_MESSAGE });
+                    expect(drainCount).toBe(1); // still 1, candidate is queued
+                    client.drainPendingIceCandidates();
+                    expect(drainCount).toBe(2); // now drained
+                    done();
                 });
                 client.open();
             });
