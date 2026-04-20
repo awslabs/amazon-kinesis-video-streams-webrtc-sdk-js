@@ -202,6 +202,7 @@ registerMasterSignalingClientCallbacks = (signalingClient, formValues, onStatsRe
             iceCandidate => shouldAcceptCandidate(formValues, iceCandidate),
             mediaStreams => addViewerMediaStreamToMaster(remoteClientId, mediaStreams[0]),
             dataChannelMessage => onRemoteDataMessage(dataChannelMessage),
+            master.channelHelper.isIngestionEnabled(),
         );
 
         await answerer.init();

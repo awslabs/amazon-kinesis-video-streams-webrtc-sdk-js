@@ -26,6 +26,9 @@ class Answerer {
      *     Invoked when the remote peer sends a message over the data channel.
      *     Only will get invoked if createDataChannel is true.
      *     Nothing happens if no function is provided.
+     * @param {boolean} [isIngestionEnabled=false]
+     *     Whether WebRTC ingestion and storage is enabled. When true, pending ICE candidates
+     *     will be explicitly drained after setting the remote description.
      */
     constructor(
         rtcPeerConnectionConfiguration,
@@ -40,6 +43,7 @@ class Answerer {
         inboundIceCandidateFilterFn = candidate => true,
         mediaStreamsUpdated = mediaStreams => {},
         dataChannelMessageReceived = (dataChannelMessage) => {},
+        isIngestionEnabled = false,
     ) {
         this._configuration = rtcPeerConnectionConfiguration;
         this._mediaStream = localMediaStream;
@@ -54,6 +58,7 @@ class Answerer {
         this._onMediaStreamsUpdated = mediaStreamsUpdated;
         this._dataChannelMessageReceived = dataChannelMessageReceived;
 
+        this._isIngestionEnabled = isIngestionEnabled;
         this._dataChannel = null;
         this._peerConnection = null;
     }
@@ -150,8 +155,10 @@ class Answerer {
 
         await this._peerConnection.setRemoteDescription(this._offer);
 
-        // Now that the remote description is set, drain any ICE candidates that arrived before the SDP offer.
-        this._signalingClient.drainPendingIceCandidates(this._remoteClientId);
+        // When using a media server, ICE candidates may arrive before the SDP offer.
+        if (this._isIngestionEnabled) {
+            this._signalingClient.drainPendingIceCandidates(this._remoteClientId);
+        }
 
         const [videoCodecs, audioCodecs] = getCodecFilters();
         this._peerConnection.getTransceivers().map(async (transceiver) => {

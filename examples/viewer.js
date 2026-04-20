@@ -752,8 +752,10 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
             metrics.viewer.offAnswerTime.endTime = Date.now();
             await viewer.peerConnection.setRemoteDescription(answer);
 
-            // Now that the remote description is set, drain any ICE candidates that arrived before the SDP answer.
-            viewer.signalingClient.drainPendingIceCandidates();
+            // When using a media server, ICE candidates may arrive before the SDP answer.
+            if (formValues.autoDetermineMediaIngestMode) {
+                viewer.signalingClient.drainPendingIceCandidates();
+            }
         });
 
         viewer.signalingClient.on('iceCandidate', candidate => {
