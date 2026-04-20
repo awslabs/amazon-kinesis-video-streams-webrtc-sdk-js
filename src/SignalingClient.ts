@@ -209,6 +209,20 @@ export class SignalingClient extends EventEmitter {
     }
 
     /**
+     * Emits any pending ICE candidates for the given client. Call this after processing the remote SDP
+     * (e.g., after `setRemoteDescription` completes) to ensure ICE candidates are only emitted when the
+     * peer connection is ready to handle them.
+     *
+     * When using a media server, ICE candidates may arrive before or immediately after the SDP answer.
+     * This method gives the consumer explicit control over when those queued candidates are released.
+     *
+     * @param {string} [clientId] - The client ID to drain candidates for. Required for 'MASTER' role.
+     */
+    public drainPendingIceCandidates(clientId?: string): void {
+        this.emitPendingIceCandidates(clientId);
+    }
+
+    /**
      * Validates the WebSocket connection is open and that the recipient client id is present if sending as the 'MASTER'. Encodes the given message payload
      * and sends the message to the signaling service.
      */
@@ -279,12 +293,18 @@ export class SignalingClient extends EventEmitter {
 
         switch (messageType) {
             case MessageType.SDP_OFFER:
+                console.log(
+                    `[${new Date().toISOString()}] [DEBUG] Received SDP_OFFER from ${senderClientId || 'MASTER'}, pending ICE candidates: ${(this.pendingIceCandidatesByClientId[senderClientId || SignalingClient.DEFAULT_CLIENT_ID] || []).length}`,
+                );
+                this.hasReceivedRemoteSDPByClientId[senderClientId || SignalingClient.DEFAULT_CLIENT_ID] = true;
                 this.emit('sdpOffer', parsedMessagePayload, senderClientId);
-                this.emitPendingIceCandidates(senderClientId);
                 return;
             case MessageType.SDP_ANSWER:
+                console.log(
+                    `[${new Date().toISOString()}] [DEBUG] Received SDP_ANSWER from ${senderClientId || 'MASTER'}, pending ICE candidates: ${(this.pendingIceCandidatesByClientId[senderClientId || SignalingClient.DEFAULT_CLIENT_ID] || []).length}`,
+                );
+                this.hasReceivedRemoteSDPByClientId[senderClientId || SignalingClient.DEFAULT_CLIENT_ID] = true;
                 this.emit('sdpAnswer', parsedMessagePayload, senderClientId);
-                this.emitPendingIceCandidates(senderClientId);
                 return;
             case MessageType.ICE_CANDIDATE:
                 this.emitOrQueueIceCandidate(parsedMessagePayload, senderClientId);
@@ -326,12 +346,16 @@ export class SignalingClient extends EventEmitter {
     private emitOrQueueIceCandidate(iceCandidate: object, clientId?: string): void {
         const clientIdKey = clientId || SignalingClient.DEFAULT_CLIENT_ID;
         if (this.hasReceivedRemoteSDPByClientId[clientIdKey]) {
+            console.log(`[${new Date().toISOString()}] [DEBUG] ICE candidate from ${clientIdKey} arrived AFTER SDP, emitting immediately`);
             this.emit('iceCandidate', iceCandidate, clientId);
         } else {
             if (!this.pendingIceCandidatesByClientId[clientIdKey]) {
                 this.pendingIceCandidatesByClientId[clientIdKey] = [];
             }
             this.pendingIceCandidatesByClientId[clientIdKey].push(iceCandidate);
+            console.log(
+                `[${new Date().toISOString()}] [DEBUG] ICE candidate from ${clientIdKey} arrived BEFORE SDP, queued (total: ${this.pendingIceCandidatesByClientId[clientIdKey].length})`,
+            );
         }
     }
 
@@ -343,8 +367,12 @@ export class SignalingClient extends EventEmitter {
         this.hasReceivedRemoteSDPByClientId[clientIdKey] = true;
         const pendingIceCandidates = this.pendingIceCandidatesByClientId[clientIdKey];
         if (!pendingIceCandidates) {
+            console.log(`[${new Date().toISOString()}] [DEBUG] drainPendingIceCandidates called for ${clientIdKey}, no pending candidates`);
             return;
         }
+        console.log(
+            `[${new Date().toISOString()}] [DEBUG] drainPendingIceCandidates called for ${clientIdKey}, emitting ${pendingIceCandidates.length} queued candidates`,
+        );
         delete this.pendingIceCandidatesByClientId[clientIdKey];
         pendingIceCandidates.forEach((iceCandidate) => {
             this.emit('iceCandidate', iceCandidate, clientId);

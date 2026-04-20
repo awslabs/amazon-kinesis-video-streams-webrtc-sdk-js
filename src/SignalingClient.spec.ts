@@ -479,7 +479,7 @@ describe('SignalingClient', () => {
                 client.open();
             });
 
-            it('should parse sdpOffer messages from the master and release pending ICE candidates', (done) => {
+            it('should parse sdpOffer messages from the master and release pending ICE candidates when drained', (done) => {
                 const client = new SignalingClient(config as SignalingClientConfig);
                 let count = 0;
                 client.once('sdpOffer', (sdpOffer, senderClientId) => {
@@ -493,6 +493,7 @@ describe('SignalingClient', () => {
                             client.removeAllListeners();
                         }
                     });
+                    client.drainPendingIceCandidates(senderClientId);
                 });
                 client.once('open', () => {
                     MockWebSocket.instance.emit('message', { data: ICE_CANDIDATE_MASTER_MESSAGE });
@@ -532,7 +533,7 @@ describe('SignalingClient', () => {
                 client.open();
             });
 
-            it('should parse sdpAnswer messages from the master and release pending ICE candidates', (done) => {
+            it('should parse sdpAnswer messages from the master and release pending ICE candidates when drained', (done) => {
                 const client = new SignalingClient(config as SignalingClientConfig);
                 client.once('sdpAnswer', (sdpAnswer, senderClientId) => {
                     expect(sdpAnswer).toEqual(SDP_ANSWER_OBJECT);
@@ -546,6 +547,7 @@ describe('SignalingClient', () => {
                             client.removeAllListeners();
                         }
                     });
+                    client.drainPendingIceCandidates(senderClientId);
                 });
                 client.on('open', () => {
                     MockWebSocket.instance.emit('message', { data: ICE_CANDIDATE_MASTER_MESSAGE });
@@ -557,6 +559,18 @@ describe('SignalingClient', () => {
         });
 
         describe('iceCandidate', () => {
+            it('should not emit any candidates when drainPendingIceCandidates is called with no pending candidates', (done) => {
+                const client = new SignalingClient(config as SignalingClientConfig);
+                client.on('iceCandidate', () => {
+                    done(new Error('Should not have emitted iceCandidate'));
+                });
+                client.on('open', () => {
+                    client.drainPendingIceCandidates();
+                    done();
+                });
+                client.open();
+            });
+
             it('should parse iceCandidate messages from the master', (done) => {
                 const client = new SignalingClient(config as SignalingClientConfig);
                 client.on('iceCandidate', (iceCandidate, senderClientId) => {
