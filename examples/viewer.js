@@ -751,6 +751,9 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
             console.debug('SDP answer:', answer);
             metrics.viewer.offAnswerTime.endTime = Date.now();
             await viewer.peerConnection.setRemoteDescription(answer);
+
+            // Now that the remote description is set, drain any ICE candidates that arrived before the SDP answer.
+            viewer.signalingClient.drainPendingIceCandidates();
         });
 
         viewer.signalingClient.on('iceCandidate', candidate => {

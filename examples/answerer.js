@@ -150,6 +150,9 @@ class Answerer {
 
         await this._peerConnection.setRemoteDescription(this._offer);
 
+        // Now that the remote description is set, drain any ICE candidates that arrived before the SDP offer.
+        this._signalingClient.drainPendingIceCandidates(this._remoteClientId);
+
         const [videoCodecs, audioCodecs] = getCodecFilters();
         this._peerConnection.getTransceivers().map(async (transceiver) => {
             if (transceiver.receiver.track.kind === 'video' && videoCodecs) {
