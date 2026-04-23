@@ -257,7 +257,7 @@ export class SignalingClient extends EventEmitter {
      */
     public getPendingIceCandidates(clientId?: string): object[] {
         const clientIdKey = clientId || SignalingClient.DEFAULT_CLIENT_ID;
-        return this.pendingIceCandidatesByClientId[clientIdKey] || [];
+        return [...(this.pendingIceCandidatesByClientId[clientIdKey] || [])];
     }
 
     /**
@@ -439,7 +439,11 @@ export class SignalingClient extends EventEmitter {
         pendingIceCandidates.forEach((iceCandidate) => {
             const hadListeners = this.emit('iceCandidate', iceCandidate, clientId);
             if (!hadListeners) {
-                this.logger?.warn(SignalingClient.LOG_PREFIX, 'No iceCandidate listener attached. ICE candidate was emitted but not handled.');
+                this.logger?.warn(
+                    SignalingClient.LOG_PREFIX,
+                    'No iceCandidate listener attached. ICE candidate was emitted but not handled.',
+                    JSON.stringify(iceCandidate),
+                );
             }
         });
     }

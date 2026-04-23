@@ -271,7 +271,8 @@ This class is the main class for interfacing with the KVS signaling service. It 
   * `systemClockOffset` {number} Optional. Applies the given offset when setting the date in the SigV4 signature.
   See [systemClockOffset](https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/Config.html#systemClockOffset-property) and [correctClockSkew](https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/Config.html#correctClockSkew-property)
   properties of the AWS SDK.
-  * `enableEarlyIceCandidateBuffering` {boolean} Optional. Default: `false`. When `true`, ICE candidates that arrive before the SDP offer/answer are buffered and not automatically emitted. The consumer must call `drainPendingIceCandidates()` after `setRemoteDescription` completes to release them. Set to `true` when connecting to a media server where ICE candidates may arrive before the SDP.
+  * `enableEarlyIceCandidateBuffering` {boolean} Optional. Default: `false`. When `true`, ICE candidates that arrive before the SDP offer/answer are buffered and not automatically emitted. The consumer must call drainPendingIceCandidates() after connecting this client's ice candidate listener to release the early ice candidates.
+  * `logger` {SignalingClientLogger} Optional. Logger object for diagnostic logging. If provided, the SDK logs ICE candidate buffering, draining, and SDP events through this logger. If not provided, no logging occurs. Pass `console` to log to the browser console, or provide a custom object with `debug`, `log`, and `warn` methods.
 
 #### Event: `'open'`
 Emitted when the connection to the signaling service is open.
