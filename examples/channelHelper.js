@@ -140,6 +140,7 @@ class ChannelHelper {
             role: this._role,
             clientId: this._clientId,
             enableEarlyIceCandidateBuffering: this.isIngestionEnabled(),
+            logger: console,
             requestSigner: {
                 // We override the default requestSigner to add timing information.
                 // Inside the function, `this` refers to the function itself,

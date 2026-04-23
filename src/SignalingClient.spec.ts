@@ -127,6 +127,7 @@ describe('SignalingClient', () => {
             requestSigner: {
                 getSignedURL: signer,
             },
+            logger: { debug: jest.fn(), log: jest.fn(), warn: jest.fn() },
         };
     });
 
@@ -464,6 +465,20 @@ describe('SignalingClient', () => {
                 client.open();
             });
 
+            it('should parse sdpOffer messages without a logger configured', (done) => {
+                const noLoggerConfig = { ...config };
+                delete noLoggerConfig.logger;
+                const client = new SignalingClient(noLoggerConfig as SignalingClientConfig);
+                client.once('sdpOffer', (sdpOffer) => {
+                    expect(sdpOffer).toEqual(SDP_OFFER_OBJECT);
+                    done();
+                });
+                client.once('open', () => {
+                    MockWebSocket.instance.emit('message', { data: SDP_OFFER_MASTER_MESSAGE });
+                });
+                client.open();
+            });
+
             it('should parse sdpOffer messages from the viewer', (done) => {
                 config.role = Role.MASTER;
                 delete config.clientId;
@@ -571,16 +586,50 @@ describe('SignalingClient', () => {
                 client.open();
             });
 
+            it('should handle ICE candidates without a logger configured', (done) => {
+                const noLoggerConfig = { ...config };
+                delete noLoggerConfig.logger;
+                const client = new SignalingClient(noLoggerConfig as SignalingClientConfig);
+                let count = 0;
+                client.on('iceCandidate', (iceCandidate) => {
+                    expect(iceCandidate).toEqual(ICE_CANDIDATE_OBJECT);
+                    if (++count === 2) {
+                        done();
+                    }
+                });
+                client.on('open', () => {
+                    // Candidate before SDP - buffered (no logger)
+                    MockWebSocket.instance.emit('message', { data: ICE_CANDIDATE_MASTER_MESSAGE });
+                    // SDP arrives - triggers drain (no logger)
+                    MockWebSocket.instance.emit('message', { data: SDP_ANSWER_MASTER_MESSAGE });
+                    // Candidate after SDP - emitted immediately (no logger)
+                    MockWebSocket.instance.emit('message', { data: ICE_CANDIDATE_MASTER_MESSAGE });
+                });
+                client.open();
+            });
+
             it('should warn when ICE candidates are emitted with no iceCandidate listener', (done) => {
-                const client = new SignalingClient(config as SignalingClientConfig);
-                const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+                const warnSpy = jest.fn();
+                const loggerConfig = { ...config, logger: { debug: jest.fn(), log: jest.fn(), warn: warnSpy } };
+                const client = new SignalingClient(loggerConfig as SignalingClientConfig);
                 client.on('open', () => {
                     // Queue a candidate before SDP
                     MockWebSocket.instance.emit('message', { data: ICE_CANDIDATE_MASTER_MESSAGE });
                     // Receive SDP to trigger auto-drain with no iceCandidate listener
                     MockWebSocket.instance.emit('message', { data: SDP_ANSWER_MASTER_MESSAGE });
                     expect(warnSpy).toHaveBeenCalledWith('[SignalingClient]', 'No iceCandidate listener attached. ICE candidate was emitted but not handled.');
-                    warnSpy.mockRestore();
+                    done();
+                });
+                client.open();
+            });
+
+            it('should not throw when ICE candidates are emitted with no listener and no logger', (done) => {
+                const noLoggerConfig = { ...config };
+                delete noLoggerConfig.logger;
+                const client = new SignalingClient(noLoggerConfig as SignalingClientConfig);
+                client.on('open', () => {
+                    MockWebSocket.instance.emit('message', { data: ICE_CANDIDATE_MASTER_MESSAGE });
+                    MockWebSocket.instance.emit('message', { data: SDP_ANSWER_MASTER_MESSAGE });
                     done();
                 });
                 client.open();
