@@ -336,8 +336,12 @@ export class SignalingClient extends EventEmitter {
         switch (messageType) {
             case MessageType.SDP_OFFER:
                 this.hasReceivedRemoteSDPByClientId[senderClientId || SignalingClient.DEFAULT_CLIENT_ID] = true;
-                console.log('[SignalingClient] SDP_OFFER received. Pending ICE candidates for', senderClientId || SignalingClient.DEFAULT_CLIENT_ID, ':',
-                    (this.pendingIceCandidatesByClientId[senderClientId || SignalingClient.DEFAULT_CLIENT_ID] || []).length);
+                console.log(
+                    '[SignalingClient] SDP_OFFER received. Pending ICE candidates for',
+                    senderClientId || SignalingClient.DEFAULT_CLIENT_ID,
+                    ':',
+                    (this.pendingIceCandidatesByClientId[senderClientId || SignalingClient.DEFAULT_CLIENT_ID] || []).length,
+                );
                 this.emit('sdpOffer', parsedMessagePayload, senderClientId);
                 if (!this.config.enableEarlyIceCandidateBuffering) {
                     this.emitPendingIceCandidates(senderClientId);
@@ -345,8 +349,12 @@ export class SignalingClient extends EventEmitter {
                 return;
             case MessageType.SDP_ANSWER:
                 this.hasReceivedRemoteSDPByClientId[senderClientId || SignalingClient.DEFAULT_CLIENT_ID] = true;
-                console.log('[SignalingClient] SDP_ANSWER received. Pending ICE candidates for', senderClientId || SignalingClient.DEFAULT_CLIENT_ID, ':',
-                    (this.pendingIceCandidatesByClientId[senderClientId || SignalingClient.DEFAULT_CLIENT_ID] || []).length);
+                console.log(
+                    '[SignalingClient] SDP_ANSWER received. Pending ICE candidates for',
+                    senderClientId || SignalingClient.DEFAULT_CLIENT_ID,
+                    ':',
+                    (this.pendingIceCandidatesByClientId[senderClientId || SignalingClient.DEFAULT_CLIENT_ID] || []).length,
+                );
                 this.emit('sdpAnswer', parsedMessagePayload, senderClientId);
                 if (!this.config.enableEarlyIceCandidateBuffering) {
                     this.emitPendingIceCandidates(senderClientId);
@@ -399,9 +407,14 @@ export class SignalingClient extends EventEmitter {
                 this.pendingIceCandidatesByClientId[clientIdKey] = [];
             }
             this.pendingIceCandidatesByClientId[clientIdKey].push(iceCandidate);
-            console.log('[SignalingClient] ICE candidate arrived before SDP for', clientIdKey,
-                '- buffered. Pending count:', this.pendingIceCandidatesByClientId[clientIdKey].length,
-                'Candidate:', JSON.stringify(iceCandidate));
+            console.log(
+                '[SignalingClient] ICE candidate arrived before SDP for',
+                clientIdKey,
+                '- buffered. Pending count:',
+                this.pendingIceCandidatesByClientId[clientIdKey].length,
+                'Candidate:',
+                JSON.stringify(iceCandidate),
+            );
         }
     }
 
