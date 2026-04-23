@@ -618,6 +618,95 @@ describe('SignalingClient', () => {
                 client.open();
             });
         });
+
+        describe('getPendingIceCandidates', () => {
+            it('should return empty array when no candidates are pending', () => {
+                const client = new SignalingClient(config as SignalingClientConfig);
+                expect(client.getPendingIceCandidates()).toEqual([]);
+            });
+
+            it('should return pending candidates that arrived before SDP', (done) => {
+                const client = new SignalingClient(config as SignalingClientConfig);
+                client.on('open', () => {
+                    MockWebSocket.instance.emit('message', { data: ICE_CANDIDATE_MASTER_MESSAGE });
+                    expect(client.getPendingIceCandidates().length).toEqual(1);
+                    done();
+                });
+                client.open();
+            });
+        });
+
+        describe('isEarlyIceCandidateBufferingEnabled', () => {
+            it('should return false by default', () => {
+                const client = new SignalingClient(config as SignalingClientConfig);
+                expect(client.isEarlyIceCandidateBufferingEnabled()).toBe(false);
+            });
+
+            it('should return true when enabled in config', () => {
+                const client = new SignalingClient({
+                    ...config,
+                    enableEarlyIceCandidateBuffering: true,
+                } as SignalingClientConfig);
+                expect(client.isEarlyIceCandidateBufferingEnabled()).toBe(true);
+            });
+
+            it('should not auto-drain pending ICE candidates after SDP offer when enabled', (done) => {
+                const client = new SignalingClient({
+                    ...config,
+                    enableEarlyIceCandidateBuffering: true,
+                } as SignalingClientConfig);
+                client.on('iceCandidate', () => {
+                    done(new Error('Should not have emitted iceCandidate'));
+                });
+                client.on('open', () => {
+                    MockWebSocket.instance.emit('message', { data: ICE_CANDIDATE_MASTER_MESSAGE });
+                    MockWebSocket.instance.emit('message', { data: SDP_OFFER_MASTER_MESSAGE });
+                    // With buffering enabled, candidates should still be pending
+                    expect(client.getPendingIceCandidates().length).toEqual(1);
+                    done();
+                });
+                client.open();
+            });
+
+            it('should not auto-drain pending ICE candidates after SDP answer when enabled', (done) => {
+                const client = new SignalingClient({
+                    ...config,
+                    enableEarlyIceCandidateBuffering: true,
+                } as SignalingClientConfig);
+                client.on('iceCandidate', () => {
+                    done(new Error('Should not have emitted iceCandidate'));
+                });
+                client.on('open', () => {
+                    MockWebSocket.instance.emit('message', { data: ICE_CANDIDATE_MASTER_MESSAGE });
+                    MockWebSocket.instance.emit('message', { data: SDP_ANSWER_MASTER_MESSAGE });
+                    expect(client.getPendingIceCandidates().length).toEqual(1);
+                    done();
+                });
+                client.open();
+            });
+        });
+
+        describe('resetIceCandidateState', () => {
+            it('should re-queue ICE candidates after reset', (done) => {
+                const client = new SignalingClient(config as SignalingClientConfig);
+                client.on('open', () => {
+                    // Receive SDP answer to set hasReceivedRemoteSDPByClientId to true
+                    MockWebSocket.instance.emit('message', { data: SDP_ANSWER_MASTER_MESSAGE });
+
+                    // Reset state to simulate retry
+                    client.resetIceCandidateState();
+
+                    // ICE candidate should now be queued, not emitted
+                    client.on('iceCandidate', () => {
+                        done(new Error('Should not have emitted iceCandidate after reset'));
+                    });
+                    MockWebSocket.instance.emit('message', { data: ICE_CANDIDATE_MASTER_MESSAGE });
+                    expect(client.getPendingIceCandidates().length).toEqual(1);
+                    done();
+                });
+                client.open();
+            });
+        });
     });
 
     describe('outsideBrowser', () => {
