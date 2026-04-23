@@ -571,6 +571,23 @@ describe('SignalingClient', () => {
                 client.open();
             });
 
+            it('should warn when ICE candidates are emitted with no iceCandidate listener', (done) => {
+                const client = new SignalingClient(config as SignalingClientConfig);
+                const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+                client.on('open', () => {
+                    // Queue a candidate before SDP
+                    MockWebSocket.instance.emit('message', { data: ICE_CANDIDATE_MASTER_MESSAGE });
+                    // Receive SDP to trigger auto-drain with no iceCandidate listener
+                    MockWebSocket.instance.emit('message', { data: SDP_ANSWER_MASTER_MESSAGE });
+                    expect(warnSpy).toHaveBeenCalledWith(
+                        '[SignalingClient] No iceCandidate listener attached. ICE candidate was emitted but not handled.',
+                    );
+                    warnSpy.mockRestore();
+                    done();
+                });
+                client.open();
+            });
+
             it('should parse iceCandidate messages from the master', (done) => {
                 const client = new SignalingClient(config as SignalingClientConfig);
                 client.on('iceCandidate', (iceCandidate, senderClientId) => {

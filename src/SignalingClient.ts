@@ -221,9 +221,9 @@ export class SignalingClient extends EventEmitter {
     }
 
     /**
-     * Emits any pending ICE candidates for the given client. Call this after processing the remote SDP
-     * (e.g., after `setRemoteDescription` completes) to ensure ICE candidates are only emitted when the
-     * peer connection is ready to handle them.
+     * Emits any pending ICE candidates for the given client. Call this after attaching the
+     * `iceCandidate` event listener to ensure ICE candidates are only emitted when
+     * the consumer is ready to handle them.
      *
      * When using a media server, ICE candidates may arrive before or immediately after the SDP answer.
      * This method gives the consumer explicit control over when those queued candidates are released.
@@ -400,14 +400,14 @@ export class SignalingClient extends EventEmitter {
     private emitOrQueueIceCandidate(iceCandidate: object, clientId?: string): void {
         const clientIdKey = clientId || SignalingClient.DEFAULT_CLIENT_ID;
         if (this.hasReceivedRemoteSDPByClientId[clientIdKey]) {
-            console.log('[SignalingClient] ICE candidate arrived AFTER SDP for', clientIdKey, '- emitting immediately');
+            console.debug('[SignalingClient] ICE candidate arrived AFTER SDP for', clientIdKey, '- emitting immediately');
             this.emit('iceCandidate', iceCandidate, clientId);
         } else {
             if (!this.pendingIceCandidatesByClientId[clientIdKey]) {
                 this.pendingIceCandidatesByClientId[clientIdKey] = [];
             }
             this.pendingIceCandidatesByClientId[clientIdKey].push(iceCandidate);
-            console.log(
+            console.debug(
                 '[SignalingClient] ICE candidate arrived before SDP for',
                 clientIdKey,
                 '- buffered. Pending count:',
@@ -431,7 +431,10 @@ export class SignalingClient extends EventEmitter {
         console.log('[SignalingClient] DRAINING', pendingIceCandidates.length, 'pending ICE candidates for', clientIdKey);
         delete this.pendingIceCandidatesByClientId[clientIdKey];
         pendingIceCandidates.forEach((iceCandidate) => {
-            this.emit('iceCandidate', iceCandidate, clientId);
+            const hadListeners = this.emit('iceCandidate', iceCandidate, clientId);
+            if (!hadListeners) {
+                console.warn('[SignalingClient] No iceCandidate listener attached. ICE candidate was emitted but not handled.');
+            }
         });
     }
 

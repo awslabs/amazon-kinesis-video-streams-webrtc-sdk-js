@@ -203,7 +203,7 @@ registerMasterSignalingClientCallbacks = (signalingClient, formValues, onStatsRe
             iceCandidate => shouldAcceptCandidate(formValues, iceCandidate),
             mediaStreams => addViewerMediaStreamToMaster(remoteClientId, mediaStreams[0]),
             dataChannelMessage => onRemoteDataMessage(dataChannelMessage),
-            master.channelHelper.getSignalingClient().isEarlyIceCandidateBufferingEnabled(),
+            master.channelHelper.isIngestionEnabled(),
         );
 
         await answerer.init();
@@ -216,7 +216,6 @@ registerMasterSignalingClientCallbacks = (signalingClient, formValues, onStatsRe
             if (event.target.connectionState === 'connected') {
                 const pendingCandidates = signalingClient.getPendingIceCandidates(remoteClientId);
                 if (pendingCandidates.length > 0) {
-                    console.warn(`[${role}] Connection established but ${pendingCandidates.length} ICE candidate(s) are STILL stuck in the queue and were never used. drainPendingIceCandidates() was never called.`);
                     pendingCandidates.forEach((candidate, i) => {
                         console.warn(`[${role}] Stuck candidate ${i + 1}:`, JSON.stringify(candidate));
                     });

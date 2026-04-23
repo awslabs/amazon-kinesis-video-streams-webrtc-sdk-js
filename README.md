@@ -271,6 +271,7 @@ This class is the main class for interfacing with the KVS signaling service. It 
   * `systemClockOffset` {number} Optional. Applies the given offset when setting the date in the SigV4 signature.
   See [systemClockOffset](https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/Config.html#systemClockOffset-property) and [correctClockSkew](https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/Config.html#correctClockSkew-property)
   properties of the AWS SDK.
+  * `enableEarlyIceCandidateBuffering` {boolean} Optional. Default: `false`. When `true`, ICE candidates that arrive before the SDP offer/answer are buffered and not automatically emitted. The consumer must call `drainPendingIceCandidates()` after `setRemoteDescription` completes to release them. Set to `true` when connecting to a media server where ICE candidates may arrive before the SDP.
 
 #### Event: `'open'`
 Emitted when the connection to the signaling service is open.
@@ -340,6 +341,23 @@ Closes the active connection to the signaling service. Nothing will happen if th
 * `iceCandidate` {[RTCIceCandidate](https://developer.mozilla.org/en-US/docs/Web/API/RTCIceCandidate)} ICE candidate to send to the recipient client.
 * `recipientClientId` {string} The id of the client to send the ICE candidate to. If no id is provided, it will be sent to the master.
 * `correlationId` {string} A unique identifier for this message. If there was an error with this message, Signaling will send a failure StatusResponse with the same correlationId.
+
+#### Method: `drainPendingIceCandidates([clientId])`
+Emits any pending ICE candidates that arrived before the SDP offer/answer. Call this after `setRemoteDescription` completes when `enableEarlyIceCandidateBuffering` is enabled.
+* `clientId` {string} The client ID to drain candidates for. Required for 'MASTER' role. If omitted, drains for the default client.
+
+#### Method: `resetIceCandidateState([clientId])`
+Resets the ICE candidate queuing state for the given client. Call this before a retry/reconnect so that ICE candidates arriving before the new SDP are correctly queued instead of being emitted to nonexistent listeners.
+* `clientId` {string} The client ID to reset state for. If omitted, resets the default client.
+
+#### Method: `getPendingIceCandidates([clientId]) => object[]`
+Returns the pending ICE candidates for the given client. Useful for debugging to check if candidates are stuck in the queue.
+* `clientId` {string} The client ID to get pending candidates for. If omitted, returns candidates for the default client.
+* `return` {object[]} Array of pending ICE candidate objects.
+
+#### Method: `isEarlyIceCandidateBufferingEnabled() => boolean`
+Returns whether early ICE candidate buffering is enabled in the client configuration.
+* `return` {boolean} `true` if `enableEarlyIceCandidateBuffering` was set to `true` in the config.
 
 ### Interface: `RequestSigner`
 Interface for signing HTTP and WebSocket requests.
