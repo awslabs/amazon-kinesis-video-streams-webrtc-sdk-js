@@ -346,10 +346,6 @@ Closes the active connection to the signaling service. Nothing will happen if th
 Emits any pending ICE candidates that arrived before the SDP offer/answer. Call this after `setRemoteDescription` completes when `enableEarlyIceCandidateBuffering` is enabled.
 * `clientId` {string} The client ID to drain candidates for. Required for 'MASTER' role. If omitted, drains for the default client.
 
-#### Method: `resetIceCandidateState([clientId])`
-Resets the ICE candidate queuing state for the given client. Call this before a retry/reconnect so that ICE candidates arriving before the new SDP are correctly queued instead of being emitted to nonexistent listeners.
-* `clientId` {string} The client ID to reset state for. If omitted, resets the default client.
-
 #### Method: `getPendingIceCandidates([clientId]) => object[]`
 Returns the pending ICE candidates for the given client. Useful for debugging to check if candidates are stuck in the queue.
 * `clientId` {string} The client ID to get pending candidates for. If omitted, returns candidates for the default client.
