@@ -700,28 +700,6 @@ describe('SignalingClient', () => {
                 client.open();
             });
         });
-
-        describe('resetIceCandidateState', () => {
-            it('should re-queue ICE candidates after reset', (done) => {
-                const client = new SignalingClient(config as SignalingClientConfig);
-                client.on('open', () => {
-                    // Receive SDP answer to set hasReceivedRemoteSDPByClientId to true
-                    MockWebSocket.instance.emit('message', { data: SDP_ANSWER_MASTER_MESSAGE });
-
-                    // Reset state to simulate retry
-                    client.resetIceCandidateState();
-
-                    // ICE candidate should now be queued, not emitted
-                    client.on('iceCandidate', () => {
-                        done(new Error('Should not have emitted iceCandidate after reset'));
-                    });
-                    MockWebSocket.instance.emit('message', { data: ICE_CANDIDATE_MASTER_MESSAGE });
-                    expect(client.getPendingIceCandidates().length).toEqual(1);
-                    done();
-                });
-                client.open();
-            });
-        });
     });
 
     describe('outsideBrowser', () => {

@@ -318,7 +318,6 @@ function onPeerConnectionFailed(remoteClientId, printLostConnectionLog = true) {
         console.warn(`[${role}] Reconnecting...`);
 
         master.sdpOfferReceived = false;
-        master.channelHelper.getSignalingClient().resetIceCandidateState();
         if (!master.websocketOpened) {
             const channelHelper = master.channelHelper;
             if (channelHelper) {
