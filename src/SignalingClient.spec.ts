@@ -579,9 +579,7 @@ describe('SignalingClient', () => {
                     MockWebSocket.instance.emit('message', { data: ICE_CANDIDATE_MASTER_MESSAGE });
                     // Receive SDP to trigger auto-drain with no iceCandidate listener
                     MockWebSocket.instance.emit('message', { data: SDP_ANSWER_MASTER_MESSAGE });
-                    expect(warnSpy).toHaveBeenCalledWith(
-                        '[SignalingClient] No iceCandidate listener attached. ICE candidate was emitted but not handled.',
-                    );
+                    expect(warnSpy).toHaveBeenCalledWith('[SignalingClient]', 'No iceCandidate listener attached. ICE candidate was emitted but not handled.');
                     warnSpy.mockRestore();
                     done();
                 });

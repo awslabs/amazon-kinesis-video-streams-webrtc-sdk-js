@@ -79,6 +79,7 @@ export interface StatusResponse {
  */
 export class SignalingClient extends EventEmitter {
     private static DEFAULT_CLIENT_ID = 'MASTER';
+    private static LOG_PREFIX = '[SignalingClient]';
 
     private websocket: WebSocket = null;
     private readyState = ReadyState.CLOSED;
@@ -261,7 +262,7 @@ export class SignalingClient extends EventEmitter {
         const clientIdKey = clientId || SignalingClient.DEFAULT_CLIENT_ID;
         delete this.hasReceivedRemoteSDPByClientId[clientIdKey];
         delete this.pendingIceCandidatesByClientId[clientIdKey];
-        console.log('[SignalingClient] ICE candidate state reset for', clientIdKey);
+        console.debug(SignalingClient.LOG_PREFIX, 'ICE candidate state reset for', clientIdKey);
     }
 
     /**
@@ -336,8 +337,9 @@ export class SignalingClient extends EventEmitter {
         switch (messageType) {
             case MessageType.SDP_OFFER:
                 this.hasReceivedRemoteSDPByClientId[senderClientId || SignalingClient.DEFAULT_CLIENT_ID] = true;
-                console.log(
-                    '[SignalingClient] SDP_OFFER received. Pending ICE candidates for',
+                console.debug(
+                    SignalingClient.LOG_PREFIX,
+                    'SDP_OFFER received. Pending ICE candidates for',
                     senderClientId || SignalingClient.DEFAULT_CLIENT_ID,
                     ':',
                     (this.pendingIceCandidatesByClientId[senderClientId || SignalingClient.DEFAULT_CLIENT_ID] || []).length,
@@ -349,8 +351,9 @@ export class SignalingClient extends EventEmitter {
                 return;
             case MessageType.SDP_ANSWER:
                 this.hasReceivedRemoteSDPByClientId[senderClientId || SignalingClient.DEFAULT_CLIENT_ID] = true;
-                console.log(
-                    '[SignalingClient] SDP_ANSWER received. Pending ICE candidates for',
+                console.debug(
+                    SignalingClient.LOG_PREFIX,
+                    'SDP_ANSWER received. Pending ICE candidates for',
                     senderClientId || SignalingClient.DEFAULT_CLIENT_ID,
                     ':',
                     (this.pendingIceCandidatesByClientId[senderClientId || SignalingClient.DEFAULT_CLIENT_ID] || []).length,
@@ -400,7 +403,7 @@ export class SignalingClient extends EventEmitter {
     private emitOrQueueIceCandidate(iceCandidate: object, clientId?: string): void {
         const clientIdKey = clientId || SignalingClient.DEFAULT_CLIENT_ID;
         if (this.hasReceivedRemoteSDPByClientId[clientIdKey]) {
-            console.debug('[SignalingClient] ICE candidate arrived AFTER SDP for', clientIdKey, '- emitting immediately');
+            console.debug(SignalingClient.LOG_PREFIX, 'ICE candidate arrived AFTER SDP for', clientIdKey, '- emitting immediately');
             this.emit('iceCandidate', iceCandidate, clientId);
         } else {
             if (!this.pendingIceCandidatesByClientId[clientIdKey]) {
@@ -408,7 +411,8 @@ export class SignalingClient extends EventEmitter {
             }
             this.pendingIceCandidatesByClientId[clientIdKey].push(iceCandidate);
             console.debug(
-                '[SignalingClient] ICE candidate arrived before SDP for',
+                SignalingClient.LOG_PREFIX,
+                'ICE candidate arrived before SDP for',
                 clientIdKey,
                 '- buffered. Pending count:',
                 this.pendingIceCandidatesByClientId[clientIdKey].length,
@@ -428,12 +432,12 @@ export class SignalingClient extends EventEmitter {
         if (!pendingIceCandidates) {
             return;
         }
-        console.log('[SignalingClient] DRAINING', pendingIceCandidates.length, 'pending ICE candidates for', clientIdKey);
+        console.debug(SignalingClient.LOG_PREFIX, 'DRAINING', pendingIceCandidates.length, 'pending ICE candidates for', clientIdKey);
         delete this.pendingIceCandidatesByClientId[clientIdKey];
         pendingIceCandidates.forEach((iceCandidate) => {
             const hadListeners = this.emit('iceCandidate', iceCandidate, clientId);
             if (!hadListeners) {
-                console.warn('[SignalingClient] No iceCandidate listener attached. ICE candidate was emitted but not handled.');
+                console.warn(SignalingClient.LOG_PREFIX, 'No iceCandidate listener attached. ICE candidate was emitted but not handled.');
             }
         });
     }
