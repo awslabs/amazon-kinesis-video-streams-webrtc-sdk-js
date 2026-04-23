@@ -251,6 +251,20 @@ export class SignalingClient extends EventEmitter {
     }
 
     /**
+     * Resets the ICE candidate queuing state for the given client.
+     * Call this before a retry/reconnect so that ICE candidates arriving before the new SDP
+     * are correctly queued instead of being emitted to nonexistent listeners.
+     *
+     * @param {string} [clientId] - The client ID to reset state for. If omitted, resets the default client.
+     */
+    public resetIceCandidateState(clientId?: string): void {
+        const clientIdKey = clientId || SignalingClient.DEFAULT_CLIENT_ID;
+        delete this.hasReceivedRemoteSDPByClientId[clientIdKey];
+        delete this.pendingIceCandidatesByClientId[clientIdKey];
+        console.log('[SignalingClient] ICE candidate state reset for', clientIdKey);
+    }
+
+    /**
      * Validates the WebSocket connection is open and that the recipient client id is present if sending as the 'MASTER'. Encodes the given message payload
      * and sends the message to the signaling service.
      */
