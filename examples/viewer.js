@@ -532,6 +532,7 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
                 },
             },
             systemClockOffset: kinesisVideoClient.config.systemClockOffset,
+            logger: console,
         });
 
         const resolution = formValues.widescreen
