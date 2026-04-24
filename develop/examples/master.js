@@ -203,6 +203,7 @@ registerMasterSignalingClientCallbacks = (signalingClient, formValues, onStatsRe
             iceCandidate => shouldAcceptCandidate(formValues, iceCandidate),
             mediaStreams => addViewerMediaStreamToMaster(remoteClientId, mediaStreams[0]),
             dataChannelMessage => onRemoteDataMessage(dataChannelMessage),
+            master.channelHelper.isIngestionEnabled(),
         );
 
         await answerer.init();
@@ -211,6 +212,15 @@ registerMasterSignalingClientCallbacks = (signalingClient, formValues, onStatsRe
 
         answerer.getPeerConnection().addEventListener('connectionstatechange', async event => {
             printPeerConnectionStateInfo(event, `[${role}]`, remoteClientId);
+
+            if (event.target.connectionState === 'connected') {
+                const pendingCandidates = signalingClient.getPendingIceCandidates(remoteClientId);
+                if (pendingCandidates.length > 0) {
+                    pendingCandidates.forEach((candidate, i) => {
+                        console.warn(`[${role}] Stuck candidate ${i + 1}:`, JSON.stringify(candidate));
+                    });
+                }
+            }
 
             if (master.channelHelper.isIngestionEnabled() && event.target.connectionState === 'connected') {
                 if (role === 'MASTER') {
