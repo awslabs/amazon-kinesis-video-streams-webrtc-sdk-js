@@ -40,6 +40,7 @@ class Answerer {
         inboundIceCandidateFilterFn = candidate => true,
         mediaStreamsUpdated = mediaStreams => {},
         dataChannelMessageReceived = (dataChannelMessage) => {},
+        enableEarlyIceCandidateBuffering = false,
     ) {
         this._configuration = rtcPeerConnectionConfiguration;
         this._mediaStream = localMediaStream;
@@ -53,6 +54,7 @@ class Answerer {
         this._inboundIceCandidateFilterFn = inboundIceCandidateFilterFn;
         this._onMediaStreamsUpdated = mediaStreamsUpdated;
         this._dataChannelMessageReceived = dataChannelMessageReceived;
+        this._enableEarlyIceCandidateBuffering = enableEarlyIceCandidateBuffering;
 
         this._dataChannel = null;
         this._peerConnection = null;
@@ -149,6 +151,12 @@ class Answerer {
         }
 
         await this._peerConnection.setRemoteDescription(this._offer);
+
+        // When early ICE candidate buffering is enabled (media server mode), manually drain
+        // any ICE candidates that arrived before the SDP offer.
+        if (this._enableEarlyIceCandidateBuffering) {
+            this._signalingClient.drainPendingIceCandidates(this._remoteClientId);
+        }
 
         const [videoCodecs, audioCodecs] = getCodecFilters();
         this._peerConnection.getTransceivers().map(async (transceiver) => {
