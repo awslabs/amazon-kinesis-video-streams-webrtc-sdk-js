@@ -347,7 +347,7 @@ export class SignalingClient extends EventEmitter {
                     (this.pendingIceCandidatesByClientId[senderClientId || SignalingClient.DEFAULT_CLIENT_ID] || []).length,
                 );
                 this.emit('sdpOffer', parsedMessagePayload, senderClientId);
-                if (!this.config.enableEarlyIceCandidateBuffering) {
+                if (!this.isEarlyIceCandidateBufferingEnabled()) {
                     this.emitPendingIceCandidates(senderClientId);
                 }
                 return;
@@ -361,7 +361,7 @@ export class SignalingClient extends EventEmitter {
                     (this.pendingIceCandidatesByClientId[senderClientId || SignalingClient.DEFAULT_CLIENT_ID] || []).length,
                 );
                 this.emit('sdpAnswer', parsedMessagePayload, senderClientId);
-                if (!this.config.enableEarlyIceCandidateBuffering) {
+                if (!this.isEarlyIceCandidateBufferingEnabled()) {
                     this.emitPendingIceCandidates(senderClientId);
                 }
                 return;
