@@ -1,6 +1,6 @@
 {
     "name": "amazon-kinesis-video-streams-webrtc",
-    "version": "2.7.0",
+    "version": "2.8.0",
     "description": "Amazon Kinesis Video Streams WebRTC SDK for JavaScript.",
     "repository": {
         "type": "git",
