@@ -531,53 +531,42 @@ async function printPeerConnectionStateInfo(event, logPrefix, remoteClientId) {
         const stats = await rtcPeerConnection.getStats();
         if (!stats) return;
 
-        rtcPeerConnection.getSenders().map(sender => {
-            const trackType = sender.track?.kind;
-            if (sender.transport) {
-                const iceTransport = sender.transport.iceTransport;
-                if (iceTransport && typeof iceTransport.getSelectedCandidatePair === 'function') {
-                    const logSelectedCandidate = () =>
-                        console.debug(`Chosen candidate pair (${trackType || 'unknown'}):`, iceTransport.getSelectedCandidatePair());
-                    iceTransport.onselectedcandidatepairchange = logSelectedCandidate;
-                    logSelectedCandidate();
-                } else {
-                    // Find nominated candidate pair
-                    const nominatedPair = Array.from(stats.values()).find(report => 
-                    report.type === 'candidate-pair' && 
-                    report.nominated === true
-                    );
-            
-                    if (nominatedPair) {
-                        // Get local and remote candidate detailsl;                     
-                        const localCandidate = stats.get(nominatedPair.localCandidateId);
-                        const remoteCandidate = stats.get(nominatedPair.remoteCandidateId);
-                        
-                        if (localCandidate && remoteCandidate) {
-                            console.debug(`Chosen candidate pair (${trackType || 'unknown'}):`, {
-                                local: {
-                                    id: localCandidate.id,
-                                    address: localCandidate.address,
-                                    port: localCandidate.port,
-                                    type: localCandidate.candidateType,
-                                    protocol: localCandidate.protocol,
-                                    priority: localCandidate.priority
-                                },
-                                remote: {
-                                    id: remoteCandidate.id,
-                                    address: remoteCandidate.address,
-                                    port: remoteCandidate.port,
-                                    type: remoteCandidate.candidateType,
-                                    protocol: remoteCandidate.protocol,
-                                    priority: remoteCandidate.priority
-                                }
-                            });
-                        }
+        // Find nominated candidate pair from stats (works for both senders and receivers)
+        const nominatedPair = Array.from(stats.values()).find(report =>
+            report.type === 'candidate-pair' && report.nominated === true
+        );
+
+        if (nominatedPair) {
+            const localCandidate = stats.get(nominatedPair.localCandidateId);
+            const remoteCandidate = stats.get(nominatedPair.remoteCandidateId);
+
+            if (localCandidate && remoteCandidate) {
+                console.log(`Chosen candidate pair:`, JSON.stringify({
+                    local: {
+                        id: localCandidate.id,
+                        address: localCandidate.address,
+                        port: localCandidate.port,
+                        type: localCandidate.candidateType,
+                        protocol: localCandidate.protocol,
+                        priority: localCandidate.priority
+                    },
+                    remote: {
+                        id: remoteCandidate.id,
+                        address: remoteCandidate.address,
+                        port: remoteCandidate.port,
+                        type: remoteCandidate.candidateType,
+                        protocol: remoteCandidate.protocol,
+                        priority: remoteCandidate.priority
                     }
-                }
+                }));
             } else {
-                console.error('Failed to fetch the candidate pair!');
+                console.warn(logPrefix, 'Nominated pair found but could not resolve candidate details.',
+                    'localCandidateId:', nominatedPair.localCandidateId,
+                    'remoteCandidateId:', nominatedPair.remoteCandidateId);
             }
-        });
+        } else {
+            console.warn(logPrefix, 'No nominated candidate pair found in stats.');
+        }
     } else if (rtcPeerConnection.connectionState === 'failed') {
         if (remoteClientId) {
             removeViewerTrackFromMaster(remoteClientId);
