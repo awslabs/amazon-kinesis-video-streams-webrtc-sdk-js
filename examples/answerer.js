@@ -92,6 +92,7 @@ class Answerer {
         };
 
         this._signalingClient.on('iceCandidate', this._addIceCandidate);
+        console.log(this._loggingPrefix, 'iceCandidate listener registered for', this._remoteClientId || 'remote');
 
         this._peerConnection.addEventListener('icecandidate', ({ candidate }) => {
             // `candidate` will be the empty string if the event indicates that there are no further candidates

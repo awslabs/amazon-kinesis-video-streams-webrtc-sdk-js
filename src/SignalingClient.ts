@@ -328,6 +328,7 @@ export class SignalingClient extends EventEmitter {
         if (this.hasReceivedRemoteSDPByClientId[clientIdKey]) {
             this.emit('iceCandidate', iceCandidate, clientId);
         } else {
+            console.log('[SignalingClient] ICE candidate arrived BEFORE SDP for', clientIdKey, '- buffering.');
             if (!this.pendingIceCandidatesByClientId[clientIdKey]) {
                 this.pendingIceCandidatesByClientId[clientIdKey] = [];
             }
