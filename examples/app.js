@@ -251,6 +251,7 @@ $('#master-button').click(async () => {
 
     printFormValues(formValues);
 
+    console.log(`[${ROLE}] SDK version: ${KVSWebRTC.VERSION || 'unknown'}`);
     startMaster(localView, remoteView, formValues, onStatsReport, event => {
         remoteMessage.append(`${event.data}\n`);
     });
@@ -343,6 +344,7 @@ $('#viewer-button').click(async () => {
 
     printFormValues(formValues);
 
+    console.log(`[VIEWER] SDK version: ${KVSWebRTC.VERSION || 'unknown'}`);
     startViewer(localView, remoteView, formValues, onStatsReport, remoteMessage);
 });
 
