@@ -3,6 +3,16 @@ const LOG_LEVELS = ['debug', 'info', 'warn', 'error'];
 let LOG_LEVEL = 'info'; // Possible values: any value of LOG_LEVELS
 let channelHelper = null; // Holder for channelHelper
 
+// Display SDK version dynamically from package.json
+fetch('../package.json')
+    .then(response => response.json())
+    .then(pkg => {
+        document.getElementById('sdk-version').textContent = 'v' + pkg.version;
+    })
+    .catch(() => {
+        document.getElementById('sdk-version').textContent = 'v' + (KVSWebRTC.VERSION || 'unknown');
+    });
+
 // All supported codecs
 const allVCodecs = RTCRtpSender.getCapabilities('video').codecs;
 const allACodecs = RTCRtpSender.getCapabilities('audio').codecs;
@@ -241,6 +251,7 @@ $('#master-button').click(async () => {
 
     printFormValues(formValues);
 
+    console.log(`[${ROLE}] SDK version: ${KVSWebRTC.VERSION || 'unknown'}`);
     startMaster(localView, remoteView, formValues, onStatsReport, event => {
         remoteMessage.append(`${event.data}\n`);
     });
@@ -333,6 +344,7 @@ $('#viewer-button').click(async () => {
 
     printFormValues(formValues);
 
+    console.log(`[VIEWER] SDK version: ${KVSWebRTC.VERSION || 'unknown'}`);
     startViewer(localView, remoteView, formValues, onStatsReport, remoteMessage);
 });
 
