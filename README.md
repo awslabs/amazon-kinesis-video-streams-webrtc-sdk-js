@@ -352,6 +352,10 @@ Returns the pending ICE candidates for the given client. Useful for debugging to
 * `clientId` {string} The client ID to get pending candidates for. If omitted, returns candidates for the default client.
 * `return` {object[]} Array of pending ICE candidate objects.
 
+#### Method: `resetIceCandidateState([clientId])`
+Resets the ICE candidate state for a given client. Clears the `hasReceivedRemoteSDPByClientId` flag and any pending ICE candidates so that on reconnection, candidates arriving before the new SDP offer are properly queued. Call this before retrying a peer connection (e.g., in ingestion mode) to prevent candidate loss.
+* `clientId` {string} The client ID to reset state for. Required for 'MASTER' role. If omitted, resets for the default client.
+
 #### Method: `isEarlyIceCandidateBufferingEnabled() => boolean`
 Returns whether early ICE candidate buffering is enabled in the client configuration.
 * `return` {boolean} `true` if `enableEarlyIceCandidateBuffering` was set to `true` in the config.

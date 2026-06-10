@@ -687,6 +687,56 @@ describe('SignalingClient', () => {
             });
         });
 
+        describe('resetIceCandidateState', () => {
+            it('should clear pending ICE candidates for the default client ID (viewer)', (done) => {
+                const client = new SignalingClient(config as SignalingClientConfig);
+                client.on('open', () => {
+                    MockWebSocket.instance.emit('message', { data: ICE_CANDIDATE_MASTER_MESSAGE });
+                    expect(client.getPendingIceCandidates().length).toEqual(1);
+                    client.resetIceCandidateState();
+                    expect(client.getPendingIceCandidates().length).toEqual(0);
+                    done();
+                });
+                client.open();
+            });
+
+            it('should clear pending ICE candidates for a specific client ID (master)', (done) => {
+                config.role = Role.MASTER;
+                delete config.clientId;
+                const client = new SignalingClient(config as SignalingClientConfig);
+                client.on('open', () => {
+                    MockWebSocket.instance.emit('message', { data: ICE_CANDIDATE_VIEWER_MESSAGE });
+                    expect(client.getPendingIceCandidates(CLIENT_ID).length).toEqual(1);
+                    client.resetIceCandidateState(CLIENT_ID);
+                    expect(client.getPendingIceCandidates(CLIENT_ID).length).toEqual(0);
+                    done();
+                });
+                client.open();
+            });
+
+            it('should reset hasReceivedRemoteSDPByClientId so that candidates are buffered again', (done) => {
+                const client = new SignalingClient(config as SignalingClientConfig);
+                client.on('open', () => {
+                    // Receive SDP to set hasReceivedRemoteSDPByClientId = true
+                    MockWebSocket.instance.emit('message', { data: SDP_ANSWER_MASTER_MESSAGE });
+                    // Reset state
+                    client.resetIceCandidateState();
+                    // Now ICE candidates should be buffered again instead of emitted immediately
+                    MockWebSocket.instance.emit('message', { data: ICE_CANDIDATE_MASTER_MESSAGE });
+                    expect(client.getPendingIceCandidates().length).toEqual(1);
+                    done();
+                });
+                client.open();
+            });
+
+            it('should work without a logger configured', () => {
+                const noLoggerConfig = { ...config };
+                delete noLoggerConfig.logger;
+                const client = new SignalingClient(noLoggerConfig as SignalingClientConfig);
+                expect(() => client.resetIceCandidateState()).not.toThrow();
+            });
+        });
+
         describe('getPendingIceCandidates', () => {
             it('should return empty array when no candidates are pending', () => {
                 const client = new SignalingClient(config as SignalingClientConfig);
