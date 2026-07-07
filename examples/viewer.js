@@ -764,6 +764,15 @@ async function startViewer(localView, remoteViewContainer, formValues, onStatsRe
             console.debug('SDP answer:', answer);
             metrics.viewer.offAnswerTime.endTime = Date.now();
             await viewer.peerConnection.setRemoteDescription(answer);
+
+            // Log transceiver directions after SDP answer is applied
+            if (formValues.receiveMultiTrack) {
+                viewer.peerConnection.getTransceivers().forEach(t => {
+                    if (t.currentDirection === 'inactive') {
+                        console.debug(`[VIEWER] Transceiver mid=${t.mid} (${t.receiver.track.kind}) is inactive - remote peer did not send on this m-line`);
+                    }
+                });
+            }
         });
 
         viewer.signalingClient.on('iceCandidate', candidate => {
