@@ -769,7 +769,7 @@ async function startViewer(localView, remoteViewContainer, formValues, onStatsRe
             if (formValues.receiveMultiTrack) {
                 viewer.peerConnection.getTransceivers().forEach(t => {
                     if (t.currentDirection === 'inactive') {
-                        console.debug(`[VIEWER] Transceiver mid=${t.mid} (${t.receiver.track.kind}) is inactive - remote peer did not send on this m-line`);
+                        console.warn(`[VIEWER] Transceiver mid=${t.mid} (${t.receiver.track.kind}) is inactive - remote peer did not send on this m-line`);
                     }
                 });
             }
@@ -827,7 +827,8 @@ async function startViewer(localView, remoteViewContainer, formValues, onStatsRe
             printPeerConnectionStateInfo(event, '[VIEWER]');
         });
 
-        // As remote tracks are received, add them to the remote view
+        // As remote tracks are received, add them to the remote view.
+        // Note: track events fire sequentially on the JS event loop (single-threaded) — no race conditions.
         viewer.peerConnection.addEventListener('track', event => {
             console.log(
                 '[VIEWER] Received',
@@ -842,13 +843,7 @@ async function startViewer(localView, remoteViewContainer, formValues, onStatsRe
 
             if (event.track.kind !== 'video') {
                 // Single video track: attach audio directly to the video element (1V+1A backwards compat)
-                if (viewer.remoteViews.length <= 1 && !viewer.audioElement) {
-                    // If audio arrives before video, buffer the track to attach once video arrives
-                    if (viewer.remoteViews.length === 0) {
-                        viewer.pendingAudioTrack = event.track;
-                        viewer.pendingAudioStreamName = event.streams[0]?.id || event.track.label || event.track.id;
-                        return;
-                    }
+                if (viewer.remoteViews.length === 1 && !viewer.audioElement) {
                     viewer.remoteViews[0].srcObject.addTrack(event.track);
                     const videoLabel = viewer.remoteViews[0].parentElement.querySelector('.track-label');
                     const audioStreamName = event.streams[0]?.id || event.track.label || event.track.id;
@@ -969,21 +964,21 @@ async function startViewer(localView, remoteViewContainer, formValues, onStatsRe
             viewer.remoteViews.push(videoElement);
             viewer.remoteStreams.push(stream);
 
-            // If audio arrived before this first video, attach it now
-            if (viewer.remoteViews.length === 1 && viewer.pendingAudioTrack) {
-                stream.addTrack(viewer.pendingAudioTrack);
-                viewer.audioTrackLabel = viewer.pendingAudioStreamName;
-                const label = container.querySelector('.track-label');
-                if (label) {
-                    const videoStreamName = label.textContent;
-                    if (viewer.pendingAudioStreamName === videoStreamName) {
-                        label.textContent = videoStreamName + ' (video + audio)';
-                    } else {
-                        label.textContent = videoStreamName + ' + ' + viewer.pendingAudioStreamName;
-                    }
+            // If this is the first video and audio arrived earlier (temporary <audio> element),
+            // move audio into this <video> element for the combined 1V+1A experience.
+            if (viewer.remoteViews.length === 1 && viewer.audioElement) {
+                viewer.audioElement.srcObject.getTracks().forEach((track) => {
+                    stream.addTrack(track);
+                });
+                const audioStreamName = viewer.audioTrackLabel || 'audio';
+                const videoStreamName = trackLabel.textContent;
+                if (audioStreamName === videoStreamName) {
+                    trackLabel.textContent = videoStreamName + ' (video + audio)';
+                } else {
+                    trackLabel.textContent = videoStreamName + ' + ' + audioStreamName;
                 }
-                viewer.pendingAudioTrack = null;
-                viewer.pendingAudioStreamName = null;
+                viewer.audioElement.parentElement.remove();
+                viewer.audioElement = null;
             }
 
             // Attach time-to-first-frame listener on the first video track
@@ -1045,9 +1040,6 @@ function stopViewer() {
             });
             viewer.remoteViews = null;
         }
-
-        viewer.pendingAudioTrack = null;
-        viewer.pendingAudioStreamName = null;
 
         if (viewer.audioElement) {
             viewer.audioElement.srcObject?.getTracks().forEach(track => track.stop());
