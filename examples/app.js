@@ -116,6 +116,7 @@ function getFormValues() {
         autoDetermineMediaIngestMode: $('#ingest-media').is(':checked'),
         showJSSButton: $('#show-join-storage-session-button').is(':checked'),
         showJSSAsViewerButton: $('#show-join-storage-session-as-viewer-button').is(':checked'),
+        receiveMultiTrack: $('#receiveMultiTrack').is(':checked'),
         openDataChannel: $('#openDataChannel').is(':checked'),
         widescreen: $('#widescreen').is(':checked'),
         fullscreen: $('#fullscreen').is(':checked'),
@@ -325,7 +326,7 @@ $('#viewer-button').click(async () => {
     $('#viewer').removeClass('d-none');
 
     const localView = $('#viewer .local-view')[0];
-    const remoteView = $('#viewer .remote-view')[0];
+    const remoteViewContainer = $('#viewer .remote-views')[0];
     const localMessage = $('#viewer .local-message')[0];
     const remoteMessage = $('#viewer .remote-message')[0];
 
@@ -345,7 +346,7 @@ $('#viewer-button').click(async () => {
     printFormValues(formValues);
 
     console.log(`[VIEWER] SDK version: ${KVSWebRTC.VERSION || 'unknown'}`);
-    startViewer(localView, remoteView, formValues, onStatsReport, remoteMessage);
+    startViewer(localView, remoteViewContainer, formValues, onStatsReport, remoteMessage);
 });
 
 function updateViewerUI() {
@@ -660,6 +661,7 @@ const fields = [
     {field: 'show-join-storage-session-as-viewer-button', type: 'checkbox'},
     {field: 'widescreen', type: 'radio', name: 'resolution'},
     {field: 'fullscreen', type: 'radio', name: 'resolution'},
+    {field: 'receiveMultiTrack', type: 'checkbox'},
     {field: 'openDataChannel', type: 'checkbox'},
     {field: 'useTrickleICE', type: 'checkbox'},
     {field: 'natTraversalEnabled', type: 'radio', name: 'natTraversal'},
