@@ -256,7 +256,161 @@ let dataChannelLatencyCalcMessage = {
     'lastMessageFromViewerTs': ''
 }
 
-async function startViewer(localView, remoteView, formValues, onStatsReport, remoteMessage) {
+const TrackMode = {
+    NONE: 'None',
+    VIDEO_ONLY: 'VideoOnly',
+    AUDIO_ONLY: 'AudioOnly',
+    AUDIO_VIDEO: 'AudioVideo',
+    MULTI: 'Multi',
+};
+
+/**
+ * Adds an audio track to the appropriate element based on the current track mode.
+ */
+function addAudioTrack(track, streamName) {
+    if (viewer.trackMode === TrackMode.MULTI) {
+        const audioEl = viewer.audioElements[viewer.audioIndex];
+        if (!audioEl) return;
+        if (!audioEl.srcObject) {
+            audioEl.srcObject = new MediaStream();
+        }
+        audioEl.srcObject.addTrack(track);
+        const label = document.createElement('span');
+        label.classList.add('track-label');
+        label.textContent = streamName.toLowerCase().includes('audio') ? streamName : streamName + ' (audio)';
+        audioEl.parentElement.insertBefore(label, audioEl);
+        viewer.audioIndex++;
+    } else if (viewer.trackMode === TrackMode.AUDIO_VIDEO || viewer.trackMode === TrackMode.AUDIO_ONLY) {
+        const videoEl = viewer.videoElements[0];
+        if (!videoEl.srcObject) {
+            videoEl.srcObject = new MediaStream();
+        }
+        videoEl.srcObject.addTrack(track);
+        // In AUDIO_VIDEO mode, addVideoTrack handles the combined label.
+        // In AUDIO_ONLY mode, add a label since there's no video to set one.
+        if (viewer.trackMode === TrackMode.AUDIO_ONLY) {
+            const label = document.createElement('span');
+            label.classList.add('track-label');
+            label.textContent = streamName.toLowerCase().includes('audio') ? streamName : streamName + ' (audio)';
+            videoEl.parentElement.insertBefore(label, videoEl);
+        }
+    } else {
+        console.warn('[VIEWER] Unexpected audio track in', viewer.trackMode, 'mode');
+    }
+}
+
+/**
+ * Adds a video track to the next pre-created video element.
+ * Returns the stream, or null if no element is available.
+ */
+function addVideoTrack(track, streamName) {
+    const videoEl = viewer.videoElements[viewer.videoIndex];
+    if (!videoEl) {
+        console.warn('[VIEWER] No pre-created video element available for track', track.id);
+        return;
+    }
+
+    if (videoEl.srcObject) {
+        videoEl.srcObject.addTrack(track);
+    } else {
+        videoEl.srcObject = new MediaStream([track]);
+    }
+
+    const label = document.createElement('span');
+    label.classList.add('track-label');
+    if (viewer.trackMode === TrackMode.AUDIO_VIDEO) {
+        label.textContent = streamName + ' (video + audio)';
+    } else {
+        label.textContent = streamName;
+    }
+    videoEl.parentElement.insertBefore(label, videoEl);
+
+    viewer.remoteViews.push(videoEl);
+    viewer.remoteStreams.push(videoEl.srcObject);
+    viewer.videoIndex++;
+}
+
+/**
+ * Pre-creates DOM elements for remote tracks based on the negotiated SDP answer.
+ * Called on first "ontrack" event, when transceiver directions are known.
+ *
+ * Display logic:
+ *   1V + 1A (or less): single <video> element handles both.
+ *   Otherwise: each track gets its own element.
+ */
+function initRemoteTrackViews(remoteViewContainer, formValues) {
+    const activeTransceivers = viewer.peerConnection.getTransceivers().filter(
+        (t) => t.currentDirection === 'recvonly' || t.currentDirection === 'sendrecv',
+    );
+    const expectedVideoCount = activeTransceivers.filter((t) => t.receiver.track.kind === 'video').length;
+    const expectedAudioCount = activeTransceivers.filter((t) => t.receiver.track.kind === 'audio').length;
+    console.log(`[VIEWER] Expecting ${expectedVideoCount} video + ${expectedAudioCount} audio track(s) from remote`);
+
+    if (expectedVideoCount > 1 || expectedAudioCount > 1) {
+        viewer.trackMode = TrackMode.MULTI;
+    } else if (expectedVideoCount === 1 && expectedAudioCount === 1) {
+        viewer.trackMode = TrackMode.AUDIO_VIDEO;
+    } else if (expectedVideoCount === 1) {
+        viewer.trackMode = TrackMode.VIDEO_ONLY;
+    } else if (expectedAudioCount === 1) {
+        viewer.trackMode = TrackMode.AUDIO_ONLY;
+    } else {
+        viewer.trackMode = TrackMode.NONE;
+    }
+    console.log(`[VIEWER] Receiving track mode: ${viewer.trackMode}`);
+
+    viewer.videoElements = [];
+    viewer.audioElements = [];
+    remoteViewContainer.innerHTML = '';
+
+    if (viewer.trackMode !== TrackMode.MULTI) {
+        const container = document.createElement('div');
+        container.classList.add('video-container');
+        const videoEl = document.createElement('video');
+        videoEl.autoplay = true;
+        videoEl.setAttribute('playsinline', '');
+        videoEl.controls = true;
+        container.appendChild(videoEl);
+        remoteViewContainer.appendChild(container);
+        viewer.videoElements.push(videoEl);
+    } else {
+        for (let i = 0; i < expectedVideoCount; i++) {
+            const container = document.createElement('div');
+            container.classList.add('video-container');
+            const videoEl = document.createElement('video');
+            videoEl.autoplay = true;
+            videoEl.setAttribute('playsinline', '');
+            videoEl.controls = true;
+            container.appendChild(videoEl);
+            remoteViewContainer.appendChild(container);
+            viewer.videoElements.push(videoEl);
+        }
+        for (let i = 0; i < expectedAudioCount; i++) {
+            const container = document.createElement('div');
+            container.classList.add('video-container');
+            const audioEl = document.createElement('audio');
+            audioEl.autoplay = true;
+            audioEl.controls = true;
+            container.appendChild(audioEl);
+            remoteViewContainer.appendChild(container);
+            viewer.audioElements.push(audioEl);
+        }
+    }
+
+    viewer.videoIndex = 0;
+    viewer.audioIndex = 0;
+
+    // Log inactive transceivers as warnings
+    if (formValues.receiveMultiTrack) {
+        viewer.peerConnection.getTransceivers().forEach((t) => {
+            if (t.currentDirection === 'inactive') {
+                console.warn(`[VIEWER] Transceiver mid=${t.mid} (${t.receiver.track.kind}) is inactive - remote peer did not send on this m-line`);
+            }
+        });
+    }
+}
+
+async function startViewer(localView, remoteViewContainer, formValues, onStatsReport, remoteMessage) {
     try {
         console.log('[VIEWER] Client id is:', formValues.clientId);
         viewerButtonPressed = new Date();
@@ -266,7 +420,9 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
         }
 
         viewer.localView = localView;
-        viewer.remoteView = remoteView;
+        viewer.remoteViewContainer = remoteViewContainer;
+        viewer.remoteViews = [];
+        viewer.remoteStreams = [];
 
         viewer.loadedDataCallback = () => {
             metrics.viewer.ttff.endTime = Date.now();
@@ -285,8 +441,6 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
                 timeToFirstFrameFromViewerStart = metrics.viewer.ttff.endTime - viewerButtonPressed.getTime();
             }
         };
-
-        viewer.remoteView.addEventListener('loadeddata', viewer.loadedDataCallback);
 
         if (formValues.enableProfileTimeline) {
             metrics.viewer.ttff.startTime = viewerButtonPressed.getTime();
@@ -718,6 +872,15 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
                 }
             }
 
+            // Add recvonly video transceivers so the SDP offer signals we can receive up to 4 video tracks.
+            // The answerer (C SDK master) cannot add new m-lines - it can only send on m-lines present in the offer.
+            if (formValues.receiveMultiTrack) {
+                const existingVideoTransceivers = viewer.peerConnection.getTransceivers().filter(t => t.receiver.track.kind === 'video').length;
+                for (let i = existingVideoTransceivers; i < 4; i++) {
+                    viewer.peerConnection.addTransceiver('video', { direction: 'recvonly' });
+                }
+            }
+
             const [videoCodecs, audioCodecs] = getCodecFilters();
             viewer.peerConnection.getTransceivers().map((transceiver) => {
                 if (transceiver.receiver.track.kind === 'video' && videoCodecs) {
@@ -809,8 +972,13 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
             printPeerConnectionStateInfo(event, '[VIEWER]');
         });
 
-        // As remote tracks are received, add them to the remote view
-        viewer.peerConnection.addEventListener('track', event => {
+        // As remote tracks are received, link them to the pre-created DOM elements.
+        // Track events fire sequentially (JS is single-threaded) — no race conditions.
+        //
+        // Display logic (determined from SDP answer, elements pre-created above):
+        //   1V + 1A (or less): single <video> element.
+        //   Otherwise: each track in a separate element.
+        viewer.peerConnection.addEventListener('track', (event) => {
             console.log(
                 '[VIEWER] Received',
                 event.track.kind || 'unknown',
@@ -821,16 +989,32 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
                 'with track id:',
                 event.track.id,
             );
-            if (remoteView.srcObject) {
+
+            // Pre-create all DOM elements on the first ontrack event.
+            if (!viewer.viewInitialized) {
+                viewer.viewInitialized = true;
+                initRemoteTrackViews(remoteViewContainer, formValues);
+            }
+
+            const streamName = event.streams[0]?.id || event.track.label || event.track.id;
+
+            if (event.track.kind === 'audio') {
+                addAudioTrack(event.track, streamName);
                 return;
             }
-            viewer.remoteStream = event.streams[0];
-            remoteView.srcObject = viewer.remoteStream;
 
-            //measure the time to first track
+            addVideoTrack(event.track, streamName);
+
+            // Attach time-to-first-frame listener on the first video track
+            if (viewer.videoIndex === 1) {
+                viewer.videoElements[0].addEventListener('loadeddata', viewer.loadedDataCallback);
+            }
+
             if (formValues.enableDQPmetrics && initialDate === 0) {
                 initialDate = new Date();
             }
+
+            console.log('[VIEWER] Now displaying', viewer.videoIndex, 'video track(s)');
         });
 
         console.log('[VIEWER] Starting viewer connection');
@@ -859,9 +1043,9 @@ function stopViewer() {
             viewer.localStream = null;
         }
 
-        if (viewer.remoteStream) {
-            viewer.remoteStream.getTracks().forEach(track => track.stop());
-            viewer.remoteStream = null;
+        if (viewer.remoteStreams) {
+            viewer.remoteStreams.forEach((stream) => stream.getTracks().forEach((track) => track.stop()));
+            viewer.remoteStreams = null;
         }
 
         if (viewer.peerConnectionStatsInterval) {
@@ -873,10 +1057,32 @@ function stopViewer() {
             viewer.localView.srcObject = null;
         }
 
-        if (viewer.remoteView) {
-            viewer.remoteView.removeEventListener('loadeddata', viewer.loadedDataCallback);
-            viewer.remoteView.srcObject = null;
+        if (viewer.remoteViews) {
+            viewer.remoteViews.forEach((view) => {
+                view.removeEventListener('loadeddata', viewer.loadedDataCallback);
+                view.srcObject = null;
+            });
+            viewer.remoteViews = null;
         }
+
+        if (viewer.videoElements) {
+            viewer.videoElements.forEach((el) => { el.srcObject = null; });
+            viewer.videoElements = null;
+        }
+
+        if (viewer.audioElements) {
+            viewer.audioElements.forEach((el) => {
+                el.srcObject?.getTracks().forEach((track) => track.stop());
+                el.srcObject = null;
+            });
+            viewer.audioElements = null;
+        }
+
+        if (viewer.remoteViewContainer) {
+            viewer.remoteViewContainer.innerHTML = '<div class="video-container"><video class="remote-view" autoplay playsinline controls></video></div>';
+        }
+
+        viewer.viewInitialized = false;
 
         if (viewer.dataChannel) {
             viewer.dataChannel = null;
