@@ -360,6 +360,28 @@ function updateViewerUI() {
 
 $('#stop-viewer-button').click(onStop);
 
+$('#toggle-video-viewer-button').click(async () => {
+    await toggleViewerMediaTrack('video');
+});
+
+$('#toggle-audio-viewer-button').click(async () => {
+    await toggleViewerMediaTrack('audio');
+});
+
+$('#toggle-recv-video-button').click(async function() {
+    const paused = await toggleViewerReceiveTrack('video');
+    if (paused !== undefined) {
+        $(this).text(paused ? 'Resume Incoming Video' : 'Pause Incoming Video');
+    }
+});
+
+$('#toggle-recv-audio-button').click(async function() {
+    const paused = await toggleViewerReceiveTrack('audio');
+    if (paused !== undefined) {
+        $(this).text(paused ? 'Resume Incoming Audio' : 'Pause Incoming Audio');
+    }
+});
+
 $('#create-channel-button').click(async () => {
     const formValues = getFormValues();
 

@@ -490,6 +490,10 @@
                 <div class="col">
                     <h5>From Master</h5>
                     <div class="remote-views"><div class="video-container"><video class="remote-view" autoplay playsinline controls></video></div></div>
+                    <div class="mt-2 renegotiation-controls d-none">
+                        <button id="toggle-recv-video-button" type="button" class="btn btn-sm btn-secondary" title="Ask the master to stop or resume sending video, by flipping this transceiver's receive direction. Triggers an SDP re-offer (renegotiation).">Pause Incoming Video</button>
+                        <button id="toggle-recv-audio-button" type="button" class="btn btn-sm btn-secondary" title="Ask the master to stop or resume sending audio, by flipping this transceiver's receive direction. Triggers an SDP re-offer (renegotiation).">Pause Incoming Audio</button>
+                    </div>
                 </div>
             </div>
             <div class="row datachannel">
@@ -507,6 +511,10 @@
             <div>
                 <span class="send-message datachannel d-none">
                   <button type="button" class="btn btn-primary">Send DataChannel Message</button>
+                </span>
+                <span class="renegotiation-controls d-none">
+                    <button id="toggle-video-viewer-button" type="button" class="btn btn-secondary" title="Add or remove the local video track on the live connection. Triggers an SDP re-offer (renegotiation).">Toggle Sending Video</button>
+                    <button id="toggle-audio-viewer-button" type="button" class="btn btn-secondary" title="Add or remove the local audio track on the live connection. Triggers an SDP re-offer (renegotiation).">Toggle Sending Audio</button>
                 </span>
                 <button id="stop-viewer-button" type="button" class="btn btn-danger">Stop Viewer</button>
             </div>

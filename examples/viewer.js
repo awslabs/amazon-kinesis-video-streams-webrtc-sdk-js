@@ -411,6 +411,8 @@ function initRemoteTrackViews(remoteViewContainer, formValues) {
 }
 
 async function startViewer(localView, remoteViewContainer, formValues, onStatsReport, remoteMessage) {
+    viewer.localView = localView;
+    viewer.initialNegotiationComplete = false;
     try {
         console.log('[VIEWER] Client id is:', formValues.clientId);
         viewerButtonPressed = new Date();
@@ -916,8 +918,29 @@ async function startViewer(localView, remoteViewContainer, formValues, onStatsRe
             // Add the SDP answer to the peer connection
             console.log('[VIEWER] Received SDP answer');
             console.debug('SDP answer:', answer);
+            if (viewer.peerConnection.signalingState !== 'have-local-offer') {
+                console.warn('[VIEWER] Ignoring SDP answer in signaling state', viewer.peerConnection.signalingState);
+                return;
+            }
             metrics.viewer.offAnswerTime.endTime = Date.now();
             await viewer.peerConnection.setRemoteDescription(answer);
+            if (!viewer.initialNegotiationComplete) {
+                viewer.initialNegotiationComplete = true;
+                $('.renegotiation-controls').removeClass('d-none');
+            }
+        });
+
+        // Renegotiate when tracks are added or removed mid-session (e.g. via the
+        // enable/disable audio/video buttons). The initial offer is sent by the
+        // connect flow above, so ignore the event until that has completed.
+        viewer.peerConnection.addEventListener('negotiationneeded', async () => {
+            if (!viewer.initialNegotiationComplete) {
+                return;
+            }
+            console.log('[VIEWER] Negotiation needed. Creating SDP re-offer');
+            await viewer.peerConnection.setLocalDescription(await viewer.peerConnection.createOffer());
+            console.debug('SDP re-offer:', viewer.peerConnection.localDescription);
+            viewer.signalingClient.sendSdpOffer(viewer.peerConnection.localDescription);
         });
 
         viewer.signalingClient.on('iceCandidate', candidate => {
@@ -1024,7 +1047,75 @@ async function startViewer(localView, remoteViewContainer, formValues, onStatsRe
     }
 }
 
+/**
+ * Adds or removes the viewer's local track of the given kind ('audio'/'video')
+ * on the live peer connection. Both operations fire 'negotiationneeded', which
+ * sends an SDP re-offer to the master — demonstrating mid-session renegotiation.
+ */
+async function toggleViewerMediaTrack(kind) {
+    if (!viewer.peerConnection || !viewer.initialNegotiationComplete) {
+        console.warn('[VIEWER] Not connected - cannot toggle', kind);
+        return;
+    }
+    const sender = viewer.peerConnection.getSenders().find(s => s.track && s.track.kind === kind);
+    if (sender) {
+        console.log(`[VIEWER] Disabling ${kind}: removing track (will renegotiate)`);
+        const track = sender.track; // removeTrack() nulls sender.track
+        viewer.peerConnection.removeTrack(sender);
+        track.stop();
+        if (viewer.localStream) {
+            viewer.localStream.removeTrack(track);
+        }
+        return false;
+    }
+    console.log(`[VIEWER] Enabling ${kind}: adding track (will renegotiate)`);
+    const stream = await navigator.mediaDevices.getUserMedia(kind === 'video' ? { video: true } : { audio: true });
+    const track = stream.getTracks()[0];
+    if (!viewer.localStream) {
+        viewer.localStream = new MediaStream();
+        if (viewer.localView) {
+            viewer.localView.srcObject = viewer.localStream;
+        }
+    }
+    viewer.localStream.addTrack(track);
+    viewer.peerConnection.addTrack(track, viewer.localStream);
+    return true;
+}
+
+/**
+ * Pauses/resumes the INCOMING track of the given kind by removing/restoring the
+ * 'recv' half of the transceiver direction. The direction change fires
+ * 'negotiationneeded', so an SDP re-offer is sent to the master mid-session and
+ * the master stops (or resumes) sending that track.
+ */
+async function toggleViewerReceiveTrack(kind) {
+    if (!viewer.peerConnection || !viewer.initialNegotiationComplete) {
+        console.warn('[VIEWER] Not connected - cannot toggle incoming', kind);
+        return;
+    }
+    const transceiver = viewer.peerConnection.getTransceivers().find(t => t.receiver && t.receiver.track && t.receiver.track.kind === kind);
+    if (!transceiver) {
+        console.warn(`[VIEWER] No ${kind} transceiver found`);
+        return;
+    }
+    const dir = transceiver.direction;
+    const map = {
+        sendrecv: 'sendonly',
+        recvonly: 'inactive',
+        sendonly: 'sendrecv',
+        inactive: 'recvonly',
+    };
+    transceiver.direction = map[dir] || dir;
+    const paused = dir === 'sendrecv' || dir === 'recvonly';
+    console.log(`[VIEWER] ${paused ? 'Pausing' : 'Resuming'} incoming ${kind}: transceiver direction ${dir} -> ${transceiver.direction} (will renegotiate)`);
+    return paused;
+}
+
 function stopViewer() {
+    $('.renegotiation-controls').addClass('d-none');
+    $('#toggle-recv-video-button').text('Pause Incoming Video');
+    $('#toggle-recv-audio-button').text('Pause Incoming Audio');
+
     try {
         console.log('[VIEWER] Stopping viewer connection');
 
