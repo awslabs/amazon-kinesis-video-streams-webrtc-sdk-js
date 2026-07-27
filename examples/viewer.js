@@ -926,7 +926,11 @@ async function startViewer(localView, remoteViewContainer, formValues, onStatsRe
             await viewer.peerConnection.setRemoteDescription(answer);
             if (!viewer.initialNegotiationComplete) {
                 viewer.initialNegotiationComplete = true;
-                $('.renegotiation-controls').removeClass('d-none');
+                // Opt-in via Advanced settings: the buttons send SDP re-offers,
+                // which the master may not implement.
+                if (formValues.showRenegotiationControls) {
+                    $('.renegotiation-controls').removeClass('d-none');
+                }
             }
         });
 
