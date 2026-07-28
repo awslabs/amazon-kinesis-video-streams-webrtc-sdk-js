@@ -361,18 +361,27 @@ function updateViewerUI() {
 
 $('#stop-viewer-button').click(onStop);
 
-$('#toggle-video-viewer-button').click(async () => {
-    await toggleViewerMediaTrack('video');
+$('#toggle-video-viewer-button').click(async function() {
+    const sending = await toggleViewerMediaTrack('video');
+    if (sending !== undefined) {
+        $(this).text(sending ? 'Stop Sending Video' : 'Start Sending Video');
+    }
 });
 
-$('#toggle-audio-viewer-button').click(async () => {
-    await toggleViewerMediaTrack('audio');
+$('#toggle-audio-viewer-button').click(async function() {
+    const sending = await toggleViewerMediaTrack('audio');
+    if (sending !== undefined) {
+        $(this).text(sending ? 'Stop Sending Audio' : 'Start Sending Audio');
+    }
 });
 
 $('#toggle-recv-video-button').click(async function() {
     const paused = await toggleViewerReceiveTrack('video');
     if (paused !== undefined) {
         $(this).text(paused ? 'Resume Incoming Video' : 'Pause Incoming Video');
+        // Reveal the black container behind the frozen last frame so the paused
+        // state is obvious; restored on resume and in stopViewer().
+        $('#viewer .remote-view').css('visibility', paused ? 'hidden' : 'visible');
     }
 });
 

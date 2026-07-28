@@ -929,6 +929,11 @@ async function startViewer(localView, remoteViewContainer, formValues, onStatsRe
                 // Opt-in via Advanced settings: the buttons send SDP re-offers,
                 // which the master may not implement.
                 if (formValues.showRenegotiationControls) {
+                    // Seed the send-toggle labels from the actual sender state so
+                    // they read as status ("Stop Sending X" while sending).
+                    const sendingKind = kind => viewer.peerConnection.getSenders().some(s => s.track && s.track.kind === kind);
+                    $('#toggle-video-viewer-button').text(sendingKind('video') ? 'Stop Sending Video' : 'Start Sending Video');
+                    $('#toggle-audio-viewer-button').text(sendingKind('audio') ? 'Stop Sending Audio' : 'Start Sending Audio');
                     $('.renegotiation-controls').removeClass('d-none');
                 }
             }
@@ -1025,6 +1030,32 @@ async function startViewer(localView, remoteViewContainer, formValues, onStatsRe
 
             const streamName = event.streams[0]?.id || event.track.label || event.track.id;
 
+            /* Re-negotiation re-attach: after a pause/resume the master may re-add the
+             * track under a different msid (new stream object). The element for this
+             * m-line already exists, so replace the previous same-kind track in place
+             * (it was ended by the renegotiation) instead of appending a new
+             * element/label, and re-assign srcObject so the element refreshes its
+             * control state (Chrome keeps the native unmute control disabled
+             * otherwise). Single-element modes only — the renegotiation controls
+             * target the classic 1 video + 1 audio session, not MULTI. */
+            if (viewer.trackMode !== TrackMode.MULTI) {
+                const videoEl = viewer.videoElements[0];
+                const stream = videoEl ? videoEl.srcObject : null;
+                const attachedBefore =
+                    event.track.kind === 'video' ? viewer.videoIndex > 0 : stream != null && stream.getTracks().some(track => track.kind === 'audio');
+                if (stream && attachedBefore) {
+                    stream
+                        .getTracks()
+                        .filter(track => track.kind === event.track.kind && track.id !== event.track.id)
+                        .forEach(track => stream.removeTrack(track));
+                    if (!stream.getTracks().includes(event.track)) {
+                        stream.addTrack(event.track);
+                    }
+                    videoEl.srcObject = stream;
+                    return;
+                }
+            }
+
             if (event.track.kind === 'audio') {
                 addAudioTrack(event.track, streamName);
                 return;
@@ -1083,6 +1114,12 @@ async function toggleViewerMediaTrack(kind) {
     }
     viewer.localStream.addTrack(track);
     viewer.peerConnection.addTrack(track, viewer.localStream);
+    /* Re-assign so the element refreshes its native control state — Chrome
+     * leaves the audio control disabled when a track is added to an already
+     * playing element's stream (e.g. video first, audio toggled on later). */
+    if (viewer.localView) {
+        viewer.localView.srcObject = viewer.localStream;
+    }
     return true;
 }
 
@@ -1119,6 +1156,7 @@ function stopViewer() {
     $('.renegotiation-controls').addClass('d-none');
     $('#toggle-recv-video-button').text('Pause Incoming Video');
     $('#toggle-recv-audio-button').text('Pause Incoming Audio');
+    $('#viewer .remote-view').css('visibility', 'visible');
 
     try {
         console.log('[VIEWER] Stopping viewer connection');

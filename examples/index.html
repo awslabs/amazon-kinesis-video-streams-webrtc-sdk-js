@@ -499,6 +499,10 @@
                 <div class="col">
                     <h5>Return Channel</h5>
                     <div class="video-container"><video class="local-view" autoplay playsinline controls muted></video></div>
+                    <div class="mt-2 renegotiation-controls d-none">
+                        <button id="toggle-video-viewer-button" type="button" class="btn btn-sm btn-secondary" title="Add or remove the local video track on the live connection. Triggers an SDP re-offer (renegotiation).">Start Sending Video</button>
+                        <button id="toggle-audio-viewer-button" type="button" class="btn btn-sm btn-secondary" title="Add or remove the local audio track on the live connection. Triggers an SDP re-offer (renegotiation).">Start Sending Audio</button>
+                    </div>
                 </div>
                 <div class="col">
                     <h5>From Master</h5>
@@ -524,10 +528,6 @@
             <div>
                 <span class="send-message datachannel d-none">
                   <button type="button" class="btn btn-primary">Send DataChannel Message</button>
-                </span>
-                <span class="renegotiation-controls d-none">
-                    <button id="toggle-video-viewer-button" type="button" class="btn btn-secondary" title="Add or remove the local video track on the live connection. Triggers an SDP re-offer (renegotiation).">Toggle Sending Video</button>
-                    <button id="toggle-audio-viewer-button" type="button" class="btn btn-secondary" title="Add or remove the local audio track on the live connection. Triggers an SDP re-offer (renegotiation).">Toggle Sending Audio</button>
                 </span>
                 <button id="stop-viewer-button" type="button" class="btn btn-danger">Stop Viewer</button>
             </div>
