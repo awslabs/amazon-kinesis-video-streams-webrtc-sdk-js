@@ -1059,28 +1059,52 @@ async function startViewer(localView, remoteViewContainer, formValues, onStatsRe
 
             const streamName = event.streams[0]?.id || event.track.label || event.track.id;
 
-            /* Re-negotiation re-attach: after a pause/resume the master may re-add the
-             * track under a different msid (new stream object). The element for this
-             * m-line already exists, so replace the previous same-kind track in place
-             * (it was ended by the renegotiation) instead of appending a new
-             * element/label, and re-assign srcObject so the element refreshes its
-             * control state (Chrome keeps the native unmute control disabled
-             * otherwise). Single-element modes only — the renegotiation controls
-             * target the classic 1 video + 1 audio session, not MULTI. */
+            /* Re-negotiation support (single-element modes only — the renegotiation
+             * controls target the classic 1 video + 1 audio session, not MULTI). */
             if (viewer.trackMode !== TrackMode.MULTI) {
                 const videoEl = viewer.videoElements[0];
+
+                /* If ALL tracks were paused (both m-lines inactive), the element's
+                 * playback clock stalls; a track un-muting on resume does not
+                 * restart a stalled element by itself — audio would stay silent
+                 * until the element plays again. Kick play() whenever a track
+                 * un-mutes. */
+                if (videoEl && !event.track._kickPlayHooked) {
+                    event.track._kickPlayHooked = true;
+                    event.track.addEventListener('unmute', () => {
+                        videoEl.play().catch(e => console.warn('[VIEWER] remote view play() on track unmute failed:', e.name));
+                    });
+                }
+
+                /* Re-attach: after a pause/resume the master may re-add the track
+                 * under a different msid (new stream object). The element for this
+                 * m-line already exists, so replace the previous same-kind track in
+                 * place (it was ended by the renegotiation) instead of appending a
+                 * new element/label, and re-assign srcObject so the element refreshes
+                 * its control state (Chrome keeps the native unmute control disabled
+                 * otherwise). */
                 const stream = videoEl ? videoEl.srcObject : null;
                 const attachedBefore =
                     event.track.kind === 'video' ? viewer.videoIndex > 0 : stream != null && stream.getTracks().some(track => track.kind === 'audio');
                 if (stream && attachedBefore) {
+                    let streamChanged = false;
                     stream
                         .getTracks()
                         .filter(track => track.kind === event.track.kind && track.id !== event.track.id)
-                        .forEach(track => stream.removeTrack(track));
+                        .forEach(track => {
+                            stream.removeTrack(track);
+                            streamChanged = true;
+                        });
                     if (!stream.getTracks().includes(event.track)) {
                         stream.addTrack(event.track);
+                        streamChanged = true;
                     }
-                    videoEl.srcObject = stream;
+                    /* Only re-assign on actual composition changes — a reassignment
+                     * reloads the element, which can stall playback. */
+                    if (streamChanged) {
+                        videoEl.srcObject = stream;
+                    }
+                    videoEl.play().catch(() => {});
                     return;
                 }
             }
@@ -1121,28 +1145,44 @@ async function toggleViewerMediaTrack(kind) {
         console.warn('[VIEWER] Not connected - cannot toggle', kind);
         return;
     }
-    const sender = viewer.peerConnection.getSenders().find(s => s.track && s.track.kind === kind);
-    if (sender) {
-        console.log(`[VIEWER] Disabling ${kind}: removing track (will renegotiate)`);
-        const track = sender.track; // removeTrack() nulls sender.track
-        viewer.peerConnection.removeTrack(sender);
+    /* Reuse the transceiver negotiated at connect time (offerToReceive* creates
+     * recvonly audio/video transceivers even when nothing is sent). Toggling
+     * via removeTrack + a later addTrack would append a NEW m-line after the
+     * datachannel — Chrome won't reuse a transceiver that has already sent —
+     * and the answer's m-line order would no longer match the offer
+     * (setRemoteDescription rejects with InvalidAccessError). replaceTrack on
+     * the same transceiver keeps the m-line set fixed for the whole session;
+     * the direction flip still fires 'negotiationneeded'. */
+    const transceiver = viewer.peerConnection
+        .getTransceivers()
+        .find(t => (t.sender.track && t.sender.track.kind === kind) || (t.receiver.track && t.receiver.track.kind === kind));
+    if (!transceiver) {
+        console.warn(`[VIEWER] No ${kind} transceiver found`);
+        return;
+    }
+    if (transceiver.sender.track) {
+        console.log(`[VIEWER] Disabling ${kind}: replaceTrack(null) on the existing transceiver (will renegotiate)`);
+        const track = transceiver.sender.track;
         track.stop();
+        await transceiver.sender.replaceTrack(null);
+        transceiver.direction = transceiver.direction === 'sendrecv' ? 'recvonly' : 'inactive';
         if (viewer.localStream) {
             viewer.localStream.removeTrack(track);
+            if (viewer.localView) {
+                viewer.localView.srcObject = viewer.localStream;
+            }
         }
         return false;
     }
-    console.log(`[VIEWER] Enabling ${kind}: adding track (will renegotiate)`);
+    console.log(`[VIEWER] Enabling ${kind}: replaceTrack on the existing transceiver (will renegotiate)`);
     const stream = await navigator.mediaDevices.getUserMedia(kind === 'video' ? { video: true } : { audio: true });
     const track = stream.getTracks()[0];
+    await transceiver.sender.replaceTrack(track);
+    transceiver.direction = transceiver.direction === 'recvonly' ? 'sendrecv' : 'sendonly';
     if (!viewer.localStream) {
         viewer.localStream = new MediaStream();
-        if (viewer.localView) {
-            viewer.localView.srcObject = viewer.localStream;
-        }
     }
     viewer.localStream.addTrack(track);
-    viewer.peerConnection.addTrack(track, viewer.localStream);
     /* Re-assign so the element refreshes its native control state — Chrome
      * leaves the audio control disabled when a track is added to an already
      * playing element's stream (e.g. video first, audio toggled on later). */

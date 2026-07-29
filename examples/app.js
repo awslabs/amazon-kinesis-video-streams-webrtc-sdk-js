@@ -382,6 +382,12 @@ $('#toggle-recv-video-button').click(async function() {
         // Reveal the black container behind the frozen last frame so the paused
         // state is obvious; restored on resume and in stopViewer().
         $('#viewer .remote-view').css('visibility', paused ? 'hidden' : 'visible');
+        if (!paused) {
+            // Re-kick playback from the click (user-gesture context): if every
+            // track had been paused the element's clock stalled and won't
+            // restart on its own when media returns.
+            $('#viewer .remote-view')[0]?.play()?.catch(() => {});
+        }
     }
 });
 
@@ -389,6 +395,11 @@ $('#toggle-recv-audio-button').click(async function() {
     const paused = await toggleViewerReceiveTrack('audio');
     if (paused !== undefined) {
         $(this).text(paused ? 'Resume Incoming Audio' : 'Pause Incoming Audio');
+        if (!paused) {
+            // Same stalled-element kick as for video (see above); matters when
+            // video was also paused, leaving the element with no live tracks.
+            $('#viewer .remote-view')[0]?.play()?.catch(() => {});
+        }
     }
 });
 
