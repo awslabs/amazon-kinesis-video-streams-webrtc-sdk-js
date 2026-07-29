@@ -365,6 +365,10 @@ $('#toggle-video-viewer-button').click(async function() {
     const sending = await toggleViewerMediaTrack('video');
     if (sending !== undefined) {
         $(this).text(sending ? 'Stop Sending Video' : 'Start Sending Video');
+        // Reveal the black container instead of the element's stalled-playback
+        // spinner (same treatment as pausing incoming video); restored when
+        // sending resumes and in stopViewer().
+        $('#viewer .local-view').css('visibility', sending ? 'visible' : 'hidden');
     }
 });
 

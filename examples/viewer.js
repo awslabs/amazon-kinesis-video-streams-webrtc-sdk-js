@@ -1226,6 +1226,7 @@ function stopViewer() {
     $('#toggle-recv-video-button').text('Pause Incoming Video');
     $('#toggle-recv-audio-button').text('Pause Incoming Audio');
     $('#viewer .remote-view').css('visibility', 'visible');
+    $('#viewer .local-view').css('visibility', 'visible');
 
     try {
         console.log('[VIEWER] Stopping viewer connection');
