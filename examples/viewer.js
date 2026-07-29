@@ -923,7 +923,36 @@ async function startViewer(localView, remoteViewContainer, formValues, onStatsRe
                 return;
             }
             metrics.viewer.offAnswerTime.endTime = Date.now();
-            await viewer.peerConnection.setRemoteDescription(answer);
+            /* Pre-flight sanity check with a precise message: an answer MUST
+             * mirror the offer's m-line count. A mismatch is a remote-side
+             * (master) renegotiation bug — Chrome's own exception for this is
+             * opaque, so name the real problem before attempting to apply. */
+            const countMLines = sdp => (sdp.match(/^m=/gm) || []).length;
+            const offerMLines = countMLines(viewer.peerConnection.localDescription.sdp);
+            const answerMLines = countMLines(answer.sdp);
+            if (answerMLines !== offerMLines) {
+                console.error(
+                    `[VIEWER] Master sent a malformed SDP answer: ${answerMLines} m-lines vs ${offerMLines} in our offer. ` +
+                        'This is a master-side renegotiation bug (answer must mirror the offer m-lines).',
+                );
+            }
+            try {
+                await viewer.peerConnection.setRemoteDescription(answer);
+            } catch (e) {
+                /* A malformed answer (e.g. m-line count differing from our offer)
+                 * would otherwise leave the connection stuck in 'have-local-offer',
+                 * where 'negotiationneeded' never fires again — later toggles
+                 * would silently do nothing. Log loudly and roll back to stable
+                 * so renegotiation stays usable. */
+                console.error('[VIEWER] Failed to apply SDP answer:', e);
+                try {
+                    await viewer.peerConnection.setLocalDescription({ type: 'rollback' });
+                    console.warn('[VIEWER] Rolled back local offer; signaling state:', viewer.peerConnection.signalingState);
+                } catch (rollbackError) {
+                    console.error('[VIEWER] Rollback failed:', rollbackError);
+                }
+                return;
+            }
             if (!viewer.initialNegotiationComplete) {
                 viewer.initialNegotiationComplete = true;
                 // Opt-in via Advanced settings: the buttons send SDP re-offers,
