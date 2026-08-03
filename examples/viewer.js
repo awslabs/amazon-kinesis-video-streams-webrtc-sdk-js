@@ -1225,7 +1225,7 @@ function stopViewer() {
     $('.renegotiation-controls').addClass('d-none');
     $('#toggle-recv-video-button').text('Pause Incoming Video');
     $('#toggle-recv-audio-button').text('Pause Incoming Audio');
-    $('#viewer .remote-view').css('visibility', 'visible');
+    $('#viewer .remote-views video').css('visibility', 'visible');
     $('#viewer .local-view').css('visibility', 'visible');
 
     try {
