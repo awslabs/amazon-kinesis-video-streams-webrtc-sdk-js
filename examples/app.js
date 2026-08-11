@@ -19,9 +19,9 @@ const allACodecs = RTCRtpSender.getCapabilities('audio').codecs;
 const uniqueVMimeTypes = [...new Set(allVCodecs.map((codec) => codec.mimeType))].sort();
 const uniqueAMimeTypes = [...new Set(allACodecs.map((codec) => codec.mimeType))].sort();
 
-// Default-enabled codecs
+// include video/rtx so RTX (RFC 4588 retransmission) is enabled when codec preferences are set
 const DEFAULT_CODECS = {
-    video: ['video/H264'].sort(),
+    video: ['video/H264', 'video/rtx'].sort(),
     audio: ['audio/opus'].sort(),
 };
 
@@ -555,16 +555,16 @@ async function printPeerConnectionStateInfo(event, logPrefix, remoteClientId) {
                     logSelectedCandidate();
                 } else {
                     // Find nominated candidate pair
-                    const nominatedPair = Array.from(stats.values()).find(report => 
-                    report.type === 'candidate-pair' && 
+                    const nominatedPair = Array.from(stats.values()).find(report =>
+                    report.type === 'candidate-pair' &&
                     report.nominated === true
                     );
-            
+
                     if (nominatedPair) {
-                        // Get local and remote candidate detailsl;                     
+                        // Get local and remote candidate detailsl;
                         const localCandidate = stats.get(nominatedPair.localCandidateId);
                         const remoteCandidate = stats.get(nominatedPair.remoteCandidateId);
-                        
+
                         if (localCandidate && remoteCandidate) {
                             console.debug(`Chosen candidate pair (${trackType || 'unknown'}):`, {
                                 local: {
@@ -1097,7 +1097,7 @@ $('#codec-filter-toggle').on('change', (event) => {
 
 $(document).ready(() => {
     loadCodecPreferences();
-    
+
     // click start based on the url params
     if (urlParams.has('view')) {
         const viewMode = urlParams.get('view');
