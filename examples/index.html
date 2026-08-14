@@ -285,6 +285,19 @@
                         </div>
                     </div>
                 </div>
+                <p class="mt-3"><small>Renegotiation</small></p>
+                <div class="container">
+                    <div class="row">
+                        <div class="col-sm">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="show-renegotiation-controls"/>
+                                <label for="show-renegotiation-controls" class="form-check-label">Show renegotiation
+                                    controls when the viewer connects <small>(Viewer only; the buttons send SDP
+                                    re-offers, so the master must implement renegotiation)</small></label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <p class="mt-3"><small>Logging</small></p>
                 <div class="container">
                     <div class="row">
@@ -486,10 +499,18 @@
                 <div class="col">
                     <h5>Return Channel</h5>
                     <div class="video-container"><video class="local-view" autoplay playsinline controls muted></video></div>
+                    <div class="mt-2 renegotiation-controls d-none">
+                        <button id="toggle-video-viewer-button" type="button" class="btn btn-sm btn-secondary" title="Add or remove the local video track on the live connection. Triggers an SDP re-offer (renegotiation).">Start Sending Video</button>
+                        <button id="toggle-audio-viewer-button" type="button" class="btn btn-sm btn-secondary" title="Add or remove the local audio track on the live connection. Triggers an SDP re-offer (renegotiation).">Start Sending Audio</button>
+                    </div>
                 </div>
                 <div class="col">
                     <h5>From Master</h5>
                     <div class="remote-views"><div class="video-container"><video class="remote-view" autoplay playsinline controls></video></div></div>
+                    <div class="mt-2 renegotiation-controls d-none">
+                        <button id="toggle-recv-video-button" type="button" class="btn btn-sm btn-secondary" title="Ask the master to stop or resume sending video, by flipping this transceiver's receive direction. Triggers an SDP re-offer (renegotiation).">Pause Incoming Video</button>
+                        <button id="toggle-recv-audio-button" type="button" class="btn btn-sm btn-secondary" title="Ask the master to stop or resume sending audio, by flipping this transceiver's receive direction. Triggers an SDP re-offer (renegotiation).">Pause Incoming Audio</button>
+                    </div>
                 </div>
             </div>
             <div class="row datachannel">
