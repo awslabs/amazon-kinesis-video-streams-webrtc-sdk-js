@@ -19,9 +19,10 @@ const allACodecs = RTCRtpSender.getCapabilities('audio').codecs;
 const uniqueVMimeTypes = [...new Set(allVCodecs.map((codec) => codec.mimeType))].sort();
 const uniqueAMimeTypes = [...new Set(allACodecs.map((codec) => codec.mimeType))].sort();
 
-// include video/rtx so RTX (RFC 4588 retransmission) is enabled when codec preferences are set
+// include video/rtx so RTX (RFC 4588 retransmission) is enabled when codec preferences are set,
+// and video/H265 so HEVC is offered by default where the browser supports it
 const DEFAULT_CODECS = {
-    video: ['video/H264', 'video/rtx'].sort(),
+    video: ['video/H264', 'video/H265', 'video/rtx'].sort(),
     audio: ['audio/opus'].sort(),
 };
 
