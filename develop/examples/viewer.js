@@ -411,6 +411,8 @@ function initRemoteTrackViews(remoteViewContainer, formValues) {
 }
 
 async function startViewer(localView, remoteViewContainer, formValues, onStatsReport, remoteMessage) {
+    viewer.localView = localView;
+    viewer.initialNegotiationComplete = false;
     try {
         console.log('[VIEWER] Client id is:', formValues.clientId);
         viewerButtonPressed = new Date();
@@ -916,8 +918,67 @@ async function startViewer(localView, remoteViewContainer, formValues, onStatsRe
             // Add the SDP answer to the peer connection
             console.log('[VIEWER] Received SDP answer');
             console.debug('SDP answer:', answer);
+            if (viewer.peerConnection.signalingState !== 'have-local-offer') {
+                console.warn('[VIEWER] Ignoring SDP answer in signaling state', viewer.peerConnection.signalingState);
+                return;
+            }
             metrics.viewer.offAnswerTime.endTime = Date.now();
-            await viewer.peerConnection.setRemoteDescription(answer);
+            /* Pre-flight sanity check with a precise message: an answer MUST
+             * mirror the offer's m-line count. A mismatch is a remote-side
+             * (master) renegotiation bug — Chrome's own exception for this is
+             * opaque, so name the real problem before attempting to apply. */
+            const countMLines = sdp => (sdp.match(/^m=/gm) || []).length;
+            const offerMLines = countMLines(viewer.peerConnection.localDescription.sdp);
+            const answerMLines = countMLines(answer.sdp);
+            if (answerMLines !== offerMLines) {
+                console.error(
+                    `[VIEWER] Master sent a malformed SDP answer: ${answerMLines} m-lines vs ${offerMLines} in our offer. ` +
+                        'This is a master-side renegotiation bug (answer must mirror the offer m-lines).',
+                );
+            }
+            try {
+                await viewer.peerConnection.setRemoteDescription(answer);
+            } catch (e) {
+                /* A malformed answer (e.g. m-line count differing from our offer)
+                 * would otherwise leave the connection stuck in 'have-local-offer',
+                 * where 'negotiationneeded' never fires again — later toggles
+                 * would silently do nothing. Log loudly and roll back to stable
+                 * so renegotiation stays usable. */
+                console.error('[VIEWER] Failed to apply SDP answer:', e);
+                try {
+                    await viewer.peerConnection.setLocalDescription({ type: 'rollback' });
+                    console.warn('[VIEWER] Rolled back local offer; signaling state:', viewer.peerConnection.signalingState);
+                } catch (rollbackError) {
+                    console.error('[VIEWER] Rollback failed:', rollbackError);
+                }
+                return;
+            }
+            if (!viewer.initialNegotiationComplete) {
+                viewer.initialNegotiationComplete = true;
+                // Opt-in via Advanced settings: the buttons send SDP re-offers,
+                // which the master may not implement.
+                if (formValues.showRenegotiationControls) {
+                    // Seed the send-toggle labels from the actual sender state so
+                    // they read as status ("Stop Sending X" while sending).
+                    const sendingKind = kind => viewer.peerConnection.getSenders().some(s => s.track && s.track.kind === kind);
+                    $('#toggle-video-viewer-button').text(sendingKind('video') ? 'Stop Sending Video' : 'Start Sending Video');
+                    $('#toggle-audio-viewer-button').text(sendingKind('audio') ? 'Stop Sending Audio' : 'Start Sending Audio');
+                    $('.renegotiation-controls').removeClass('d-none');
+                }
+            }
+        });
+
+        // Renegotiate when tracks are added or removed mid-session (e.g. via the
+        // enable/disable audio/video buttons). The initial offer is sent by the
+        // connect flow above, so ignore the event until that has completed.
+        viewer.peerConnection.addEventListener('negotiationneeded', async () => {
+            if (!viewer.initialNegotiationComplete) {
+                return;
+            }
+            console.log('[VIEWER] Negotiation needed. Creating SDP re-offer');
+            await viewer.peerConnection.setLocalDescription(await viewer.peerConnection.createOffer());
+            console.debug('SDP re-offer:', viewer.peerConnection.localDescription);
+            viewer.signalingClient.sendSdpOffer(viewer.peerConnection.localDescription);
         });
 
         viewer.signalingClient.on('iceCandidate', candidate => {
@@ -998,6 +1059,56 @@ async function startViewer(localView, remoteViewContainer, formValues, onStatsRe
 
             const streamName = event.streams[0]?.id || event.track.label || event.track.id;
 
+            /* Re-negotiation support (single-element modes only — the renegotiation
+             * controls target the classic 1 video + 1 audio session, not MULTI). */
+            if (viewer.trackMode !== TrackMode.MULTI) {
+                const videoEl = viewer.videoElements[0];
+
+                /* If ALL tracks were paused (both m-lines inactive), the element's
+                 * playback clock stalls; a track un-muting on resume does not
+                 * restart a stalled element by itself — audio would stay silent
+                 * until the element plays again. Kick play() whenever a track
+                 * un-mutes. */
+                if (videoEl && !event.track._kickPlayHooked) {
+                    event.track._kickPlayHooked = true;
+                    event.track.addEventListener('unmute', () => {
+                        videoEl.play().catch(e => console.warn('[VIEWER] remote view play() on track unmute failed:', e.name));
+                    });
+                }
+
+                /* Re-attach: after a pause/resume the master may re-add the track
+                 * under a different msid (new stream object). The element for this
+                 * m-line already exists, so replace the previous same-kind track in
+                 * place (it was ended by the renegotiation) instead of appending a
+                 * new element/label, and re-assign srcObject so the element refreshes
+                 * its control state (Chrome keeps the native unmute control disabled
+                 * otherwise). */
+                const stream = videoEl ? videoEl.srcObject : null;
+                const attachedBefore =
+                    event.track.kind === 'video' ? viewer.videoIndex > 0 : stream != null && stream.getTracks().some(track => track.kind === 'audio');
+                if (stream && attachedBefore) {
+                    let streamChanged = false;
+                    stream
+                        .getTracks()
+                        .filter(track => track.kind === event.track.kind && track.id !== event.track.id)
+                        .forEach(track => {
+                            stream.removeTrack(track);
+                            streamChanged = true;
+                        });
+                    if (!stream.getTracks().includes(event.track)) {
+                        stream.addTrack(event.track);
+                        streamChanged = true;
+                    }
+                    /* Only re-assign on actual composition changes — a reassignment
+                     * reloads the element, which can stall playback. */
+                    if (streamChanged) {
+                        videoEl.srcObject = stream;
+                    }
+                    videoEl.play().catch(() => {});
+                    return;
+                }
+            }
+
             if (event.track.kind === 'audio') {
                 addAudioTrack(event.track, streamName);
                 return;
@@ -1024,7 +1135,99 @@ async function startViewer(localView, remoteViewContainer, formValues, onStatsRe
     }
 }
 
+/**
+ * Adds or removes the viewer's local track of the given kind ('audio'/'video')
+ * on the live peer connection. Both operations fire 'negotiationneeded', which
+ * sends an SDP re-offer to the master — demonstrating mid-session renegotiation.
+ */
+async function toggleViewerMediaTrack(kind) {
+    if (!viewer.peerConnection || !viewer.initialNegotiationComplete) {
+        console.warn('[VIEWER] Not connected - cannot toggle', kind);
+        return;
+    }
+    /* Reuse the transceiver negotiated at connect time (offerToReceive* creates
+     * recvonly audio/video transceivers even when nothing is sent). Toggling
+     * via removeTrack + a later addTrack would append a NEW m-line after the
+     * datachannel — Chrome won't reuse a transceiver that has already sent —
+     * and the answer's m-line order would no longer match the offer
+     * (setRemoteDescription rejects with InvalidAccessError). replaceTrack on
+     * the same transceiver keeps the m-line set fixed for the whole session;
+     * the direction flip still fires 'negotiationneeded'. */
+    const transceiver = viewer.peerConnection
+        .getTransceivers()
+        .find(t => (t.sender.track && t.sender.track.kind === kind) || (t.receiver.track && t.receiver.track.kind === kind));
+    if (!transceiver) {
+        console.warn(`[VIEWER] No ${kind} transceiver found`);
+        return;
+    }
+    if (transceiver.sender.track) {
+        console.log(`[VIEWER] Disabling ${kind}: replaceTrack(null) on the existing transceiver (will renegotiate)`);
+        const track = transceiver.sender.track;
+        track.stop();
+        await transceiver.sender.replaceTrack(null);
+        transceiver.direction = transceiver.direction === 'sendrecv' ? 'recvonly' : 'inactive';
+        if (viewer.localStream) {
+            viewer.localStream.removeTrack(track);
+            if (viewer.localView) {
+                viewer.localView.srcObject = viewer.localStream;
+            }
+        }
+        return false;
+    }
+    console.log(`[VIEWER] Enabling ${kind}: replaceTrack on the existing transceiver (will renegotiate)`);
+    const stream = await navigator.mediaDevices.getUserMedia(kind === 'video' ? { video: true } : { audio: true });
+    const track = stream.getTracks()[0];
+    await transceiver.sender.replaceTrack(track);
+    transceiver.direction = transceiver.direction === 'recvonly' ? 'sendrecv' : 'sendonly';
+    if (!viewer.localStream) {
+        viewer.localStream = new MediaStream();
+    }
+    viewer.localStream.addTrack(track);
+    /* Re-assign so the element refreshes its native control state — Chrome
+     * leaves the audio control disabled when a track is added to an already
+     * playing element's stream (e.g. video first, audio toggled on later). */
+    if (viewer.localView) {
+        viewer.localView.srcObject = viewer.localStream;
+    }
+    return true;
+}
+
+/**
+ * Pauses/resumes the INCOMING track of the given kind by removing/restoring the
+ * 'recv' half of the transceiver direction. The direction change fires
+ * 'negotiationneeded', so an SDP re-offer is sent to the master mid-session and
+ * the master stops (or resumes) sending that track.
+ */
+async function toggleViewerReceiveTrack(kind) {
+    if (!viewer.peerConnection || !viewer.initialNegotiationComplete) {
+        console.warn('[VIEWER] Not connected - cannot toggle incoming', kind);
+        return;
+    }
+    const transceiver = viewer.peerConnection.getTransceivers().find(t => t.receiver && t.receiver.track && t.receiver.track.kind === kind);
+    if (!transceiver) {
+        console.warn(`[VIEWER] No ${kind} transceiver found`);
+        return;
+    }
+    const dir = transceiver.direction;
+    const map = {
+        sendrecv: 'sendonly',
+        recvonly: 'inactive',
+        sendonly: 'sendrecv',
+        inactive: 'recvonly',
+    };
+    transceiver.direction = map[dir] || dir;
+    const paused = dir === 'sendrecv' || dir === 'recvonly';
+    console.log(`[VIEWER] ${paused ? 'Pausing' : 'Resuming'} incoming ${kind}: transceiver direction ${dir} -> ${transceiver.direction} (will renegotiate)`);
+    return paused;
+}
+
 function stopViewer() {
+    $('.renegotiation-controls').addClass('d-none');
+    $('#toggle-recv-video-button').text('Pause Incoming Video');
+    $('#toggle-recv-audio-button').text('Pause Incoming Audio');
+    $('#viewer .remote-views video').css('visibility', 'visible');
+    $('#viewer .local-view').css('visibility', 'visible');
+
     try {
         console.log('[VIEWER] Stopping viewer connection');
 

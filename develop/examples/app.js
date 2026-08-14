@@ -132,6 +132,7 @@ function getFormValues() {
         sessionToken: $('#sessionToken').val() || null,
         enableDQPmetrics: $('#enableDQPmetrics').is(':checked'),
         enableProfileTimeline: $('#enableProfileTimeline').is(':checked'),
+        showRenegotiationControls: $('#show-renegotiation-controls').is(':checked'),
         sendHostCandidates: $('#send-host').is(':checked'),
         acceptHostCandidates: $('#accept-host').is(':checked'),
         sendRelayCandidates: $('#send-relay').is(':checked'),
@@ -359,6 +360,54 @@ function updateViewerUI() {
 }
 
 $('#stop-viewer-button').click(onStop);
+
+$('#toggle-video-viewer-button').click(async function() {
+    const sending = await toggleViewerMediaTrack('video');
+    if (sending !== undefined) {
+        $(this).text(sending ? 'Stop Sending Video' : 'Start Sending Video');
+        // Reveal the black container instead of the element's stalled-playback
+        // spinner (same treatment as pausing incoming video); restored when
+        // sending resumes and in stopViewer().
+        $('#viewer .local-view').css('visibility', sending ? 'visible' : 'hidden');
+    }
+});
+
+$('#toggle-audio-viewer-button').click(async function() {
+    const sending = await toggleViewerMediaTrack('audio');
+    if (sending !== undefined) {
+        $(this).text(sending ? 'Stop Sending Audio' : 'Start Sending Audio');
+    }
+});
+
+$('#toggle-recv-video-button').click(async function() {
+    const paused = await toggleViewerReceiveTrack('video');
+    if (paused !== undefined) {
+        $(this).text(paused ? 'Resume Incoming Video' : 'Pause Incoming Video');
+        // Reveal the black container behind the frozen last frame so the paused
+        // state is obvious; restored on resume and in stopViewer(). Target videos
+        // inside .remote-views — initRemoteTrackViews() recreates the elements
+        // without the static markup's remote-view class.
+        $('#viewer .remote-views video').first().css('visibility', paused ? 'hidden' : 'visible');
+        if (!paused) {
+            // Re-kick playback from the click (user-gesture context): if every
+            // track had been paused the element's clock stalled and won't
+            // restart on its own when media returns.
+            $('#viewer .remote-views video')[0]?.play()?.catch(() => {});
+        }
+    }
+});
+
+$('#toggle-recv-audio-button').click(async function() {
+    const paused = await toggleViewerReceiveTrack('audio');
+    if (paused !== undefined) {
+        $(this).text(paused ? 'Resume Incoming Audio' : 'Pause Incoming Audio');
+        if (!paused) {
+            // Same stalled-element kick as for video (see above); matters when
+            // video was also paused, leaving the element with no live tracks.
+            $('#viewer .remote-views video')[0]?.play()?.catch(() => {});
+        }
+    }
+});
 
 $('#create-channel-button').click(async () => {
     const formValues = getFormValues();
@@ -659,6 +708,7 @@ const fields = [
     {field: 'ingest-media-manual-off', type: 'button'},
     {field: 'show-join-storage-session-button', type: 'checkbox'},
     {field: 'show-join-storage-session-as-viewer-button', type: 'checkbox'},
+    {field: 'show-renegotiation-controls', type: 'checkbox'},
     {field: 'widescreen', type: 'radio', name: 'resolution'},
     {field: 'fullscreen', type: 'radio', name: 'resolution'},
     {field: 'receiveMultiTrack', type: 'checkbox'},
