@@ -14,7 +14,24 @@ jobs:
       contents: read
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      PR_URL: ${{ github.event.pull_request.html_url }}
+      GH_REPO: ${{ github.repository }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
     steps:
+      # Use the REST API (PATCH /pulls/{n}) instead of `gh pr edit --base`.
+      # `gh pr edit --base` goes through the GraphQL updatePullRequest mutation,
+      # which has been failing consistently with "Something went wrong while
+      # executing your query" when changing a PR base from master to develop.
+      # The REST endpoint is a different code path and avoids that failure.
+      # The loop adds a small retry to absorb genuinely transient errors.
       - name: Change base branch to develop
-        run: gh pr edit "$PR_URL" --base develop
+        run: |
+          for attempt in 1 2 3; do
+            if gh api --method PATCH "repos/${GH_REPO}/pulls/${PR_NUMBER}" -f base=develop; then
+              echo "Retargeted PR #${PR_NUMBER} to develop"
+              exit 0
+            fi
+            echo "Attempt ${attempt} to retarget PR #${PR_NUMBER} failed; retrying in $((attempt * 5))s..."
+            sleep $((attempt * 5))
+          done
+          echo "Failed to retarget PR #${PR_NUMBER} to develop after 3 attempts"
+          exit 1
