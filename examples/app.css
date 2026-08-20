@@ -6,6 +6,27 @@
     width: 100%;
 }
 
+.video-container .track-label {
+    display: block;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 2px 6px;
+    font-size: 12px;
+    line-height: 1.4;
+    font-family: monospace;
+}
+
+.video-container audio {
+    width: 100%;
+    max-width: 100%;
+}
+
+.remote-views {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 4px;
+}
+
 
 #logs-header {
     margin-top: 20px;

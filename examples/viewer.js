@@ -256,7 +256,163 @@ let dataChannelLatencyCalcMessage = {
     'lastMessageFromViewerTs': ''
 }
 
-async function startViewer(localView, remoteView, formValues, onStatsReport, remoteMessage) {
+const TrackMode = {
+    NONE: 'None',
+    VIDEO_ONLY: 'VideoOnly',
+    AUDIO_ONLY: 'AudioOnly',
+    AUDIO_VIDEO: 'AudioVideo',
+    MULTI: 'Multi',
+};
+
+/**
+ * Adds an audio track to the appropriate element based on the current track mode.
+ */
+function addAudioTrack(track, streamName) {
+    if (viewer.trackMode === TrackMode.MULTI) {
+        const audioEl = viewer.audioElements[viewer.audioIndex];
+        if (!audioEl) return;
+        if (!audioEl.srcObject) {
+            audioEl.srcObject = new MediaStream();
+        }
+        audioEl.srcObject.addTrack(track);
+        const label = document.createElement('span');
+        label.classList.add('track-label');
+        label.textContent = streamName.toLowerCase().includes('audio') ? streamName : streamName + ' (audio)';
+        audioEl.parentElement.insertBefore(label, audioEl);
+        viewer.audioIndex++;
+    } else if (viewer.trackMode === TrackMode.AUDIO_VIDEO || viewer.trackMode === TrackMode.AUDIO_ONLY) {
+        const videoEl = viewer.videoElements[0];
+        if (!videoEl.srcObject) {
+            videoEl.srcObject = new MediaStream();
+        }
+        videoEl.srcObject.addTrack(track);
+        // In AUDIO_VIDEO mode, addVideoTrack handles the combined label.
+        // In AUDIO_ONLY mode, add a label since there's no video to set one.
+        if (viewer.trackMode === TrackMode.AUDIO_ONLY) {
+            const label = document.createElement('span');
+            label.classList.add('track-label');
+            label.textContent = streamName.toLowerCase().includes('audio') ? streamName : streamName + ' (audio)';
+            videoEl.parentElement.insertBefore(label, videoEl);
+        }
+    } else {
+        console.warn('[VIEWER] Unexpected audio track in', viewer.trackMode, 'mode');
+    }
+}
+
+/**
+ * Adds a video track to the next pre-created video element.
+ * Returns the stream, or null if no element is available.
+ */
+function addVideoTrack(track, streamName) {
+    const videoEl = viewer.videoElements[viewer.videoIndex];
+    if (!videoEl) {
+        console.warn('[VIEWER] No pre-created video element available for track', track.id);
+        return;
+    }
+
+    if (videoEl.srcObject) {
+        videoEl.srcObject.addTrack(track);
+    } else {
+        videoEl.srcObject = new MediaStream([track]);
+    }
+
+    const label = document.createElement('span');
+    label.classList.add('track-label');
+    if (viewer.trackMode === TrackMode.AUDIO_VIDEO) {
+        label.textContent = streamName + ' (video + audio)';
+    } else {
+        label.textContent = streamName;
+    }
+    videoEl.parentElement.insertBefore(label, videoEl);
+
+    viewer.remoteViews.push(videoEl);
+    viewer.remoteStreams.push(videoEl.srcObject);
+    viewer.videoIndex++;
+}
+
+/**
+ * Pre-creates DOM elements for remote tracks based on the negotiated SDP answer.
+ * Called on first "ontrack" event, when transceiver directions are known.
+ *
+ * Display logic:
+ *   1V + 1A (or less): single <video> element handles both.
+ *   Otherwise: each track gets its own element.
+ */
+function initRemoteTrackViews(remoteViewContainer, formValues) {
+    const activeTransceivers = viewer.peerConnection.getTransceivers().filter(
+        (t) => t.currentDirection === 'recvonly' || t.currentDirection === 'sendrecv',
+    );
+    const expectedVideoCount = activeTransceivers.filter((t) => t.receiver.track.kind === 'video').length;
+    const expectedAudioCount = activeTransceivers.filter((t) => t.receiver.track.kind === 'audio').length;
+    console.log(`[VIEWER] Expecting ${expectedVideoCount} video + ${expectedAudioCount} audio track(s) from remote`);
+
+    if (expectedVideoCount > 1 || expectedAudioCount > 1) {
+        viewer.trackMode = TrackMode.MULTI;
+    } else if (expectedVideoCount === 1 && expectedAudioCount === 1) {
+        viewer.trackMode = TrackMode.AUDIO_VIDEO;
+    } else if (expectedVideoCount === 1) {
+        viewer.trackMode = TrackMode.VIDEO_ONLY;
+    } else if (expectedAudioCount === 1) {
+        viewer.trackMode = TrackMode.AUDIO_ONLY;
+    } else {
+        viewer.trackMode = TrackMode.NONE;
+    }
+    console.log(`[VIEWER] Receiving track mode: ${viewer.trackMode}`);
+
+    viewer.videoElements = [];
+    viewer.audioElements = [];
+    remoteViewContainer.innerHTML = '';
+
+    if (viewer.trackMode !== TrackMode.MULTI) {
+        const container = document.createElement('div');
+        container.classList.add('video-container');
+        const videoEl = document.createElement('video');
+        videoEl.autoplay = true;
+        videoEl.setAttribute('playsinline', '');
+        videoEl.controls = true;
+        container.appendChild(videoEl);
+        remoteViewContainer.appendChild(container);
+        viewer.videoElements.push(videoEl);
+    } else {
+        for (let i = 0; i < expectedVideoCount; i++) {
+            const container = document.createElement('div');
+            container.classList.add('video-container');
+            const videoEl = document.createElement('video');
+            videoEl.autoplay = true;
+            videoEl.setAttribute('playsinline', '');
+            videoEl.controls = true;
+            container.appendChild(videoEl);
+            remoteViewContainer.appendChild(container);
+            viewer.videoElements.push(videoEl);
+        }
+        for (let i = 0; i < expectedAudioCount; i++) {
+            const container = document.createElement('div');
+            container.classList.add('video-container');
+            const audioEl = document.createElement('audio');
+            audioEl.autoplay = true;
+            audioEl.controls = true;
+            container.appendChild(audioEl);
+            remoteViewContainer.appendChild(container);
+            viewer.audioElements.push(audioEl);
+        }
+    }
+
+    viewer.videoIndex = 0;
+    viewer.audioIndex = 0;
+
+    // Log inactive transceivers as warnings
+    if (formValues.receiveMultiTrack) {
+        viewer.peerConnection.getTransceivers().forEach((t) => {
+            if (t.currentDirection === 'inactive') {
+                console.warn(`[VIEWER] Transceiver mid=${t.mid} (${t.receiver.track.kind}) is inactive - remote peer did not send on this m-line`);
+            }
+        });
+    }
+}
+
+async function startViewer(localView, remoteViewContainer, formValues, onStatsReport, remoteMessage) {
+    viewer.localView = localView;
+    viewer.initialNegotiationComplete = false;
     try {
         console.log('[VIEWER] Client id is:', formValues.clientId);
         viewerButtonPressed = new Date();
@@ -266,7 +422,9 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
         }
 
         viewer.localView = localView;
-        viewer.remoteView = remoteView;
+        viewer.remoteViewContainer = remoteViewContainer;
+        viewer.remoteViews = [];
+        viewer.remoteStreams = [];
 
         viewer.loadedDataCallback = () => {
             metrics.viewer.ttff.endTime = Date.now();
@@ -285,8 +443,6 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
                 timeToFirstFrameFromViewerStart = metrics.viewer.ttff.endTime - viewerButtonPressed.getTime();
             }
         };
-
-        viewer.remoteView.addEventListener('loadeddata', viewer.loadedDataCallback);
 
         if (formValues.enableProfileTimeline) {
             metrics.viewer.ttff.startTime = viewerButtonPressed.getTime();
@@ -718,6 +874,15 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
                 }
             }
 
+            // Add recvonly video transceivers so the SDP offer signals we can receive up to 4 video tracks.
+            // The answerer (C SDK master) cannot add new m-lines - it can only send on m-lines present in the offer.
+            if (formValues.receiveMultiTrack) {
+                const existingVideoTransceivers = viewer.peerConnection.getTransceivers().filter(t => t.receiver.track.kind === 'video').length;
+                for (let i = existingVideoTransceivers; i < 4; i++) {
+                    viewer.peerConnection.addTransceiver('video', { direction: 'recvonly' });
+                }
+            }
+
             const [videoCodecs, audioCodecs] = getCodecFilters();
             viewer.peerConnection.getTransceivers().map((transceiver) => {
                 if (transceiver.receiver.track.kind === 'video' && videoCodecs) {
@@ -753,8 +918,67 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
             // Add the SDP answer to the peer connection
             console.log('[VIEWER] Received SDP answer');
             console.debug('SDP answer:', answer);
+            if (viewer.peerConnection.signalingState !== 'have-local-offer') {
+                console.warn('[VIEWER] Ignoring SDP answer in signaling state', viewer.peerConnection.signalingState);
+                return;
+            }
             metrics.viewer.offAnswerTime.endTime = Date.now();
-            await viewer.peerConnection.setRemoteDescription(answer);
+            /* Pre-flight sanity check with a precise message: an answer MUST
+             * mirror the offer's m-line count. A mismatch is a remote-side
+             * (master) renegotiation bug — Chrome's own exception for this is
+             * opaque, so name the real problem before attempting to apply. */
+            const countMLines = sdp => (sdp.match(/^m=/gm) || []).length;
+            const offerMLines = countMLines(viewer.peerConnection.localDescription.sdp);
+            const answerMLines = countMLines(answer.sdp);
+            if (answerMLines !== offerMLines) {
+                console.error(
+                    `[VIEWER] Master sent a malformed SDP answer: ${answerMLines} m-lines vs ${offerMLines} in our offer. ` +
+                        'This is a master-side renegotiation bug (answer must mirror the offer m-lines).',
+                );
+            }
+            try {
+                await viewer.peerConnection.setRemoteDescription(answer);
+            } catch (e) {
+                /* A malformed answer (e.g. m-line count differing from our offer)
+                 * would otherwise leave the connection stuck in 'have-local-offer',
+                 * where 'negotiationneeded' never fires again — later toggles
+                 * would silently do nothing. Log loudly and roll back to stable
+                 * so renegotiation stays usable. */
+                console.error('[VIEWER] Failed to apply SDP answer:', e);
+                try {
+                    await viewer.peerConnection.setLocalDescription({ type: 'rollback' });
+                    console.warn('[VIEWER] Rolled back local offer; signaling state:', viewer.peerConnection.signalingState);
+                } catch (rollbackError) {
+                    console.error('[VIEWER] Rollback failed:', rollbackError);
+                }
+                return;
+            }
+            if (!viewer.initialNegotiationComplete) {
+                viewer.initialNegotiationComplete = true;
+                // Opt-in via Advanced settings: the buttons send SDP re-offers,
+                // which the master may not implement.
+                if (formValues.showRenegotiationControls) {
+                    // Seed the send-toggle labels from the actual sender state so
+                    // they read as status ("Stop Sending X" while sending).
+                    const sendingKind = kind => viewer.peerConnection.getSenders().some(s => s.track && s.track.kind === kind);
+                    $('#toggle-video-viewer-button').text(sendingKind('video') ? 'Stop Sending Video' : 'Start Sending Video');
+                    $('#toggle-audio-viewer-button').text(sendingKind('audio') ? 'Stop Sending Audio' : 'Start Sending Audio');
+                    $('.renegotiation-controls').removeClass('d-none');
+                }
+            }
+        });
+
+        // Renegotiate when tracks are added or removed mid-session (e.g. via the
+        // enable/disable audio/video buttons). The initial offer is sent by the
+        // connect flow above, so ignore the event until that has completed.
+        viewer.peerConnection.addEventListener('negotiationneeded', async () => {
+            if (!viewer.initialNegotiationComplete) {
+                return;
+            }
+            console.log('[VIEWER] Negotiation needed. Creating SDP re-offer');
+            await viewer.peerConnection.setLocalDescription(await viewer.peerConnection.createOffer());
+            console.debug('SDP re-offer:', viewer.peerConnection.localDescription);
+            viewer.signalingClient.sendSdpOffer(viewer.peerConnection.localDescription);
         });
 
         viewer.signalingClient.on('iceCandidate', candidate => {
@@ -809,8 +1033,13 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
             printPeerConnectionStateInfo(event, '[VIEWER]');
         });
 
-        // As remote tracks are received, add them to the remote view
-        viewer.peerConnection.addEventListener('track', event => {
+        // As remote tracks are received, link them to the pre-created DOM elements.
+        // Track events fire sequentially (JS is single-threaded) — no race conditions.
+        //
+        // Display logic (determined from SDP answer, elements pre-created above):
+        //   1V + 1A (or less): single <video> element.
+        //   Otherwise: each track in a separate element.
+        viewer.peerConnection.addEventListener('track', (event) => {
             console.log(
                 '[VIEWER] Received',
                 event.track.kind || 'unknown',
@@ -821,16 +1050,82 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
                 'with track id:',
                 event.track.id,
             );
-            if (remoteView.srcObject) {
+
+            // Pre-create all DOM elements on the first ontrack event.
+            if (!viewer.viewInitialized) {
+                viewer.viewInitialized = true;
+                initRemoteTrackViews(remoteViewContainer, formValues);
+            }
+
+            const streamName = event.streams[0]?.id || event.track.label || event.track.id;
+
+            /* Re-negotiation support (single-element modes only — the renegotiation
+             * controls target the classic 1 video + 1 audio session, not MULTI). */
+            if (viewer.trackMode !== TrackMode.MULTI) {
+                const videoEl = viewer.videoElements[0];
+
+                /* If ALL tracks were paused (both m-lines inactive), the element's
+                 * playback clock stalls; a track un-muting on resume does not
+                 * restart a stalled element by itself — audio would stay silent
+                 * until the element plays again. Kick play() whenever a track
+                 * un-mutes. */
+                if (videoEl && !event.track._kickPlayHooked) {
+                    event.track._kickPlayHooked = true;
+                    event.track.addEventListener('unmute', () => {
+                        videoEl.play().catch(e => console.warn('[VIEWER] remote view play() on track unmute failed:', e.name));
+                    });
+                }
+
+                /* Re-attach: after a pause/resume the master may re-add the track
+                 * under a different msid (new stream object). The element for this
+                 * m-line already exists, so replace the previous same-kind track in
+                 * place (it was ended by the renegotiation) instead of appending a
+                 * new element/label, and re-assign srcObject so the element refreshes
+                 * its control state (Chrome keeps the native unmute control disabled
+                 * otherwise). */
+                const stream = videoEl ? videoEl.srcObject : null;
+                const attachedBefore =
+                    event.track.kind === 'video' ? viewer.videoIndex > 0 : stream != null && stream.getTracks().some(track => track.kind === 'audio');
+                if (stream && attachedBefore) {
+                    let streamChanged = false;
+                    stream
+                        .getTracks()
+                        .filter(track => track.kind === event.track.kind && track.id !== event.track.id)
+                        .forEach(track => {
+                            stream.removeTrack(track);
+                            streamChanged = true;
+                        });
+                    if (!stream.getTracks().includes(event.track)) {
+                        stream.addTrack(event.track);
+                        streamChanged = true;
+                    }
+                    /* Only re-assign on actual composition changes — a reassignment
+                     * reloads the element, which can stall playback. */
+                    if (streamChanged) {
+                        videoEl.srcObject = stream;
+                    }
+                    videoEl.play().catch(() => {});
+                    return;
+                }
+            }
+
+            if (event.track.kind === 'audio') {
+                addAudioTrack(event.track, streamName);
                 return;
             }
-            viewer.remoteStream = event.streams[0];
-            remoteView.srcObject = viewer.remoteStream;
 
-            //measure the time to first track
+            addVideoTrack(event.track, streamName);
+
+            // Attach time-to-first-frame listener on the first video track
+            if (viewer.videoIndex === 1) {
+                viewer.videoElements[0].addEventListener('loadeddata', viewer.loadedDataCallback);
+            }
+
             if (formValues.enableDQPmetrics && initialDate === 0) {
                 initialDate = new Date();
             }
+
+            console.log('[VIEWER] Now displaying', viewer.videoIndex, 'video track(s)');
         });
 
         console.log('[VIEWER] Starting viewer connection');
@@ -840,7 +1135,99 @@ async function startViewer(localView, remoteView, formValues, onStatsReport, rem
     }
 }
 
+/**
+ * Adds or removes the viewer's local track of the given kind ('audio'/'video')
+ * on the live peer connection. Both operations fire 'negotiationneeded', which
+ * sends an SDP re-offer to the master — demonstrating mid-session renegotiation.
+ */
+async function toggleViewerMediaTrack(kind) {
+    if (!viewer.peerConnection || !viewer.initialNegotiationComplete) {
+        console.warn('[VIEWER] Not connected - cannot toggle', kind);
+        return;
+    }
+    /* Reuse the transceiver negotiated at connect time (offerToReceive* creates
+     * recvonly audio/video transceivers even when nothing is sent). Toggling
+     * via removeTrack + a later addTrack would append a NEW m-line after the
+     * datachannel — Chrome won't reuse a transceiver that has already sent —
+     * and the answer's m-line order would no longer match the offer
+     * (setRemoteDescription rejects with InvalidAccessError). replaceTrack on
+     * the same transceiver keeps the m-line set fixed for the whole session;
+     * the direction flip still fires 'negotiationneeded'. */
+    const transceiver = viewer.peerConnection
+        .getTransceivers()
+        .find(t => (t.sender.track && t.sender.track.kind === kind) || (t.receiver.track && t.receiver.track.kind === kind));
+    if (!transceiver) {
+        console.warn(`[VIEWER] No ${kind} transceiver found`);
+        return;
+    }
+    if (transceiver.sender.track) {
+        console.log(`[VIEWER] Disabling ${kind}: replaceTrack(null) on the existing transceiver (will renegotiate)`);
+        const track = transceiver.sender.track;
+        track.stop();
+        await transceiver.sender.replaceTrack(null);
+        transceiver.direction = transceiver.direction === 'sendrecv' ? 'recvonly' : 'inactive';
+        if (viewer.localStream) {
+            viewer.localStream.removeTrack(track);
+            if (viewer.localView) {
+                viewer.localView.srcObject = viewer.localStream;
+            }
+        }
+        return false;
+    }
+    console.log(`[VIEWER] Enabling ${kind}: replaceTrack on the existing transceiver (will renegotiate)`);
+    const stream = await navigator.mediaDevices.getUserMedia(kind === 'video' ? { video: true } : { audio: true });
+    const track = stream.getTracks()[0];
+    await transceiver.sender.replaceTrack(track);
+    transceiver.direction = transceiver.direction === 'recvonly' ? 'sendrecv' : 'sendonly';
+    if (!viewer.localStream) {
+        viewer.localStream = new MediaStream();
+    }
+    viewer.localStream.addTrack(track);
+    /* Re-assign so the element refreshes its native control state — Chrome
+     * leaves the audio control disabled when a track is added to an already
+     * playing element's stream (e.g. video first, audio toggled on later). */
+    if (viewer.localView) {
+        viewer.localView.srcObject = viewer.localStream;
+    }
+    return true;
+}
+
+/**
+ * Pauses/resumes the INCOMING track of the given kind by removing/restoring the
+ * 'recv' half of the transceiver direction. The direction change fires
+ * 'negotiationneeded', so an SDP re-offer is sent to the master mid-session and
+ * the master stops (or resumes) sending that track.
+ */
+async function toggleViewerReceiveTrack(kind) {
+    if (!viewer.peerConnection || !viewer.initialNegotiationComplete) {
+        console.warn('[VIEWER] Not connected - cannot toggle incoming', kind);
+        return;
+    }
+    const transceiver = viewer.peerConnection.getTransceivers().find(t => t.receiver && t.receiver.track && t.receiver.track.kind === kind);
+    if (!transceiver) {
+        console.warn(`[VIEWER] No ${kind} transceiver found`);
+        return;
+    }
+    const dir = transceiver.direction;
+    const map = {
+        sendrecv: 'sendonly',
+        recvonly: 'inactive',
+        sendonly: 'sendrecv',
+        inactive: 'recvonly',
+    };
+    transceiver.direction = map[dir] || dir;
+    const paused = dir === 'sendrecv' || dir === 'recvonly';
+    console.log(`[VIEWER] ${paused ? 'Pausing' : 'Resuming'} incoming ${kind}: transceiver direction ${dir} -> ${transceiver.direction} (will renegotiate)`);
+    return paused;
+}
+
 function stopViewer() {
+    $('.renegotiation-controls').addClass('d-none');
+    $('#toggle-recv-video-button').text('Pause Incoming Video');
+    $('#toggle-recv-audio-button').text('Pause Incoming Audio');
+    $('#viewer .remote-views video').css('visibility', 'visible');
+    $('#viewer .local-view').css('visibility', 'visible');
+
     try {
         console.log('[VIEWER] Stopping viewer connection');
 
@@ -859,9 +1246,9 @@ function stopViewer() {
             viewer.localStream = null;
         }
 
-        if (viewer.remoteStream) {
-            viewer.remoteStream.getTracks().forEach(track => track.stop());
-            viewer.remoteStream = null;
+        if (viewer.remoteStreams) {
+            viewer.remoteStreams.forEach((stream) => stream.getTracks().forEach((track) => track.stop()));
+            viewer.remoteStreams = null;
         }
 
         if (viewer.peerConnectionStatsInterval) {
@@ -873,10 +1260,32 @@ function stopViewer() {
             viewer.localView.srcObject = null;
         }
 
-        if (viewer.remoteView) {
-            viewer.remoteView.removeEventListener('loadeddata', viewer.loadedDataCallback);
-            viewer.remoteView.srcObject = null;
+        if (viewer.remoteViews) {
+            viewer.remoteViews.forEach((view) => {
+                view.removeEventListener('loadeddata', viewer.loadedDataCallback);
+                view.srcObject = null;
+            });
+            viewer.remoteViews = null;
         }
+
+        if (viewer.videoElements) {
+            viewer.videoElements.forEach((el) => { el.srcObject = null; });
+            viewer.videoElements = null;
+        }
+
+        if (viewer.audioElements) {
+            viewer.audioElements.forEach((el) => {
+                el.srcObject?.getTracks().forEach((track) => track.stop());
+                el.srcObject = null;
+            });
+            viewer.audioElements = null;
+        }
+
+        if (viewer.remoteViewContainer) {
+            viewer.remoteViewContainer.innerHTML = '<div class="video-container"><video class="remote-view" autoplay playsinline controls></video></div>';
+        }
+
+        viewer.viewInitialized = false;
 
         if (viewer.dataChannel) {
             viewer.dataChannel = null;
