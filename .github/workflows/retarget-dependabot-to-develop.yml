@@ -26,12 +26,16 @@ jobs:
       - name: Change base branch to develop
         run: |
           for attempt in 1 2 3; do
-            if gh api --method PATCH "repos/${GH_REPO}/pulls/${PR_NUMBER}" -f base=develop; then
+            # Capture stdout+stderr and the HTTP status so a failure logs *why*
+            # (e.g. the API error message / response body), not just that it failed.
+            if response=$(gh api --method PATCH "repos/${GH_REPO}/pulls/${PR_NUMBER}" \
+                -f base=develop --include 2>&1); then
               echo "Retargeted PR #${PR_NUMBER} to develop"
               exit 0
             fi
-            echo "Attempt ${attempt} to retarget PR #${PR_NUMBER} failed; retrying in $((attempt * 5))s..."
+            echo "Attempt ${attempt} to retarget PR #${PR_NUMBER} failed. gh api response:"
+            echo "${response}"
             sleep $((attempt * 5))
           done
-          echo "Failed to retarget PR #${PR_NUMBER} to develop after 3 attempts"
+          echo "Failed to retarget PR #${PR_NUMBER} to develop after 3 attempts (see gh api response above)"
           exit 1
