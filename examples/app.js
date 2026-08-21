@@ -153,6 +153,7 @@ function getFormValues() {
         turnsWithUdp: $('#turns-with-udp').is(':checked'),
         turnsWithTcp: $('#turns-with-tcp').is(':checked'),
         oneTurnServerSetOnly: $('#turn-one-set-only').is(':checked'),
+        shareTurnCredentialsWithMaster: $('#share-turn-credentials').is(':checked'),
     };
 }
 

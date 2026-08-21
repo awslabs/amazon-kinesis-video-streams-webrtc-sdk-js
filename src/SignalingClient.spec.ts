@@ -433,6 +433,61 @@ describe('SignalingClient', () => {
                 done();
             });
         });
+
+        it('should send a TURN credentials payload as the viewer', (done) => {
+            const client = new SignalingClient(config as SignalingClientConfig);
+            const turnCredentialsPayload = {
+                turnServers: [
+                    {
+                        urls: ['turn:turn1.example.com:443?transport=udp'],
+                        username: 'testUser',
+                        password: 'testPass',
+                        ttl: 300,
+                    },
+                ],
+            };
+            client.open();
+            client.on('open', () => {
+                client.sendIceCandidate(turnCredentialsPayload as any);
+                const sentMessage = JSON.parse(MockWebSocket.instance.send.mock.calls[0][0]);
+                expect(sentMessage.action).toEqual('ICE_CANDIDATE');
+                const decodedPayload = JSON.parse(Buffer.from(sentMessage.messagePayload, 'base64').toString());
+                expect(decodedPayload).toEqual(turnCredentialsPayload);
+                done();
+            });
+        });
+
+        it('should send a TURN credentials payload as the master with recipient', (done) => {
+            config.role = Role.MASTER;
+            delete config.clientId;
+            const client = new SignalingClient(config as SignalingClientConfig);
+            const turnCredentialsPayload = {
+                turnServers: [
+                    {
+                        urls: ['turn:turn1.example.com:443?transport=udp', 'turns:turn1.example.com:443?transport=tcp'],
+                        username: 'user1',
+                        password: 'pass1',
+                        ttl: 300,
+                    },
+                    {
+                        urls: ['turn:turn2.example.com:443?transport=udp'],
+                        username: 'user2',
+                        password: 'pass2',
+                        ttl: 300,
+                    },
+                ],
+            };
+            client.open();
+            client.on('open', () => {
+                client.sendIceCandidate(turnCredentialsPayload as any, CLIENT_ID);
+                const sentMessage = JSON.parse(MockWebSocket.instance.send.mock.calls[0][0]);
+                expect(sentMessage.action).toEqual('ICE_CANDIDATE');
+                expect(sentMessage.recipientClientId).toEqual(CLIENT_ID);
+                const decodedPayload = JSON.parse(Buffer.from(sentMessage.messagePayload, 'base64').toString());
+                expect(decodedPayload).toEqual(turnCredentialsPayload);
+                done();
+            });
+        });
     });
 
     describe('events', () => {

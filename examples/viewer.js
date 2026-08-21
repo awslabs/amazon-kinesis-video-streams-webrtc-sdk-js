@@ -904,6 +904,23 @@ async function startViewer(localView, remoteViewContainer, formValues, onStatsRe
                 }),
             );
 
+            // Send TURN server credentials to the master BEFORE the SDP offer so the master
+            // is more likely to have them when the offer arrives. The signaling service does
+            // not guarantee message ordering, but sending creds first gives them a head start.
+            // The C SDK master detects the {"turnServers":...} payload prefix on an
+            // ICE_CANDIDATE message and uses the credentials directly.
+            // Note: we use "password" (not "credential") to match the C SDK's IceConfigInfo.password field.
+            if (formValues.shareTurnCredentialsWithMaster && getIceServerConfigResponse.IceServerList.length > 0) {
+                const turnServersPayload = getIceServerConfigResponse.IceServerList.map(iceServer => ({
+                    urls: iceServer.Uris,
+                    username: iceServer.Username,
+                    password: iceServer.Password,
+                    ttl: iceServer.Ttl,
+                }));
+                console.log('[VIEWER] Sharing TURN credentials with master:', turnServersPayload.length, 'server(s)');
+                viewer.signalingClient.sendIceCandidate({ turnServers: turnServersPayload });
+            }
+
             // When trickle ICE is enabled, send the offer now and then send ICE candidates as they are generated. Otherwise wait on the ICE candidates.
             if (formValues.useTrickleICE) {
                 console.log('[VIEWER] Sending SDP offer');
@@ -911,6 +928,7 @@ async function startViewer(localView, remoteViewContainer, formValues, onStatsRe
                 metrics.viewer.offAnswerTime.startTime = Date.now();
                 viewer.signalingClient.sendSdpOffer(viewer.peerConnection.localDescription);
             }
+
             console.log('[VIEWER] Generating ICE candidates');
         });
 
