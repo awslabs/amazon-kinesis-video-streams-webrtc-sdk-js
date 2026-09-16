@@ -153,6 +153,7 @@ function getFormValues() {
         turnsWithUdp: $('#turns-with-udp').is(':checked'),
         turnsWithTcp: $('#turns-with-tcp').is(':checked'),
         oneTurnServerSetOnly: $('#turn-one-set-only').is(':checked'),
+        sendIceServersToMaster: $('#send-ice-servers-to-master').is(':checked'),
     };
 }
 
@@ -740,6 +741,7 @@ const fields = [
     {field: 'turns-with-udp', type: 'checkbox'},
     {field: 'turns-with-tcp', type: 'checkbox'},
     {field: 'turn-one-set-only', type: 'checkbox'},
+    {field: 'send-ice-servers-to-master', type: 'checkbox'},
     {field: 'enable-fips', type: 'checkbox'},
 ];
 

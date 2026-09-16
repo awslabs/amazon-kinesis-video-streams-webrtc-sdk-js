@@ -410,6 +410,79 @@ function initRemoteTrackViews(remoteViewContainer, formValues) {
     }
 }
 
+/**
+ * Chooses the set of TURN servers to hand to the master in the SDP offer.
+ *
+ * GetIceServerConfig returns more than one set, and each side of a connection only ever uses one, so
+ * the set this viewer is not using is the one given away. No second API call is needed.
+ *
+ * @param {Array} iceServerList the IceServerList from GetIceServerConfig, unmodified.
+ * @param {Array} viewerIceServers the servers this viewer is about to use, so that a set already in
+ * play here is not the one handed over.
+ * @returns {Array|null} one entry of the IceServerList, or null when there is nothing to send.
+ */
+function selectIceServersForMaster(iceServerList, viewerIceServers) {
+    if (!iceServerList || !iceServerList.length) {
+        console.warn('[VIEWER] Asked to send TURN servers to the master, but GetIceServerConfig returned none. The master will fetch its own.');
+        return null;
+    }
+
+    // The username identifies a set, so it is what tells apart the one this viewer took.
+    const inUseHere = new Set(viewerIceServers.map((iceServer) => iceServer.username).filter(Boolean));
+    const unused = iceServerList.filter((iceServer) => !inUseHere.has(iceServer.Username));
+
+    if (unused.length) {
+        return [unused[0]];
+    }
+
+    console.warn('[VIEWER] Every set of TURN servers is in use by this viewer, so the master is being given a set that is in use here as well.');
+    return [iceServerList[iceServerList.length - 1]];
+}
+
+/**
+ * Sends the initial SDP offer, carrying TURN servers for the master when there are any to send.
+ *
+ * The master would otherwise call GetIceServerConfig itself before it can gather relay candidates,
+ * and that call sits on its path to the first frame - worth 150-200 ms on a constrained device. The
+ * credentials are only needed at the moment a session starts, which is exactly when the offer
+ * arrives, so the viewer fetches them and passes a set along.
+ *
+ * They travel as an extra property inside the offer's own message payload, rather than as a separate
+ * signaling message or an SDP attribute. Signaling does not guarantee ordering across messages, so
+ * anything sent separately can arrive after the offer it belongs to, and keeping it out of the SDP
+ * leaves the SDP byte for byte what the browser generated. The action stays SDP_OFFER and the
+ * service still sees an opaque payload, so no service or SDK change is involved.
+ *
+ * The property goes last on purpose: the WebRTC C SDK's sdp_deserializeInit walks the payload's JSON
+ * tokens in key and value pairs, and a nested value throws off the alignment of everything after it,
+ * so 'type' and 'sdp' have to be read before the nesting starts.
+ *
+ * @param {Array|null} iceServersForMaster entries of the GetIceServerConfig IceServerList to send,
+ * unmodified so the Ttl travels with them, or null to send an ordinary offer.
+ */
+function sendSdpOfferToMaster(signalingClient, localDescription, iceServersForMaster) {
+    if (!iceServersForMaster) {
+        signalingClient.sendSdpOffer(localDescription);
+        return;
+    }
+
+    console.log('[VIEWER] Sending', iceServersForMaster.length, 'set(s) of TURN servers to the master with the offer');
+    // URIs only. The credentials that go with them are in the payload but are not worth printing.
+    console.debug(
+        '[VIEWER] TURN URIs for the master:',
+        iceServersForMaster.flatMap((iceServer) => iceServer.Uris),
+    );
+
+    // A plain object rather than the RTCSessionDescription: the payload is serialized with
+    // JSON.stringify, and RTCSessionDescription.toJSON() returns only type and sdp, so a property
+    // added to the description itself would be dropped with no error at all.
+    signalingClient.sendSdpOffer({
+        type: localDescription.type,
+        sdp: localDescription.sdp,
+        IceServerList: iceServersForMaster,
+    });
+}
+
 async function startViewer(localView, remoteViewContainer, formValues, onStatsReport, remoteMessage) {
     viewer.localView = localView;
     viewer.initialNegotiationComplete = false;
@@ -654,6 +727,11 @@ async function startViewer(localView, remoteViewContainer, formValues, onStatsRe
             iceServers.push(...turnServers);
         }
         console.log('[VIEWER] ICE servers:', iceServers);
+
+        // Decided once per session, before the peer connection exists, because the master needs the
+        // servers up front too: they cannot be added to a peer connection that has already been
+        // created.
+        viewer.iceServersForMaster = formValues.sendIceServersToMaster ? selectIceServersForMaster(getIceServerConfigResponse.IceServerList, iceServers) : null;
 
         // Create Signaling Client
         viewer.signalingClient = new KVSWebRTC.SignalingClient({
@@ -909,7 +987,7 @@ async function startViewer(localView, remoteViewContainer, formValues, onStatsRe
                 console.log('[VIEWER] Sending SDP offer');
                 console.debug('SDP offer:', viewer.peerConnection.localDescription);
                 metrics.viewer.offAnswerTime.startTime = Date.now();
-                viewer.signalingClient.sendSdpOffer(viewer.peerConnection.localDescription);
+                sendSdpOfferToMaster(viewer.signalingClient, viewer.peerConnection.localDescription, viewer.iceServersForMaster);
             }
             console.log('[VIEWER] Generating ICE candidates');
         });
@@ -978,6 +1056,9 @@ async function startViewer(localView, remoteViewContainer, formValues, onStatsRe
             console.log('[VIEWER] Negotiation needed. Creating SDP re-offer');
             await viewer.peerConnection.setLocalDescription(await viewer.peerConnection.createOffer());
             console.debug('SDP re-offer:', viewer.peerConnection.localDescription);
+            // Deliberately a plain offer, with no TURN servers attached. By this point the master has
+            // a peer connection whose ICE servers are already fixed, so there is nothing it could do
+            // with them.
             viewer.signalingClient.sendSdpOffer(viewer.peerConnection.localDescription);
         });
 
@@ -1024,7 +1105,7 @@ async function startViewer(localView, remoteViewContainer, formValues, onStatsRe
                 if (!formValues.useTrickleICE) {
                     console.log('[VIEWER] Sending SDP offer');
                     console.debug('SDP offer:', viewer.peerConnection.localDescription);
-                    viewer.signalingClient.sendSdpOffer(viewer.peerConnection.localDescription);
+                    sendSdpOfferToMaster(viewer.signalingClient, viewer.peerConnection.localDescription, viewer.iceServersForMaster);
                 }
             }
         });
@@ -1286,6 +1367,9 @@ function stopViewer() {
         }
 
         viewer.viewInitialized = false;
+
+        // Belongs to the session that is ending; the next one picks its own set.
+        viewer.iceServersForMaster = null;
 
         if (viewer.dataChannel) {
             viewer.dataChannel = null;
