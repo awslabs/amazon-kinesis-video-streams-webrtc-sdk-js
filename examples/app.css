@@ -56,3 +56,7 @@ pre .warn {
 #subheader {
     margin-top: 30px;
 }
+
+.tooltip-inner {
+    max-width: 400px;
+}

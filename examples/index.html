@@ -359,6 +359,12 @@
                         <label class="form-check-label" for="turn-one-set-only">Use only one set of TURN servers<span data-delay="{ &quot;hide&quot;: 1500 }" data-position="auto" tabindex="0" class="text-info ml-1" data-toggle="tooltip" data-html="true" title="
                             <p>GetIceServerConfig returns two sets of TURN servers, only use one of the sets.</p>"><sup>&#9432;</sup></span></label>
                     </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="send-ice-servers-to-master">
+                        <label class="form-check-label" for="send-ice-servers-to-master">Send TURN servers to the master in the SDP offer <small>(Viewer only, non WebRTC ingestion)</small><span data-delay="{ &quot;hide&quot;: 1500 }" data-position="auto" tabindex="0" class="text-info ml-1" data-toggle="tooltip" data-html="true" title="
+                            <p>Sends the master the set of TURN servers that this viewer does not use, as an <code>IceServerList</code> property in the SDP offer. The master then does not need to call GetIceServerConfig before it answers.</p>
+                            <p>Turns on &quot;Use only one set of TURN servers&quot;. The property makes the offer longer, so check the master's maximum signaling message length. A master that does not read the property ignores it.</p>"><sup>&#9432;</sup></span></label>
+                    </div>
                 </div>
 
                 <div class="d-flex align-items-center mt-3">
