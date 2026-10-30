@@ -360,9 +360,10 @@
                             <p>GetIceServerConfig returns two sets of TURN servers, only use one of the sets.</p>"><sup>&#9432;</sup></span></label>
                     </div>
                     <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="share-turn-credentials">
-                        <label class="form-check-label" for="share-turn-credentials">Share TURN credentials with master<span data-delay="{ &quot;hide&quot;: 1500 }" data-position="auto" tabindex="0" class="text-info ml-1" data-toggle="tooltip" data-html="true" title="
-                            <p>Send the viewer's TURN server credentials to the master via signaling (as an ICE_CANDIDATE message with a special payload). The C SDK master can use these instead of making its own GetIceServerConfig API call when <code>KVS_USE_VIEWER_TURN_CREDENTIALS=TRUE</code> is set.</p>"><sup>&#9432;</sup></span></label>
+                        <input class="form-check-input" type="checkbox" id="send-ice-servers-to-master">
+                        <label class="form-check-label" for="send-ice-servers-to-master">Send TURN servers to the master in the SDP offer <small>(Viewer only, non WebRTC ingestion)</small><span data-delay="{ &quot;hide&quot;: 1500 }" data-position="auto" tabindex="0" class="text-info ml-1" data-toggle="tooltip" data-html="true" title="
+                            <p>Sends the master the set of TURN servers that this viewer does not use, as an <code>IceServerList</code> property in the SDP offer. The master then does not need to call GetIceServerConfig before it answers.</p>
+                            <p>Turns on &quot;Use only one set of TURN servers&quot;. The property makes the offer longer, so check the master's maximum signaling message length. A master that does not read the property ignores it.</p>"><sup>&#9432;</sup></span></label>
                     </div>
                 </div>
 

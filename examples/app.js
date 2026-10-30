@@ -153,7 +153,7 @@ function getFormValues() {
         turnsWithUdp: $('#turns-with-udp').is(':checked'),
         turnsWithTcp: $('#turns-with-tcp').is(':checked'),
         oneTurnServerSetOnly: $('#turn-one-set-only').is(':checked'),
-        shareTurnCredentialsWithMaster: $('#share-turn-credentials').is(':checked'),
+        sendIceServersToMaster: $('#send-ice-servers-to-master').is(':checked'),
     };
 }
 
@@ -552,6 +552,17 @@ function updateFipsRegionWarning() {
 $('#enable-fips').on('change', updateFipsRegionWarning);
 $('#region').on('input change', updateFipsRegionWarning);
 
+// Sending the master TURN servers needs a set that this viewer does not use, so it uses only one set
+function updateTurnOneSetOnly() {
+    const sendIceServersToMaster = $('#send-ice-servers-to-master').is(':checked');
+    if (sendIceServersToMaster) {
+        $('#turn-one-set-only').prop('checked', true).trigger('change');
+    }
+    $('#turn-one-set-only').prop('disabled', sendIceServersToMaster);
+}
+
+$('#send-ice-servers-to-master').on('change', updateTurnOneSetOnly);
+
 function addViewerMediaStreamToMaster(viewerId, track) {
     $('#empty-video-placeholder')?.remove();
 
@@ -741,6 +752,7 @@ const fields = [
     {field: 'turns-with-udp', type: 'checkbox'},
     {field: 'turns-with-tcp', type: 'checkbox'},
     {field: 'turn-one-set-only', type: 'checkbox'},
+    {field: 'send-ice-servers-to-master', type: 'checkbox'},
     {field: 'enable-fips', type: 'checkbox'},
 ];
 
@@ -813,6 +825,9 @@ fields.forEach(({field, type, name}) => {
         }
     });
 });
+
+// Values restored from the URL do not fire change events
+updateTurnOneSetOnly();
 
 /**
  * Determines whether the ICE Candidate should be added.
